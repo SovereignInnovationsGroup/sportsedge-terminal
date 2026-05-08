@@ -18,8 +18,9 @@ import {
   Zap,
 } from "lucide-react";
 import "./styles/dashboard.css";
-import loginSportsImage from "./public/images/login-sports-montage.png";
-import sportsEdgeMarketsLogo from "./public/images/sportsedge-markets-logo.png";
+
+const loginSportsImage = "/images/login-sports-montage.png";
+const sportsEdgeMarketsLogo = "/images/sportsedge-markets-logo.png";
 
 type NewsItem = {
   id: string;
