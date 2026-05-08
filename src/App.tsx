@@ -166,8 +166,12 @@ function LoginScreen() {
 
   return (
     <main className="login-shell">
-      <section className="login-visual" aria-label="SportsEdge sports trading visual">
-        <img src={loginSportsImage} alt="Multiple sports in a live trading market environment" />
+      <section
+        className="login-visual"
+        aria-label="SportsEdge sports trading visual"
+        style={{ backgroundImage: `url(${loginSportsImage})` }}
+      >
+        <img className="login-visual-image" src={loginSportsImage} alt="Multiple sports in a live trading market environment" />
         <div className="visual-overlay" />
         <div className="visual-brand">
           <img className="brand-logo" src={sportsEdgeMarketsLogo} alt="SportsEdge Markets logo" />

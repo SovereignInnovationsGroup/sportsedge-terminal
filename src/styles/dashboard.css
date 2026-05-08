@@ -53,10 +53,12 @@ body {
   min-height: 100vh;
   overflow: hidden;
   border-right: 1px solid var(--line);
-  background: #050505;
+  background-color: #050505;
+  background-position: center;
+  background-size: cover;
 }
 
-.login-visual > img {
+.login-visual-image {
   position: absolute;
   inset: 0;
   width: 100%;

@@ -11,6 +11,11 @@
     return process.env.POSTGRES_URL || process.env.DATABASE_URL || env.POSTGRES_URL || env.DATABASE_URL || '';
   }
 
+  function getApiBaseUrl(server: any) {
+    const env = loadEnv(server.config.mode, server.config.root, '');
+    return process.env.VITE_API_BASE_URL || process.env.API_BASE_URL || env.VITE_API_BASE_URL || env.API_BASE_URL || 'https://api.sportsedge.markets';
+  }
+
   function getNewsPool(connectionString: string) {
     if (!connectionString) {
       throw new Error('POSTGRES_URL or DATABASE_URL is required for /api/news');
@@ -41,6 +46,16 @@
     res.end(JSON.stringify(body));
   }
 
+  async function proxyNewsRequest(server: any, requestUrl: URL, res: any) {
+    const upstreamUrl = new URL('/api/news', getApiBaseUrl(server));
+    upstreamUrl.search = requestUrl.search;
+    const response = await fetch(upstreamUrl);
+    const body = await response.text();
+    res.statusCode = response.status;
+    res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json');
+    res.end(body);
+  }
+
   function newsApiPlugin() {
     return {
       name: 'sportsedge-news-api',
@@ -48,6 +63,13 @@
         server.middlewares.use('/api/news', async (req: any, res: any) => {
           try {
             const requestUrl = new URL(req.url || '/', 'http://127.0.0.1');
+            const connectionString = getNewsConnectionString(server);
+
+            if (!connectionString) {
+              await proxyNewsRequest(server, requestUrl, res);
+              return;
+            }
+
             const search = requestUrl.searchParams.get('q')?.trim() || '';
             const sport = requestUrl.searchParams.get('sport')?.trim() || '';
             const sourceName = requestUrl.searchParams.get('source_name')?.trim() || requestUrl.searchParams.get('source')?.trim() || '';
@@ -58,7 +80,7 @@
             const dateFrom = requestUrl.searchParams.get('date_from')?.trim() || '';
             const dateTo = requestUrl.searchParams.get('date_to')?.trim() || '';
             const limit = Math.min(Number.parseInt(requestUrl.searchParams.get('limit') || '200', 10) || 200, 200);
-            const pool = await getNewsPool(getNewsConnectionString(server));
+            const pool = await getNewsPool(connectionString);
 
             const values: unknown[] = [];
             const clauses = ['true'];
@@ -216,7 +238,7 @@
               message,
               hint: blockedHost
                 ? `Postgres is reachable at 173.249.48.129, but pg_hba.conf must allow ${blockedHost} for sportsedge_readonly on database sportsedge.`
-                : 'Set POSTGRES_URL for the sportsedge_readonly account, for example postgresql://sportsedge_readonly@173.249.48.129:5432/sportsedge?sslmode=require',
+                : 'Set POSTGRES_URL for local database reads or VITE_API_BASE_URL to proxy a SportsEdge API host.',
             });
           }
         });
