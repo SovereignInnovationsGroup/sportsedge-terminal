@@ -2490,6 +2490,7 @@ button {
 }
 
 .testboard-search {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -2537,6 +2538,49 @@ button {
 
 .testboard-search input::placeholder {
   color: var(--muted);
+}
+
+.testboard-command-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 80;
+  width: min(460px, calc(100vw - 24px));
+  padding: 8px;
+  border: 1px solid rgba(36, 50, 65, 0.95);
+  border-radius: 8px;
+  background: rgba(7, 11, 17, 0.98);
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.52);
+}
+
+.testboard-command-menu button,
+.testboard-command-menu em {
+  display: grid;
+  width: 100%;
+  gap: 3px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  padding: 10px;
+  text-align: left;
+}
+
+.testboard-command-menu button:hover {
+  background: rgba(30, 64, 103, 0.5);
+}
+
+.testboard-command-menu strong {
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.testboard-command-menu span,
+.testboard-command-menu em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
 }
 
 .testboard-route-link,
@@ -3311,6 +3355,356 @@ button {
 
 .bias-matrix-poc tr:nth-child(even) {
   background: rgba(10, 16, 23, 0.72);
+}
+
+.football-demo-page,
+.team-profile-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(96, 165, 250, 0.16), transparent 30rem),
+    linear-gradient(180deg, #070b11 0%, #030405 100%);
+  color: var(--text);
+  padding: 22px;
+}
+
+.football-demo-topbar,
+.team-profile-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 54px;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.78);
+}
+
+.football-demo-brand img {
+  display: block;
+  width: 244px;
+  height: auto;
+}
+
+.football-demo-topbar nav,
+.team-profile-topbar nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.football-demo-topbar nav a,
+.team-profile-topbar nav a {
+  border: 1px solid rgba(36, 50, 65, 0.9);
+  border-radius: 7px;
+  color: var(--muted);
+  padding: 10px 13px;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.football-demo-topbar nav a:hover,
+.football-demo-topbar nav a.active,
+.team-profile-topbar nav a:hover {
+  border-color: rgba(96, 165, 250, 0.72);
+  background: rgba(30, 64, 103, 0.34);
+  color: var(--text);
+}
+
+.football-demo-hero,
+.team-profile-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 24px;
+  align-items: end;
+  padding: 44px 0 28px;
+}
+
+.football-demo-hero span,
+.team-profile-title span,
+.football-demo-panel-head span,
+.team-profile-panel-head span {
+  color: var(--amber);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.football-demo-hero h1,
+.team-profile-title h1 {
+  max-width: 1000px;
+  margin: 10px 0;
+  font-size: clamp(36px, 5.2vw, 76px);
+  line-height: 0.92;
+  letter-spacing: 0;
+}
+
+.football-demo-hero p,
+.team-profile-title p {
+  max-width: 740px;
+  margin: 0;
+  color: #b7c4d1;
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.55;
+}
+
+.football-demo-live-card,
+.team-profile-status {
+  display: grid;
+  gap: 7px;
+  border: 1px solid rgba(36, 50, 65, 0.92);
+  border-radius: 8px;
+  background: rgba(17, 24, 33, 0.78);
+  padding: 18px;
+}
+
+.football-demo-live-card strong,
+.team-profile-status strong {
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.football-demo-live-card em,
+.team-profile-status em {
+  color: var(--green);
+  font-family: var(--mono);
+  font-style: normal;
+  font-weight: 900;
+}
+
+.football-demo-grid,
+.team-profile-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: 14px;
+}
+
+.football-demo-panel,
+.team-profile-panel {
+  border: 1px solid rgba(36, 50, 65, 0.92);
+  border-radius: 8px;
+  background: rgba(12, 18, 25, 0.82);
+  overflow: hidden;
+}
+
+.football-demo-panel-head,
+.team-profile-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.7);
+  padding: 14px;
+}
+
+.football-demo-panel-head strong,
+.team-profile-panel-head strong {
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.football-demo-team-list {
+  display: grid;
+}
+
+.football-demo-team-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 0.9fr);
+  gap: 16px;
+  align-items: center;
+  border: 0;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.7);
+  background: transparent;
+  color: inherit;
+  padding: 14px;
+  text-align: left;
+}
+
+.football-demo-team-title,
+.team-profile-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.football-demo-team-title strong {
+  display: block;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.football-demo-team-title span,
+.football-demo-team-stats span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.football-demo-team-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.football-demo-team-stats span,
+.team-profile-stat-grid div {
+  border: 1px solid rgba(36, 50, 65, 0.76);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 10px;
+}
+
+.football-demo-team-stats b,
+.team-profile-stat-grid strong {
+  display: block;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.football-demo-player-grid,
+.team-profile-stat-grid,
+.team-profile-squad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px;
+}
+
+.football-demo-player-grid > div,
+.team-profile-squad-grid > div {
+  border: 1px solid rgba(36, 50, 65, 0.76);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 13px;
+}
+
+.football-demo-player-grid strong,
+.team-profile-squad-grid strong {
+  display: block;
+  margin: 8px 0;
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.football-demo-player-grid p,
+.team-profile-empty {
+  margin: 0;
+  color: #b7c4d1;
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+.football-demo-player-grid footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+  color: var(--green);
+  font-family: var(--mono);
+}
+
+.fixture-intel {
+  grid-column: 1 / -1;
+}
+
+.fixture-intel table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.fixture-intel th,
+.fixture-intel td {
+  border-bottom: 1px solid rgba(36, 50, 65, 0.7);
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.football-demo-stat-bars,
+.team-profile-list,
+.team-profile-aliases {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.football-demo-stat-bars div {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 46px;
+  gap: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(36, 50, 65, 0.76);
+  border-radius: 7px;
+  padding: 12px;
+}
+
+.football-demo-stat-bars i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--green);
+}
+
+.team-profile-crest {
+  display: grid;
+  place-items: center;
+  width: 118px;
+  height: 118px;
+  flex: 0 0 118px;
+  border: 1px solid rgba(251, 191, 36, 0.58);
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.16), rgba(10, 14, 20, 0.9));
+}
+
+.team-profile-crest img {
+  width: 92px;
+  height: 92px;
+  object-fit: contain;
+}
+
+.team-profile-panel.venue img {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.7);
+}
+
+.team-profile-list span {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.52);
+  padding-bottom: 10px;
+  color: #cbd5df;
+  font-weight: 850;
+}
+
+.team-profile-list b,
+.team-profile-aliases > span {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.team-profile-aliases div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.team-profile-aliases b {
+  border: 1px solid rgba(251, 191, 36, 0.38);
+  border-radius: 999px;
+  color: var(--amber);
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.team-profile-empty {
+  padding: 14px;
 }
 
 .bias-matrix-poc th:nth-child(1),

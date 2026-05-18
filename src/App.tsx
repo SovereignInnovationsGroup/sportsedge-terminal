@@ -1014,6 +1014,32 @@ function searchSport(value: string) {
   )?.value || null;
 }
 
+type CommandOption = {
+  label: string;
+  detail: string;
+  route: string;
+  keywords: string[];
+};
+
+const COMMAND_OPTIONS: CommandOption[] = [
+  { label: "Chelsea team profile", detail: "Open the detailed SportsEdge profile page", route: "#team/chelsea", keywords: ["chelsea", "team", "profile", "club"] },
+  { label: "Upcoming fixtures", detail: "Open today's market dashboard", route: "#dashboard", keywords: ["fixtures", "upcoming", "today", "matches", "games"] },
+  { label: "Bias Matrix", detail: "Open the football consensus matrix", route: "#matrix", keywords: ["matrix", "bias", "consensus", "prices"] },
+  { label: "Football markets", detail: "Open the football market board", route: "#football", keywords: ["football", "soccer", "markets"] },
+  { label: "News", detail: "Open SportsEdge social news stream", route: "#social-news", keywords: ["news", "twitter", "social", "x"] },
+  { label: "Actual exchange feeds", detail: "Open raw venue diagnostics", route: "#actual", keywords: ["actual", "exchange", "betfair", "matchbook", "feeds"] }
+];
+
+function commandMatches(option: CommandOption, query: string) {
+  const normalized = query.replace(/^\//, "").trim().toLowerCase();
+  if (!normalized) return true;
+  return [option.label, option.detail, ...option.keywords].some((value) => value.toLowerCase().includes(normalized));
+}
+
+function resolveCommand(query: string) {
+  return COMMAND_OPTIONS.find((option) => commandMatches(option, query)) || null;
+}
+
 function rowMatchesSelectedSport(row: BackendPriceRow, selectedSport: string) {
   const sports = [
     row.sportName,
@@ -1876,6 +1902,17 @@ function formatDate(value: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function formatTimeAgo(value: string | null) {
+  if (!value) return "-";
+  const deltaSeconds = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000));
+  if (deltaSeconds < 60) return `${deltaSeconds}s ago`;
+  const deltaMinutes = Math.floor(deltaSeconds / 60);
+  if (deltaMinutes < 60) return `${deltaMinutes}m ago`;
+  const deltaHours = Math.floor(deltaMinutes / 60);
+  if (deltaHours < 24) return `${deltaHours}h ago`;
+  return `${Math.floor(deltaHours / 24)}d ago`;
 }
 
 function asNumber(value: string | number | null | undefined) {
@@ -3311,6 +3348,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
   const [backendError, setBackendError] = useState("");
   const [snapshotLoaded, setSnapshotLoaded] = useState(false);
   const [marketSearch, setMarketSearch] = useState("");
+  const [commandOpen, setCommandOpen] = useState(false);
   const [marketGroup, setMarketGroup] = useState("all");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [, setTeamAssetVersion] = useState(0);
@@ -3335,6 +3373,14 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
   const rowOrderRef = useRef<Record<string, number>>({});
   const nextRowOrderRef = useRef(0);
   const sportDashboard = SPORT_DASHBOARDS[selectedSport] || SPORT_DASHBOARDS.football;
+  const commandOptions = useMemo(() => COMMAND_OPTIONS.filter((option) => commandMatches(option, marketSearch)).slice(0, 6), [marketSearch]);
+
+  function runCommand(option: CommandOption | null) {
+    if (!option) return;
+    setCommandOpen(false);
+    setMarketSearch("");
+    window.location.hash = option.route;
+  }
 
   useEffect(() => {
     function applyRoute() {
@@ -4473,6 +4519,8 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
           <input
             ref={marketSearchRef}
             value={marketSearch}
+            onFocus={() => setCommandOpen(true)}
+            onBlur={() => window.setTimeout(() => setCommandOpen(false), 160)}
             onChange={(event) => {
               const value = event.target.value;
               setMarketSearch(value);
@@ -4483,9 +4531,30 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
                 setSelectedSport(sport);
               }
             }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                runCommand(resolveCommand(marketSearch) || commandOptions[0] || null);
+              }
+              if (event.key === "Escape") {
+                setCommandOpen(false);
+                marketSearchRef.current?.blur();
+              }
+            }}
             placeholder="Search sport, market, fixture, exchange..."
           />
           <kbd>/</kbd>
+          {commandOpen && (
+            <div className="testboard-command-menu">
+              {commandOptions.map((option) => (
+                <button type="button" key={option.route} onMouseDown={(event) => event.preventDefault()} onClick={() => runCommand(option)}>
+                  <strong>{option.label}</strong>
+                  <span>{option.detail}</span>
+                </button>
+              ))}
+              {commandOptions.length === 0 && <em>No command found</em>}
+            </div>
+          )}
         </label>
         <a className="testboard-route-link" href="#old">Old</a>
         <div className="testboard-settings">
@@ -4878,6 +4947,375 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
       </section>
       </>
       )}
+    </main>
+  );
+}
+
+function FootballIntelligenceDemoPage() {
+  const profileTeams = [
+    {
+      name: "Manchester City",
+      league: "Premier League",
+      country: "England",
+      form: "W W D W L",
+      liquidity: "GBP 1.8m",
+      signal: "Back pressure",
+      rating: "91"
+    },
+    {
+      name: "Chelsea",
+      league: "Premier League",
+      country: "England",
+      form: "W L W D W",
+      liquidity: "GBP 940k",
+      signal: "Mixed",
+      rating: "76"
+    },
+    {
+      name: "Arsenal",
+      league: "Premier League",
+      country: "England",
+      form: "D W W W D",
+      liquidity: "GBP 1.2m",
+      signal: "Sharp buy",
+      rating: "84"
+    }
+  ];
+  const players = [
+    ["Erling Haaland", "Forward", "Anytime scorer", "0.64 xG", "+11%"],
+    ["Bukayo Saka", "Right wing", "Assist market", "3.2 key passes", "+7%"],
+    ["Cole Palmer", "Attacking mid", "Shot volume", "4 shots", "+9%"]
+  ];
+  const fixtures = [
+    ["Today 19:45", "Chelsea - Manchester City", "Match Winner", "GBP 2.1m", "4 venues"],
+    ["Tomorrow 15:00", "Arsenal - Newcastle United", "Total Goals", "GBP 1.4m", "3 venues"],
+    ["Tomorrow 17:30", "Liverpool - Tottenham Hotspur", "Match Winner", "GBP 1.7m", "4 venues"]
+  ];
+
+  return (
+    <main className="football-demo-page">
+      <header className="football-demo-topbar">
+        <a className="football-demo-brand" href="#dashboard" aria-label="SportsEdge dashboard">
+          <img src={sportsEdgeMarketsLogo} alt="SportsEdge" />
+        </a>
+        <nav aria-label="Football intelligence demo navigation">
+          <a href="#dashboard">Dashboard</a>
+          <a href="#matrix">Matrix</a>
+          <a className="active" href="#football-demo">Football intelligence</a>
+          <a href="#login">Beta Login</a>
+        </nav>
+      </header>
+
+      <section className="football-demo-hero">
+        <div>
+          <span>Football Intelligence Demo</span>
+          <h1>Teams, players, fixtures, stats, and market signals in one profile layer.</h1>
+          <p>
+            This is the proposed main-site layout for football coverage: clean club profiles,
+            player cards, fixture context, live market state, and news signals feeding into SportsEdge.
+          </p>
+        </div>
+        <div className="football-demo-live-card">
+          <span>Profile engine</span>
+          <strong>Premier League ready</strong>
+          <em>Team logo table + aliases + fixture matching</em>
+        </div>
+      </section>
+
+      <section className="football-demo-grid">
+        <article className="football-demo-panel team-profiles">
+          <div className="football-demo-panel-head">
+            <span>Team Profiles</span>
+            <strong>Official badges, aliases, league, country</strong>
+          </div>
+          <div className="football-demo-team-list">
+            {profileTeams.map((team) => (
+              <button type="button" key={team.name}>
+                <div className="football-demo-team-title">
+                  <TeamLogoStack name={team.name} />
+                  <div>
+                    <strong>{team.name}</strong>
+                    <span>{team.country} / {team.league}</span>
+                  </div>
+                </div>
+                <div className="football-demo-team-stats">
+                  <span>Form <b>{team.form}</b></span>
+                  <span>Liquidity <b>{team.liquidity}</b></span>
+                  <span>Signal <b>{team.signal}</b></span>
+                  <span>Rating <b>{team.rating}</b></span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </article>
+
+        <article className="football-demo-panel player-profiles">
+          <div className="football-demo-panel-head">
+            <span>Player Profiles</span>
+            <strong>Market-relevant player context</strong>
+          </div>
+          <div className="football-demo-player-grid">
+            {players.map((player) => (
+              <div key={player[0]}>
+                <span>{player[1]}</span>
+                <strong>{player[0]}</strong>
+                <p>{player[2]}</p>
+                <footer>
+                  <b>{player[3]}</b>
+                  <em>{player[4]}</em>
+                </footer>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="football-demo-panel fixture-intel">
+          <div className="football-demo-panel-head">
+            <span>Fixture Intelligence</span>
+            <strong>Upcoming games linked to markets</strong>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Kickoff</th>
+                <th>Fixture</th>
+                <th>Market</th>
+                <th>Liquidity</th>
+                <th>Venues</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fixtures.map((fixture) => (
+                <tr key={fixture[1]}>
+                  <td>{fixture[0]}</td>
+                  <td>
+                    <div className="fixture-title-line">
+                      <TeamLogoStack name={fixture[1]} />
+                      <strong>{fixture[1]}</strong>
+                    </div>
+                  </td>
+                  <td>{fixture[2]}</td>
+                  <td className="mono positive">{fixture[3]}</td>
+                  <td>{fixture[4]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </article>
+
+        <article className="football-demo-panel stats-stack">
+          <div className="football-demo-panel-head">
+            <span>Stats Layer</span>
+            <strong>Profile data that feeds bias</strong>
+          </div>
+          <div className="football-demo-stat-bars">
+            {[
+              ["Team news sensitivity", 86],
+              ["Liquidity overlap", 74],
+              ["Line movement", 68],
+              ["News impact", 91]
+            ].map(([label, value]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <strong>{value}%</strong>
+                <i style={{ width: `${value}%` }} />
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
+    </main>
+  );
+}
+
+type FootballTeamProfile = {
+  id: string;
+  provider: string;
+  providerTeamId: string;
+  name: string;
+  code: string | null;
+  country: string | null;
+  founded: number | null;
+  national: boolean;
+  logoUrl: string | null;
+  syncedAt: string | null;
+  venue: {
+    name: string;
+    address: string | null;
+    city: string | null;
+    country: string | null;
+    capacity: number | null;
+    surface: string | null;
+    imageUrl: string | null;
+  } | null;
+  asset: {
+    ticker: string;
+    fullName: string;
+    shortName: string;
+    currentLeague: string;
+    logoUrl: string | null;
+    aliases: string[];
+  } | null;
+  squad: Array<{
+    id: string;
+    name: string;
+    age: number | null;
+    nationality: string | null;
+    height: string | null;
+    weight: string | null;
+    photoUrl: string | null;
+    position: string | null;
+    number: number | null;
+  }>;
+};
+
+function TeamProfilePage({ slug }: { slug: string }) {
+  const [profile, setProfile] = useState<FootballTeamProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError("");
+    fetch(`/api/football/teams/${encodeURIComponent(slug)}/profile`, { signal: controller.signal, cache: "no-store" })
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload?.detail || "Team profile unavailable");
+        setProfile(payload.profile || null);
+      })
+      .catch((fetchError) => {
+        if (fetchError.name !== "AbortError") setError(fetchError.message || "Team profile unavailable");
+      })
+      .finally(() => setLoading(false));
+    return () => controller.abort();
+  }, [slug]);
+
+  const name = profile?.asset?.fullName || profile?.name || "Chelsea";
+  const shortName = profile?.asset?.shortName || profile?.name || "Chelsea";
+  const logoUrl = profile?.asset?.logoUrl || profile?.logoUrl || teamLogoUrl(name);
+  const venue = profile?.venue;
+  const profileStats = [
+    ["Code", profile?.asset?.ticker || profile?.code || "CHE"],
+    ["Country", profile?.country || "England"],
+    ["League", profile?.asset?.currentLeague || "Premier League"],
+    ["Founded", profile?.founded || 1905],
+    ["Provider ID", profile?.providerTeamId || "49"],
+    ["Synced", profile?.syncedAt ? formatTimeAgo(profile.syncedAt) : "seeded"]
+  ];
+  const marketContext = [
+    ["Primary markets", "Match odds, totals, handicap"],
+    ["Matrix role", "Football consensus + venue alignment"],
+    ["News sensitivity", "Transfers, injuries, lineups, manager comments"],
+    ["Profile source", "API-Football cache + SportsEdge team registry"]
+  ];
+
+  return (
+    <main className="team-profile-page">
+      <header className="team-profile-topbar">
+        <a className="football-demo-brand" href="#dashboard" aria-label="SportsEdge dashboard">
+          <img src={sportsEdgeMarketsLogo} alt="SportsEdge" />
+        </a>
+        <nav>
+          <a href="#dashboard">Dashboard</a>
+          <a href="#matrix">Matrix</a>
+          <a href="#football-demo">Football intelligence</a>
+        </nav>
+      </header>
+
+      <section className="team-profile-hero">
+        <div className="team-profile-title">
+          <div className="team-profile-crest">
+            {logoUrl ? <img src={logoUrl} alt={`${shortName} crest`} /> : <span>{teamTicker(name)}</span>}
+          </div>
+          <div>
+            <span>SportsEdge football profile</span>
+            <h1>{name}</h1>
+            <p>
+              Canonical team identity, venue details, provider profile data, aliases, and
+              market context ready to link into the Matrix and fixture pages.
+            </p>
+          </div>
+        </div>
+        <div className="team-profile-status">
+          <span>{loading ? "Loading" : error ? "Attention" : "Ready"}</span>
+          <strong>{error ? "Profile issue" : "Chelsea profile cache"}</strong>
+          <em>{error || "API-Football team endpoint proved with one request"}</em>
+        </div>
+      </section>
+
+      <section className="team-profile-grid">
+        <article className="team-profile-panel main">
+          <div className="team-profile-panel-head">
+            <span>Team Details</span>
+            <strong>{profile?.provider || "api-football"}</strong>
+          </div>
+          <div className="team-profile-stat-grid">
+            {profileStats.map(([label, value]) => (
+              <div key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </div>
+            ))}
+          </div>
+          <div className="team-profile-aliases">
+            <span>Aliases</span>
+            <div>
+              {(profile?.asset?.aliases?.length ? profile.asset.aliases : ["Chelsea", "Chelsea FC", "CHE"]).map((alias) => (
+                <b key={alias}>{alias}</b>
+              ))}
+            </div>
+          </div>
+        </article>
+
+        <article className="team-profile-panel venue">
+          <div className="team-profile-panel-head">
+            <span>Home Venue</span>
+            <strong>{venue?.name || "Stamford Bridge"}</strong>
+          </div>
+          {venue?.imageUrl && <img src={venue.imageUrl} alt={venue.name} />}
+          <div className="team-profile-list">
+            <span><b>City</b>{venue?.city || "London"}</span>
+            <span><b>Address</b>{venue?.address || "Fulham Road"}</span>
+            <span><b>Capacity</b>{venue?.capacity?.toLocaleString() || "41,841"}</span>
+            <span><b>Surface</b>{venue?.surface || "grass"}</span>
+          </div>
+        </article>
+
+        <article className="team-profile-panel context">
+          <div className="team-profile-panel-head">
+            <span>Trading Context</span>
+            <strong>How SportsEdge uses it</strong>
+          </div>
+          <div className="team-profile-list">
+            {marketContext.map(([label, value]) => (
+              <span key={label}><b>{label}</b>{value}</span>
+            ))}
+          </div>
+        </article>
+
+        <article className="team-profile-panel squad">
+          <div className="team-profile-panel-head">
+            <span>Player Profiles</span>
+            <strong>{profile?.squad?.length || 0} cached</strong>
+          </div>
+          {profile?.squad?.length ? (
+            <div className="team-profile-squad-grid">
+              {profile.squad.slice(0, 12).map((player) => (
+                <div key={player.id}>
+                  {player.photoUrl ? <img src={player.photoUrl} alt="" /> : <span>{teamInitials(player.name)}</span>}
+                  <strong>{player.name}</strong>
+                  <em>{player.position || "Player"} {player.number ? `#${player.number}` : ""}</em>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="team-profile-empty">
+              Squad/player sync is switched off for this proof so we only spend one of the 100 daily API-Football calls. Turn on `API_FOOTBALL_SYNC_SQUAD=true` when you want the player profile pull.
+            </p>
+          )}
+        </article>
+      </section>
     </main>
   );
 }
@@ -5679,7 +6117,9 @@ export default function App() {
   }
 
   let screen;
-  if (previewDashboard && (hash === "#dashboard" || hash === "#testboard" || hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash) || !hash)) screen = <TestboardPage onLogout={handleLogout} />;
+  if (hash.startsWith("#team/")) screen = <TeamProfilePage slug={hash.replace("#team/", "") || "chelsea"} />;
+  else if (hash === "#football-demo") screen = <FootballIntelligenceDemoPage />;
+  else if (previewDashboard && (hash === "#dashboard" || hash === "#testboard" || hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash) || !hash)) screen = <TestboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#login") screen = <LoginScreen />;
   else if (previewDashboard && (hash === "#old" || hash === "#news" || hash.startsWith("#sport"))) screen = <DashboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#social-news") screen = <DashboardPage onLogout={handleLogout} />;
