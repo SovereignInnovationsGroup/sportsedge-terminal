@@ -1826,9 +1826,17 @@ function displayStartTime(row: Pick<BackendPriceRow, "startAt" | "name" | "marke
   return "TBD";
 }
 
+function displayEventName(name: string) {
+  return String(name || "")
+    .replace(/\s+-\s+More Markets.*$/i, "")
+    .replace(/\s+-\s+Exact Score.*$/i, "")
+    .replace(/\s+-\s+Player Props.*$/i, "")
+    .trim();
+}
+
 function displayFixtureKey(row: Pick<BackendPriceRow, "name" | "startAt">) {
   const date = row.startAt ? String(row.startAt).slice(0, 10) : "";
-  const normalized = String(row.name || "")
+  const normalized = displayEventName(row.name)
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
@@ -4221,7 +4229,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
     const competition = row.competitionName || Object.values(row.matches || {}).find(Boolean)?.competitionName || selectedSportLabel;
     const market = row.marketName || row.marketType || Object.values(row.matches || {}).find(Boolean)?.marketName || "Exchange prices";
     return {
-      fixture: [time, row.name, competition, market] as FixtureRow,
+      fixture: [time, displayEventName(row.name), competition, market] as FixtureRow,
       fixtureIndex,
       totalValue,
       backend: row
@@ -5182,21 +5190,30 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
             </tr>
           </thead>
           <tbody>
-            {matrixRows.map(({ fixture, fixtureIndex, totalValue, backend }) => {
+            {matrixRows.map(({ fixture, fixtureIndex, totalValue, backend }, rowIndex) => {
               const quote = sportsEdgeMarketQuote(backend);
+              const rowKey = backend ? stableDisplayRowKey(backend) : `${fixture[0]}-${fixture[1]}-${fixture[3]}-${fixtureIndex}`;
+              const previousBackend = rowIndex > 0 ? matrixRows[rowIndex - 1]?.backend : null;
+              const repeatsFixture = Boolean(previousBackend && backend && displayFixtureKey(previousBackend) === displayFixtureKey(backend));
               return (
                 <tr
-                  className="clickable-row"
-                  key={`${fixture[0]}-${fixture[1]}`}
+                  className={`clickable-row${repeatsFixture ? " repeated-fixture-row" : ""}`}
+                  key={rowKey}
                   onClick={() => setSelectedFixtureIndex(fixtureIndex)}
                 >
-                  <td className="mono positive">{fixture[0]}</td>
+                  <td className="mono positive">{repeatsFixture ? "" : fixture[0]}</td>
                   <td className="testboard-fixture">
-                    <div className="fixture-title-line">
-                      <TeamLogoStack name={fixture[1]} />
-                      <strong>{fixture[1]}</strong>
-                    </div>
-                    <span><em>{countryFlag(competitionCountry(fixture[2]))}</em>{fixtureGroupLabel(fixture[2])}</span>
+                    {repeatsFixture ? (
+                      <span className="fixture-repeat-marker">More markets</span>
+                    ) : (
+                      <>
+                        <div className="fixture-title-line">
+                          <TeamLogoStack name={fixture[1]} />
+                          <strong>{fixture[1]}</strong>
+                        </div>
+                        <span><em>{countryFlag(competitionCountry(fixture[2]))}</em>{fixtureGroupLabel(fixture[2])}</span>
+                      </>
+                    )}
                   </td>
                   <td className="contract-cell">{fixture[3]}</td>
                   <td className="mono">{quote.liquidity || totalValue ? formatExchangeMoney(quote.liquidity || totalValue, "GBP") : "-"}</td>

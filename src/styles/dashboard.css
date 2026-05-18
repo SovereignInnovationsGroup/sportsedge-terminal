@@ -5037,6 +5037,10 @@ button {
   cursor: pointer;
 }
 
+.testboard-matrix tr.repeated-fixture-row td {
+  border-top-color: rgba(36, 50, 65, 0.38);
+}
+
 .testboard-fixture {
   display: grid;
   gap: 3px;
@@ -5229,6 +5233,26 @@ button {
 .testboard-fixture span,
 .testboard-matrix .muted-cell {
   color: var(--muted);
+}
+
+.testboard-fixture .fixture-repeat-marker {
+  display: inline-flex;
+  align-items: center;
+  color: rgba(148, 163, 184, 0.56);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.testboard-fixture .fixture-repeat-marker::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 1px;
+  margin-right: 8px;
+  background: rgba(148, 163, 184, 0.42);
 }
 
 .testboard-matrix .mono {
