@@ -2097,6 +2097,38 @@ function stableDisplayRowKey(row: BackendPriceRow) {
   return `${displayFixtureKey(row)}:${displayMarketKey(row)}`;
 }
 
+function fixtureMarketPriority(row: BackendPriceRow) {
+  const label = `${row.marketName || ""} ${row.marketType || ""}`.toLowerCase();
+  if (/(match odds|match result|moneyline|winner|match winner|one x two|1x2|\bmw\b)/.test(label)) return 5;
+  if (/(both teams|total|over|under|spread|handicap)/.test(label)) return 3;
+  if (/(more markets|player props?)/.test(label)) return 0;
+  return 1;
+}
+
+function collapseRowsByFixture(rows: BackendPriceRow[]) {
+  const byFixture = new Map<string, { row: BackendPriceRow; totalValue: number; marketCount: number }>();
+  rows.forEach((row) => {
+    const key = displayFixtureKey(row);
+    const totalValue = rowMatchedValue(row);
+    const existing = byFixture.get(key);
+    if (!existing) {
+      byFixture.set(key, { row, totalValue, marketCount: 1 });
+      return;
+    }
+    existing.totalValue += totalValue;
+    existing.marketCount += 1;
+    const existingPriority = fixtureMarketPriority(existing.row);
+    const nextPriority = fixtureMarketPriority(row);
+    if (
+      nextPriority > existingPriority ||
+      (nextPriority === existingPriority && totalValue > rowMatchedValue(existing.row))
+    ) {
+      existing.row = row;
+    }
+  });
+  return Array.from(byFixture.values());
+}
+
 function exchangeCoverageCount(row: BackendPriceRow) {
   return new Set(Object.keys(row.matches || {}).map(backendExchangeCode)).size;
 }
@@ -4575,16 +4607,20 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
       return rowOrderRef.current[aKey] - rowOrderRef.current[bKey];
     })
     .slice(0, 80) : [];
-  const hasBackendRows = priceRows.length > 0;
-  const matrixRows = hasBackendRows ? priceRows.map((row, fixtureIndex) => {
+  const displayPriceRows = selectedSport === "football" && !isMatrixPage
+    ? collapseRowsByFixture(priceRows)
+    : priceRows.map((row) => ({ row, totalValue: rowMatchedValue(row), marketCount: 1 }));
+  const hasBackendRows = displayPriceRows.length > 0;
+  const matrixRows = hasBackendRows ? displayPriceRows.map(({ row, totalValue, marketCount }, fixtureIndex) => {
     const time = displayStartTime(row);
-    const totalValue = rowMatchedValue(row);
     const competition = row.competitionName || Object.values(row.matches || {}).find(Boolean)?.competitionName || selectedSportLabel;
-    const market = row.marketName || row.marketType || Object.values(row.matches || {}).find(Boolean)?.marketName || "Exchange prices";
+    const primaryMarket = row.marketName || row.marketType || Object.values(row.matches || {}).find(Boolean)?.marketName || "Exchange prices";
+    const market = marketCount > 1 ? `${primaryMarket} + ${marketCount - 1} markets` : primaryMarket;
     return {
       fixture: [time, displayEventName(row.name), competition, market] as FixtureRow,
       fixtureIndex,
       totalValue,
+      marketCount,
       backend: row
     };
   }) : [];
@@ -5567,30 +5603,22 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
             </tr>
           </thead>
           <tbody>
-            {matrixRows.map(({ fixture, fixtureIndex, totalValue, backend }, rowIndex) => {
+            {matrixRows.map(({ fixture, fixtureIndex, totalValue, backend }) => {
               const quote = sportsEdgeMarketQuote(backend);
               const rowKey = backend ? stableDisplayRowKey(backend) : `${fixture[0]}-${fixture[1]}-${fixture[3]}-${fixtureIndex}`;
-              const previousBackend = rowIndex > 0 ? matrixRows[rowIndex - 1]?.backend : null;
-              const repeatsFixture = Boolean(previousBackend && backend && displayFixtureKey(previousBackend) === displayFixtureKey(backend));
               return (
                 <tr
-                  className={`clickable-row${repeatsFixture ? " repeated-fixture-row" : ""}`}
+                  className="clickable-row"
                   key={rowKey}
                   onClick={() => setSelectedFixtureIndex(fixtureIndex)}
                 >
-                  <td className="mono positive">{repeatsFixture ? "" : fixture[0]}</td>
+                  <td className="mono positive">{fixture[0]}</td>
                   <td className="testboard-fixture">
-                    {repeatsFixture ? (
-                      <span className="fixture-repeat-marker">More markets</span>
-                    ) : (
-                      <>
-                        <div className="fixture-title-line">
-                          <TeamLogoStack name={fixture[1]} />
-                          <strong>{fixture[1]}</strong>
-                        </div>
-                        <span><em>{countryFlag(competitionCountry(fixture[2]))}</em>{fixtureGroupLabel(fixture[2])}</span>
-                      </>
-                    )}
+                    <div className="fixture-title-line">
+                      <TeamLogoStack name={fixture[1]} />
+                      <strong>{fixture[1]}</strong>
+                    </div>
+                    <span><em>{countryFlag(competitionCountry(fixture[2]))}</em>{fixtureGroupLabel(fixture[2])}</span>
                   </td>
                   <td className="contract-cell">{fixture[3]}</td>
                   <td className="mono">{quote.liquidity || totalValue ? formatExchangeMoney(quote.liquidity || totalValue, "GBP") : "-"}</td>
