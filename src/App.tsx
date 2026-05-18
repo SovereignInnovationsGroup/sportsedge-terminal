@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -660,6 +660,15 @@ function countryFlag(country: string) {
   return "🌐";
 }
 
+function teamFallbackBadge(team: string) {
+  const asset = footballTeamAsset(team);
+  return asset?.country ? countryFlag(asset.country) : teamInitials(team);
+}
+
+function teamFallbackIsFlag(team: string) {
+  return Boolean(footballTeamAsset(team)?.country);
+}
+
 function teamInitials(name: string) {
   const teams = String(name || "").split(/\s+(?:v|vs|versus)\.?\s+/i);
   const source = teams[0] || name;
@@ -1059,7 +1068,7 @@ function teamLogoUrl(team: string) {
 function TeamLogoStack({ name }: { name: string }) {
   const teams = fixtureTeams(name);
   if (teams.length === 0) {
-    return <span className="team-badge">{teamInitials(name)}</span>;
+    return <span className={`team-badge${teamFallbackIsFlag(name) ? " flag" : ""}`}>{teamFallbackBadge(name)}</span>;
   }
   return (
     <span className="team-logo-stack" aria-hidden="true">
@@ -1071,7 +1080,7 @@ function TeamLogoStack({ name }: { name: string }) {
             <span>{teamInitials(team)}</span>
           </span>
         ) : (
-          <span className="team-badge small" key={team}>{teamInitials(team)}</span>
+          <span className={`team-badge small${teamFallbackIsFlag(team) ? " flag" : ""}`} key={team}>{teamFallbackBadge(team)}</span>
         );
       })}
     </span>
@@ -1095,7 +1104,7 @@ function MatrixEventCell({ name, sport }: { name: string; sport: string }) {
                     <span>{teamInitials(team)}</span>
                   </span>
                 ) : (
-                  <span className="team-badge small">{teamInitials(team)}</span>
+                  <span className={`team-badge small${teamFallbackIsFlag(team) ? " flag" : ""}`}>{teamFallbackBadge(team)}</span>
                 )}
                 <strong>{team}</strong>
               </span>
@@ -2287,6 +2296,68 @@ function imageFirstNews(items: NewsItem[]) {
 
 function uniqueNewsItems(items: NewsItem[]) {
   return mergeNewsItems(items, []);
+}
+
+function newsScopeText(item: NewsItem) {
+  return [
+    item.sport,
+    item.country,
+    item.competition,
+    item.entity_name,
+    item.entity_type,
+    item.source_name,
+    item.title,
+    item.display_summary,
+    item.summary,
+    item.analysis_text,
+    item.metadata ? JSON.stringify(item.metadata) : "",
+    item.facts ? JSON.stringify(item.facts) : ""
+  ].filter(Boolean).join(" ").toLowerCase();
+}
+
+function footballNewsGroupTerms(group: string) {
+  const footballGroup = FOOTBALL_LEAGUE_GROUPS[group] || footballLeagueByValue(group) ? group : "";
+  if (footballLeagueByValue(group)) return [footballLeagueByValue(group)?.label || group];
+  if (footballGroup === "english") return ["england", "english", "premier league", "championship", "league one", "league two", "fa cup", "efl cup", "burnley", "chelsea", "arsenal", "newcastle", "manchester", "liverpool", "tottenham", "fulham"];
+  if (footballGroup === "scottish") return ["scotland", "scottish", "celtic", "rangers", "hibs", "hearts"];
+  if (footballGroup === "uefa") return ["uefa", "champions league", "europa league", "conference league"];
+  if (footballGroup === "european") return ["europe", "la liga", "serie a", "bundesliga", "ligue 1", "eredivisie"];
+  if (footballGroup === "international") return ["international", "world cup", "euro", "copa", "afcon", "concacaf"];
+  if (footballGroup === "world") return ["world", "fifa", "club world cup"];
+  return [];
+}
+
+function terminalNewsItemVisible(item: NewsItem, selectedSport: string, marketGroup: string, isEntryDashboard: boolean) {
+  if (isEntryDashboard) return true;
+  if (!sportMatchesNewsFilter(item.sport, selectedSport)) return false;
+  if (selectedSport !== "football" || marketGroup === "all") return true;
+  const terms = footballNewsGroupTerms(marketGroup).map((term) => term.toLowerCase());
+  if (!terms.length) return true;
+  const text = newsScopeText(item);
+  return terms.some((term) => text.includes(term));
+}
+
+function terminalNewsContextLabel(selectedSport: string, marketGroup: string, isEntryDashboard: boolean) {
+  if (isEntryDashboard) return "All SportsEdge news";
+  const sportLabel = SPORT_LABELS.get(selectedSport) || displayLabel(selectedSport, "Sport");
+  if (selectedSport !== "football" || marketGroup === "all") return `${sportLabel} news`;
+  const league = footballLeagueByValue(marketGroup);
+  if (league) return `${sportLabel} / ${league.label}`;
+  const region = footballRegionByValue(marketGroup);
+  return region ? `${sportLabel} / ${region.label}` : `${sportLabel} news`;
+}
+
+function terminalNewsSubscribeFilters(selectedSport: string, marketGroup: string, isEntryDashboard: boolean) {
+  if (isEntryDashboard) return {};
+  const filters: Record<string, string> = { sport: apiSportValue(selectedSport) };
+  if (selectedSport === "football" && marketGroup !== "all") {
+    const league = footballLeagueByValue(marketGroup);
+    const region = footballRegionByValue(league?.region || marketGroup);
+    if (league) filters.competition = league.label;
+    if (region?.value === "english") filters.country = "England";
+    if (region?.value === "scottish") filters.country = "Scotland";
+  }
+  return filters;
 }
 
 function isTodayInMadrid(value: string | null | undefined) {
@@ -3623,6 +3694,8 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
   const matrixSnapshotLoadingRef = useRef(false);
   const selectedSportRef = useRef(selectedSport);
   const isMatrixPageRef = useRef(isMatrixPage);
+  const isEntryDashboardRef = useRef(isEntryDashboard);
+  const marketGroupRef = useRef(marketGroup);
   const subscribedPriceChannelsRef = useRef<Set<string>>(new Set());
   const fixturesRef = useRef<FixtureRow[]>([]);
   const rowOrderRef = useRef<Record<string, number>>({});
@@ -3709,6 +3782,8 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
   const diagnosticLabel = DIAGNOSTIC_EXCHANGES.find((exchange) => exchange.key === diagnosticExchange)?.label || "";
   const expandedDiagnosticPrices = expandedDiagnosticEvent?.id ? diagnosticPriceRows[expandedDiagnosticEvent.id] || [] : [];
   const entryNewsItems = uniqueNewsItems(entryNews.filter(isSocialNewsItem));
+  const terminalNewsItems = entryNewsItems.filter((item) => terminalNewsItemVisible(item, selectedSport, marketGroup, isEntryDashboard));
+  const terminalNewsLabel = terminalNewsContextLabel(selectedSport, marketGroup, isEntryDashboard);
   const diagnosticMarkets = useMemo(() => {
     const markets = new Map<string, {
       id: string;
@@ -3816,6 +3891,11 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
     rowOrderRef.current = {};
     nextRowOrderRef.current = 0;
   }, [isMatrixPage]);
+
+  useEffect(() => {
+    isEntryDashboardRef.current = isEntryDashboard;
+    marketGroupRef.current = marketGroup;
+  }, [isEntryDashboard, marketGroup]);
 
   useEffect(() => {
     setExpandedDiagnosticEvent(null);
@@ -4066,7 +4146,11 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
       socket.addEventListener("open", () => {
         setSocketStatus("live");
         subscribeSelectedSport(socket);
-        socket.send(JSON.stringify({ type: "subscribe", channel: "news", filters: {} }));
+        socket.send(JSON.stringify({
+          type: "subscribe",
+          channel: "news",
+          filters: terminalNewsSubscribeFilters(selectedSportRef.current, marketGroupRef.current, isEntryDashboardRef.current)
+        }));
       });
 
       socket.addEventListener("message", (event) => {
@@ -4179,6 +4263,16 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
 
     subscribedPriceChannelsRef.current = activeChannels;
   }, [selectedSport, isMatrixPage]);
+
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    socket.send(JSON.stringify({
+      type: "subscribe",
+      channel: "news",
+      filters: terminalNewsSubscribeFilters(selectedSport, marketGroup, isEntryDashboard)
+    }));
+  }, [selectedSport, marketGroup, isEntryDashboard]);
 
   const clock = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -4422,6 +4516,63 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
     );
   }
 
+  function renderTerminalNewsRail() {
+    return (
+      <aside className="entry-news-rail terminal-news-rail" aria-label="Live news feed">
+        <div className="sport-news-head entry-news-tabs-head">
+          <div>
+            <h2>News</h2>
+            <span>{terminalNewsLabel}</span>
+          </div>
+          <strong className={socketStatus === "live" ? "positive" : ""}>{socketStatus}</strong>
+        </div>
+        <div className="sport-news-list">
+          {terminalNewsItems.slice(0, 40).map((item) => (
+            <article className={`sport-news-card${item.isNew ? " is-new" : ""}`} key={`news-${item.id}`} title={newsContextText(item)}>
+              <div className={`sport-news-thumb${newsImageUrl(item) ? "" : " empty"}`}>
+                {newsImageUrl(item) ? <img src={newsImageUrl(item)} alt="" loading="lazy" /> : <span>{teamInitials(item.source_name || item.sport || "SE")}</span>}
+              </div>
+              <div>
+                <strong>{cleanText(item.title)}</strong>
+                <p>{newsContextText(item) || displayLabel(item.source_name, "Source update")}</p>
+                {newsImpactLabel(item.impact_assessment) && (
+                  <div className={`news-impact-strip ${impactClass(item.impact_assessment)}`}>
+                    <span>{newsImpactLabel(item.impact_assessment)?.eventType}</span>
+                    <b>{newsImpactLabel(item.impact_assessment)?.score}</b>
+                    {newsImpactLabel(item.impact_assessment)?.direction && <em>{newsImpactLabel(item.impact_assessment)?.direction}</em>}
+                  </div>
+                )}
+              </div>
+              <footer>
+                <span>{displayLabel(item.sport, "news")}</span>
+                {newsOpenUrl(item) && <a href={newsOpenUrl(item)} target="_blank" rel="noreferrer">Open</a>}
+                <time>{formatDate(item.published_at || item.discovered_at)}</time>
+              </footer>
+            </article>
+          ))}
+          {terminalNewsItems.length === 0 && (
+            <div className="sport-news-empty">
+              <Newspaper size={18} />
+              <strong>No News yet</strong>
+              <span>Waiting for {terminalNewsLabel.toLowerCase()} from the SportsEdge WSS stream.</span>
+            </div>
+          )}
+        </div>
+      </aside>
+    );
+  }
+
+  function renderTerminalWorkspace(content: ReactNode, hasFootballStrip = false) {
+    return (
+      <section className={`terminal-workspace${hasFootballStrip ? " has-football-strip" : ""}`}>
+        <div className="terminal-workspace-main">
+          {content}
+        </div>
+        {renderTerminalNewsRail()}
+      </section>
+    );
+  }
+
   function renderEntryDashboard() {
     const todayLiquidity = entryEvents.reduce((sum, event) => sum + Number(event.liquidity || 0), 0);
     const liveCount = entryEvents.filter((event) => (
@@ -4575,43 +4726,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
           </div>
         </div>
 
-        <aside className="entry-news-rail" aria-label="Live news feed">
-          <div className="sport-news-head entry-news-tabs-head">
-            <h2>News</h2>
-          </div>
-          <div className="sport-news-list">
-            {entryNewsItems.slice(0, 40).map((item) => (
-              <article className={`sport-news-card${item.isNew ? " is-new" : ""}`} key={`news-${item.id}`} title={newsContextText(item)}>
-                <div className={`sport-news-thumb${newsImageUrl(item) ? "" : " empty"}`}>
-                  {newsImageUrl(item) ? <img src={newsImageUrl(item)} alt="" loading="lazy" /> : <span>{teamInitials(item.source_name || item.sport || "SE")}</span>}
-                </div>
-                <div>
-                  <strong>{cleanText(item.title)}</strong>
-                  <p>{newsContextText(item) || displayLabel(item.source_name, "Source update")}</p>
-                  {newsImpactLabel(item.impact_assessment) && (
-                    <div className={`news-impact-strip ${impactClass(item.impact_assessment)}`}>
-                      <span>{newsImpactLabel(item.impact_assessment)?.eventType}</span>
-                      <b>{newsImpactLabel(item.impact_assessment)?.score}</b>
-                      {newsImpactLabel(item.impact_assessment)?.direction && <em>{newsImpactLabel(item.impact_assessment)?.direction}</em>}
-                    </div>
-                  )}
-                </div>
-                <footer>
-                  <span>{displayLabel(item.sport, "news")}</span>
-                  {newsOpenUrl(item) && <a href={newsOpenUrl(item)} target="_blank" rel="noreferrer">Open</a>}
-                  <time>{formatDate(item.published_at || item.discovered_at)}</time>
-                </footer>
-              </article>
-            ))}
-            {entryNewsItems.length === 0 && (
-              <div className="sport-news-empty">
-                <Newspaper size={18} />
-                <strong>No News yet</strong>
-                <span>Waiting for authenticated X posts from the SportsEdge WSS stream.</span>
-              </div>
-            )}
-          </div>
-        </aside>
+        {renderTerminalNewsRail()}
       </section>
     );
   }
@@ -4867,7 +4982,8 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
       )}
 
       {diagnosticExchange ? (
-        <>
+        renderTerminalWorkspace(
+          <>
           <section className="testboard-marketbar" aria-label="Exchange diagnostics context">
             <div className="testboard-sport-title">
               <Database size={15} />
@@ -4986,13 +5102,16 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
               </tbody>
             </table>
           </section>
-        </>
+          </>,
+          false
+        )
       ) : isMatrixPage ? (
-        renderBiasMatrix()
+        renderTerminalWorkspace(renderBiasMatrix(), false)
       ) : isEntryDashboard ? (
         renderEntryDashboard()
       ) : (
-      <>
+        renderTerminalWorkspace(
+          <>
       {selectedSport !== "football" && (
         <section className="testboard-marketbar" aria-label="Market context">
           <div className="testboard-sport-title">
@@ -5242,7 +5361,9 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
         </table>
       )}
       </section>
-      </>
+          </>,
+          selectedSport === "football"
+        )
       )}
     </main>
   );
