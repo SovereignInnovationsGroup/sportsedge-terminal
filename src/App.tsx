@@ -646,7 +646,52 @@ function fixtureGroupLabel(competition: string) {
   return `${competitionCountry(competition)} / ${competition}`;
 }
 
+function flagEmoji(countryCode: string) {
+  const code = countryCode.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code)) return "";
+  return code
+    .split("")
+    .map((char) => String.fromCodePoint(127397 + char.charCodeAt(0)))
+    .join("");
+}
+
+const COUNTRY_FLAG_CODES: Record<string, string> = {
+  algeria: "DZ",
+  argentina: "AR",
+  brazil: "BR",
+  curacao: "CW",
+  "curaçao": "CW",
+  "dr congo": "CD",
+  "democratic republic of congo": "CD",
+  ecuador: "EC",
+  england: "GB",
+  france: "FR",
+  germany: "DE",
+  haiti: "HT",
+  ireland: "IE",
+  italy: "IT",
+  paraguay: "PY",
+  portugal: "PT",
+  qatar: "QA",
+  scotland: "GB",
+  spain: "ES",
+  switzerland: "CH",
+  usa: "US",
+  "united states": "US",
+  "united states of america": "US",
+  wales: "GB"
+};
+
+function directCountryFlag(country: string) {
+  const normalized = normalizeSelectionKey(country);
+  const code = COUNTRY_FLAG_CODES[normalized];
+  if (code) return flagEmoji(code);
+  return "";
+}
+
 function countryFlag(country: string) {
+  const direct = directCountryFlag(country);
+  if (direct) return direct;
   const value = country.toLowerCase();
   if (value.includes("england")) return "🇬🇧";
   if (value.includes("germany")) return "🇩🇪";
@@ -661,12 +706,14 @@ function countryFlag(country: string) {
 }
 
 function teamFallbackBadge(team: string) {
+  const country = directCountryFlag(team);
+  if (country) return country;
   const asset = footballTeamAsset(team);
   return asset?.country ? countryFlag(asset.country) : teamInitials(team);
 }
 
 function teamFallbackIsFlag(team: string) {
-  return Boolean(footballTeamAsset(team)?.country);
+  return Boolean(directCountryFlag(team) || footballTeamAsset(team)?.country);
 }
 
 function teamInitials(name: string) {
@@ -1057,7 +1104,11 @@ const TEAM_LOGO_URLS: Record<string, string> = {
   "real betis balompie": "https://a.espncdn.com/i/teamlogos/soccer/500/244.png",
   "ac milan": "https://a.espncdn.com/i/teamlogos/soccer/500/103.png",
   "inter milan": "https://a.espncdn.com/i/teamlogos/soccer/500/110.png",
-  "internazionale": "https://a.espncdn.com/i/teamlogos/soccer/500/110.png"
+  "internazionale": "https://a.espncdn.com/i/teamlogos/soccer/500/110.png",
+  "fc nantes": "https://a.espncdn.com/i/teamlogos/soccer/500/165.png",
+  "nantes": "https://a.espncdn.com/i/teamlogos/soccer/500/165.png",
+  "toulouse": "https://a.espncdn.com/i/teamlogos/soccer/500/179.png",
+  "toulouse fc": "https://a.espncdn.com/i/teamlogos/soccer/500/179.png"
 };
 
 function teamLogoUrl(team: string) {
