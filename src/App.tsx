@@ -305,6 +305,16 @@ function sportFromHash(hash = window.location.hash) {
   return PRIORITY_SPORTS.some((sport) => sport.value === value) ? value : "football";
 }
 
+function terminalSportFromHash(hash = window.location.hash) {
+  const normalized = hash.replace(/^#/, "");
+  return PRIORITY_SPORTS.some((sport) => sport.value === normalized) ? normalized : "football";
+}
+
+function isTerminalSportHash(hash = window.location.hash) {
+  const normalized = hash.replace(/^#/, "");
+  return PRIORITY_SPORTS.some((sport) => sport.value === normalized);
+}
+
 function apiSportValue(value: string) {
   if (value === "horseracing") return "horse_racing";
   return value;
@@ -3273,7 +3283,7 @@ function DashboardPage({ onLogout }: { onLogout?: () => void }) {
 }
 
 function TestboardPage({ onLogout }: { onLogout?: () => void }) {
-  const [selectedSport, setSelectedSport] = useState("football");
+  const [selectedSport, setSelectedSport] = useState(() => terminalSportFromHash(window.location.hash));
   const [isEntryDashboard, setIsEntryDashboard] = useState(() => !window.location.hash || window.location.hash === "#dashboard" || window.location.hash === "#testboard");
   const [isMatrixPage, setIsMatrixPage] = useState(() => window.location.hash === "#matrix");
   const [diagnosticExchange, setDiagnosticExchange] = useState<string | null>(() => window.location.hash === "#actual" ? "polymarket" : null);
@@ -3316,6 +3326,44 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
   const rowOrderRef = useRef<Record<string, number>>({});
   const nextRowOrderRef = useRef(0);
   const sportDashboard = SPORT_DASHBOARDS[selectedSport] || SPORT_DASHBOARDS.football;
+
+  useEffect(() => {
+    function applyRoute() {
+      const hash = window.location.hash || "#dashboard";
+      if (hash === "#matrix") {
+        setIsMatrixPage(true);
+        setIsEntryDashboard(false);
+        setDiagnosticExchange(null);
+        setSelectedFixtureIndex(null);
+        return;
+      }
+      if (hash === "#actual") {
+        setIsMatrixPage(false);
+        setIsEntryDashboard(false);
+        setDiagnosticExchange((exchange) => exchange || "polymarket");
+        setSelectedFixtureIndex(null);
+        return;
+      }
+      if (isTerminalSportHash(hash)) {
+        setSelectedSport(terminalSportFromHash(hash));
+        setIsMatrixPage(false);
+        setIsEntryDashboard(false);
+        setDiagnosticExchange(null);
+        setSelectedFixtureIndex(null);
+        return;
+      }
+      if (hash === "#dashboard" || hash === "#testboard" || !hash) {
+        setIsEntryDashboard(true);
+        setIsMatrixPage(false);
+        setDiagnosticExchange(null);
+        setSelectedFixtureIndex(null);
+      }
+    }
+
+    applyRoute();
+    window.addEventListener("hashchange", applyRoute);
+    return () => window.removeEventListener("hashchange", applyRoute);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -4358,7 +4406,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
               setDiagnosticExchange(null);
               setMarketSearch("");
               setSelectedFixtureIndex(null);
-              window.history.replaceState(null, "", "#dashboard");
+              window.location.hash = "#dashboard";
             }}
           >
             Dashboard
@@ -4372,7 +4420,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
               setDiagnosticExchange(null);
               setMarketSearch("");
               setSelectedFixtureIndex(null);
-              window.history.replaceState(null, "", "#matrix");
+              window.location.hash = "#matrix";
             }}
           >
             Matrix
@@ -4389,6 +4437,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
                 setSelectedSport(sport.value);
                 setMarketSearch("");
                 setSelectedFixtureIndex(null);
+                window.location.hash = `#${sport.value}`;
               }}
             >
               {sport.label}
@@ -4404,7 +4453,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
               setExpandedDiagnosticSport(null);
               setDiagnosticEventRows({});
               setSelectedFixtureIndex(null);
-              window.history.replaceState(null, "", "#actual");
+              window.location.hash = "#actual";
             }}
           >
             Actual
@@ -4472,7 +4521,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
                     setExpandedDiagnosticSport(null);
                     setDiagnosticEventRows({});
                     setSelectedFixtureIndex(null);
-                    window.history.replaceState(null, "", "#actual");
+                    window.location.hash = "#actual";
                   }}
                 >
                   {exchange.label}
@@ -5621,13 +5670,13 @@ export default function App() {
   }
 
   let screen;
-  if (previewDashboard && (hash === "#dashboard" || hash === "#testboard" || hash === "#matrix" || hash === "#actual" || !hash)) screen = <TestboardPage onLogout={handleLogout} />;
+  if (previewDashboard && (hash === "#dashboard" || hash === "#testboard" || hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash) || !hash)) screen = <TestboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#login") screen = <LoginScreen />;
   else if (previewDashboard && (hash === "#old" || hash === "#news" || hash.startsWith("#sport"))) screen = <DashboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#social-news") screen = <DashboardPage onLogout={handleLogout} />;
   else if (hash === "#testboard") screen = hasSession ? <TestboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash === "#dashboard") screen = hasSession ? <TestboardPage onLogout={handleLogout} /> : <LoginScreen />;
-  else if (hash === "#matrix" || hash === "#actual") screen = hasSession ? <TestboardPage onLogout={handleLogout} /> : <LoginScreen />;
+  else if (hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash)) screen = hasSession ? <TestboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash === "#old") screen = hasSession ? <DashboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash === "#news") screen = hasSession ? <DashboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash.startsWith("#sport")) screen = hasSession ? <DashboardPage onLogout={handleLogout} /> : <LoginScreen />;
