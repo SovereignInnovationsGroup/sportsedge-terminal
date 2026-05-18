@@ -4575,7 +4575,6 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
             <h2>News</h2>
             <span>{terminalNewsLabel}</span>
           </div>
-          <strong className={socketStatus === "live" ? "positive" : ""}>{socketStatus}</strong>
         </div>
         <div className="sport-news-list">
           {terminalNewsItems.slice(0, 40).map((item) => (
