@@ -16,6 +16,15 @@
     return process.env.VITE_API_BASE_URL || process.env.API_BASE_URL || env.VITE_API_BASE_URL || env.API_BASE_URL || 'https://api.sportsedge.markets';
   }
 
+  function stripLocalOrigin(proxy: any) {
+    proxy.on('proxyReq', (proxyReq: any) => {
+      proxyReq.removeHeader('origin');
+    });
+    proxy.on('proxyReqWs', (proxyReq: any) => {
+      proxyReq.removeHeader('origin');
+    });
+  }
+
   function getNewsPool(connectionString: string) {
     if (!connectionString) {
       throw new Error('POSTGRES_URL or DATABASE_URL is required for /api/news');
@@ -46,6 +55,134 @@
     res.end(JSON.stringify(body));
   }
 
+  function demoMatrixRows() {
+    const observedAt = new Date().toISOString();
+    const events = [
+      {
+        id: 'chelsea-man-city',
+        name: 'Chelsea FC vs Manchester City',
+        competition: 'England FA Cup',
+        startAt: '2026-05-16T14:00:00Z',
+        runners: ['Chelsea FC', 'Manchester City', 'Draw'],
+        prices: {
+          betfair: [[4.9, 5.1, 18400, 15500], [1.73, 1.76, 22600, 24100], [4.05, 4.2, 12100, 11800]],
+          matchbook: [[5.0, 5.2, 7400, 6800], [1.74, 1.78, 8900, 9700], [4.1, 4.3, 6500, 6200]],
+          draftkings: [[4.8, 4.95, 0, 0], [1.68, 1.73, 0, 0], [4.1, 4.25, 0, 0]]
+        }
+      },
+      {
+        id: 'arsenal-burnley',
+        name: 'Arsenal FC vs Burnley FC',
+        competition: 'England Premier League',
+        startAt: '2026-05-18T19:00:00Z',
+        runners: ['Arsenal FC', 'Burnley FC', 'Draw'],
+        prices: {
+          betfair: [[1.1, 1.12, 62000, 55800], [31, 34, 7900, 8400], [13, 14, 10100, 9600]],
+          matchbook: [[1.11, 1.13, 44500, 39200], [29, 32, 5200, 6100], [13.5, 14.5, 8400, 8100]],
+          draftkings: [[1.09, 1.12, 0, 0], [26, 29, 0, 0], [12, 13.5, 0, 0]]
+        }
+      },
+      {
+        id: 'bayern-koln',
+        name: 'Bayern Munich vs 1. FC Cologne',
+        competition: 'Germany Bundesliga',
+        startAt: '2026-05-16T13:30:00Z',
+        runners: ['Bayern Munich', '1. FC Cologne', 'Draw'],
+        prices: {
+          betfair: [[1.16, 1.18, 52000, 50300], [18, 20, 8100, 7600], [9.6, 10.2, 11100, 10400]],
+          matchbook: [[1.17, 1.19, 58500, 54200], [18, 19.5, 6900, 7200], [10, 10.5, 9600, 9100]],
+          draftkings: [[1.16, 1.18, 0, 0], [17, 18.5, 0, 0], [9.5, 10, 0, 0]]
+        }
+      },
+      {
+        id: 'newcastle-west-ham',
+        name: 'Newcastle United vs West Ham United',
+        competition: 'England Premier League',
+        startAt: '2026-05-17T16:30:00Z',
+        runners: ['Newcastle United', 'West Ham United', 'Draw'],
+        prices: {
+          betfair: [[2.22, 2.28, 20200, 18800], [3.2, 3.35, 14200, 15100], [3.95, 4.15, 11800, 10700]],
+          matchbook: [[2.24, 2.3, 15400, 14900], [3.2, 3.4, 11200, 12100], [4.0, 4.2, 9600, 9800]],
+          draftkings: [[2.18, 2.25, 0, 0], [3.1, 3.25, 0, 0], [3.9, 4.05, 0, 0]]
+        }
+      },
+      {
+        id: 'barcelona-betis',
+        name: 'FC Barcelona vs Real Betis',
+        competition: 'Spain La Liga',
+        startAt: '2026-05-17T19:15:00Z',
+        runners: ['FC Barcelona', 'Real Betis', 'Draw'],
+        prices: {
+          betfair: [[1.33, 1.36, 33100, 30400], [8.6, 9.2, 5400, 6100], [6.1, 6.5, 8700, 8300]],
+          matchbook: [[1.34, 1.37, 19000, 17700], [8.8, 9.4, 4300, 4800], [6.4, 6.8, 6800, 6400]],
+          draftkings: [[1.32, 1.35, 0, 0], [8.0, 8.8, 0, 0], [5.8, 6.3, 0, 0]]
+        }
+      }
+    ];
+
+    return events.map((event) => {
+      const matches = Object.fromEntries(Object.entries(event.prices).map(([exchange, prices]) => [
+        exchange,
+        {
+          exchange,
+          eventId: event.id,
+          marketId: `${event.id}:match-odds:${exchange}`,
+          name: event.name,
+          sportName: 'football',
+          competitionName: event.competition,
+          marketName: 'Match Odds',
+          marketType: 'one_x_two',
+          startAt: event.startAt,
+          observedAt,
+          runners: event.runners.map((runner, index) => {
+            const [back, lay, backAmount, layAmount] = prices[index];
+            return {
+              id: `${event.id}:${exchange}:${index}`,
+              name: runner,
+              sortOrder: index,
+              back: back ? { odds: back, amount: backAmount, level: 1 } : null,
+              lay: lay ? { odds: lay, amount: layAmount, level: 1 } : null,
+              backLevels: back ? [{ odds: back, amount: backAmount, level: 1 }] : [],
+              layLevels: lay ? [{ odds: lay, amount: layAmount, level: 1 }] : []
+            };
+          })
+        }
+      ]));
+      return {
+        id: `matrix-demo:${event.id}:match-odds`,
+        name: event.name,
+        sportName: 'football',
+        competitionName: event.competition,
+        marketName: 'Match Odds',
+        marketType: 'one_x_two',
+        startAt: event.startAt,
+        matches,
+        arbs: []
+      };
+    });
+  }
+
+  async function proxyMatrixRequest(server: any, requestUrl: URL, res: any) {
+    if (requestUrl.searchParams.get('demo') === '1') {
+      sendJson(res, 200, {
+        ok: true,
+        source: 'redis-demo',
+        redisKey: `sportsedge:matrix:${requestUrl.searchParams.get('sport') || 'football'}`,
+        generatedAt: new Date().toISOString(),
+        venues: ['betfair', 'matchbook', 'draftkings'],
+        rows: demoMatrixRows()
+      });
+      return;
+    }
+    const upstreamUrl = new URL('/api/matrix', getApiBaseUrl(server));
+    upstreamUrl.search = requestUrl.search;
+    const response = await fetch(upstreamUrl);
+    const body = await response.text();
+    res.statusCode = response.status;
+    res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json');
+    res.end(body);
+  }
+
   async function proxyNewsRequest(server: any, requestUrl: URL, res: any) {
     const upstreamUrl = new URL('/api/news', getApiBaseUrl(server));
     upstreamUrl.search = requestUrl.search;
@@ -54,6 +191,108 @@
     res.statusCode = response.status;
     res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json');
     res.end(body);
+  }
+
+  function normalizeOddsApiRows(events: any[]) {
+    return (events || []).flatMap((event: any) => {
+      const matches: Record<string, any> = {};
+      for (const bookmaker of ['DraftKings']) {
+        const market = (event.bookmakers?.[bookmaker] || []).find((item: any) => item.name === 'ML') || event.bookmakers?.[bookmaker]?.[0];
+        if (!market?.odds) continue;
+        const odds = Array.isArray(market.odds) ? market.odds[0] : market.odds;
+        const exchange = bookmaker.toLowerCase();
+        const observedAt = new Date().toISOString();
+        const runners = [
+          ['home', event.home, odds?.home],
+          ['away', event.away, odds?.away],
+          ['draw', 'Draw', odds?.draw],
+        ].map(([id, name, odds], index) => {
+          const decimalOdds = Number.parseFloat(String(odds || ''));
+          const price = Number.isFinite(decimalOdds) && decimalOdds > 1 ? { odds: decimalOdds, amount: 0, level: 1 } : null;
+          return { id, name, sortOrder: index, back: price, lay: null, backLevels: price ? [price] : [], layLevels: [] };
+        }).filter((runner: any) => runner.back);
+        if (runners.length === 0) continue;
+        matches[exchange] = {
+          exchange,
+          eventId: String(event.id),
+          marketId: `${event.id}:${bookmaker}:ML`,
+          name: `${event.home} vs ${event.away}`,
+          sportName: 'football',
+          competitionName: event.league?.name || null,
+          marketName: 'Moneyline',
+          marketType: 'moneyline',
+          startAt: event.date || null,
+          observedAt,
+          runners,
+        };
+      }
+      return Object.keys(matches).length ? [{
+        id: `oddsapi:${event.id}:moneyline`,
+        name: `${event.home} vs ${event.away}`,
+        sportName: 'football',
+        competitionName: event.league?.name || null,
+        marketName: 'Moneyline',
+        marketType: 'moneyline',
+        startAt: event.date || null,
+        matches,
+        arbs: [],
+      }] : [];
+    });
+  }
+
+  const oddsApiCache = new Map<string, { createdAt: number; body: unknown }>();
+
+  async function proxyOddsApiV2Request(requestUrl: URL, res: any) {
+    const apiKey = process.env.ODDS_API_KEY || '';
+    if (!apiKey) {
+      sendJson(res, 503, { detail: 'ODDS_API_KEY is not configured for local v2 odds feed' });
+      return;
+    }
+    const query = requestUrl.searchParams.get('query') || 'Chelsea Manchester City';
+    const bookmakersParam = requestUrl.searchParams.get('bookmakers') || 'DraftKings';
+    const limit = requestUrl.searchParams.get('limit') || '5';
+    const cacheKey = JSON.stringify({ query, bookmakers: bookmakersParam, limit });
+    const cached = oddsApiCache.get(cacheKey);
+    if (cached && Date.now() - cached.createdAt < 300000) {
+      sendJson(res, 200, { ...(cached.body as object), cache: 'hit' });
+      return;
+    }
+    const searchUrl = new URL('https://api.odds-api.io/v3/events/search');
+    searchUrl.searchParams.set('apiKey', apiKey);
+    searchUrl.searchParams.set('query', query);
+    const searchResponse = await fetch(searchUrl);
+    const searchPayload = await searchResponse.json();
+    if (!searchResponse.ok) {
+      sendJson(res, searchResponse.status, { detail: searchPayload.error || 'Odds-API search failed' });
+      return;
+    }
+    const eventIds = (searchPayload || []).filter((event: any) => event.sport?.slug === 'football').slice(0, Number(limit || 5)).map((event: any) => event.id);
+    if (!eventIds.length) {
+      sendJson(res, 200, { rows: [], events: [], provider: 'odds-api', generatedAt: new Date().toISOString(), cache: 'miss' });
+      return;
+    }
+    const oddsUrl = new URL('https://api.odds-api.io/v3/odds/multi');
+    oddsUrl.searchParams.set('apiKey', apiKey);
+    oddsUrl.searchParams.set('eventIds', eventIds.join(','));
+    oddsUrl.searchParams.set('bookmakers', bookmakersParam);
+    const oddsResponse = await fetch(oddsUrl);
+    const oddsPayload = await oddsResponse.json();
+    if (!oddsResponse.ok) {
+      sendJson(res, oddsResponse.status, { detail: oddsPayload.error || 'Odds-API odds failed' });
+      return;
+    }
+    const body = {
+      generatedAt: new Date().toISOString(),
+      provider: 'odds-api',
+      events: oddsPayload,
+      rows: normalizeOddsApiRows(oddsPayload),
+      rateLimit: {
+        remaining: oddsResponse.headers.get('x-ratelimit-remaining'),
+        reset: oddsResponse.headers.get('x-ratelimit-reset'),
+      },
+    };
+    oddsApiCache.set(cacheKey, { createdAt: Date.now(), body });
+    sendJson(res, 200, { ...body, cache: 'miss' });
   }
 
   function newsApiPlugin() {
@@ -242,6 +481,22 @@
             });
           }
         });
+        server.middlewares.use('/api/v2/football-odds', async (req: any, res: any) => {
+          try {
+            const requestUrl = new URL(req.url || '/', 'http://127.0.0.1');
+            await proxyOddsApiV2Request(requestUrl, res);
+          } catch (error: any) {
+            sendJson(res, 500, { detail: error?.message || 'Odds-API v2 proxy failed' });
+          }
+        });
+        server.middlewares.use('/api/matrix', async (req: any, res: any) => {
+          try {
+            const requestUrl = new URL(req.url || '/', 'http://127.0.0.1');
+            await proxyMatrixRequest(server, requestUrl, res);
+          } catch (error: any) {
+            sendJson(res, 500, { detail: error?.message || 'Matrix proxy failed' });
+          }
+        });
       },
     };
   }
@@ -299,5 +554,26 @@
     server: {
       port: 3000,
       open: true,
+      proxy: {
+        '/auth': {
+          target: 'https://api.sportsedge.markets',
+          changeOrigin: true,
+          secure: true,
+          configure: stripLocalOrigin,
+        },
+        '/api': {
+          target: 'https://api.sportsedge.markets',
+          changeOrigin: true,
+          secure: true,
+          configure: stripLocalOrigin,
+        },
+        '/ws': {
+          target: 'wss://terminal.sportsedge.markets',
+          ws: true,
+          changeOrigin: true,
+          secure: true,
+          configure: stripLocalOrigin,
+        },
+      },
     },
   });

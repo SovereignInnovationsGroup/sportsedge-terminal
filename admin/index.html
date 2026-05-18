@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SportsEdge Admin</title>
+  <link rel="preload" as="image" href="https://terminal.sportsedge.markets/images/login-sports-montage.webp" type="image/webp" fetchpriority="high" />
+  <style>
+    :root {
+      --bg: #05070a;
+      --rail: #070b10;
+      --panel: #0f1720;
+      --panel-2: #131d28;
+      --line: #263548;
+      --soft: rgba(255,255,255,.055);
+      --text: #f4f7fb;
+      --muted: #9dadc2;
+      --faint: #64748b;
+      --green: #63e69b;
+      --blue: #60a5fa;
+      --gold: #f2a91b;
+      --red: #ff6b7a;
+      --shadow: 0 28px 90px rgba(0,0,0,.42);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 18% 10%, rgba(96,165,250,.14), transparent 28rem),
+        radial-gradient(circle at 86% 88%, rgba(242,169,27,.1), transparent 28rem),
+        var(--bg);
+      color: var(--text);
+      font-size: 13px;
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 32px; line-height: 1.05; letter-spacing: 0; }
+    h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+    h3 { font-size: 15px; }
+    .hidden { display: none !important; }
+
+    .login-view {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(0, 1.18fr) minmax(430px, 0.72fr);
+      overflow: hidden;
+      background: #030405;
+    }
+    .login-hero {
+      position: relative;
+      overflow: hidden;
+      min-height: 100vh;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: #030405;
+    }
+    .sports-image {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: 36% center;
+      filter: saturate(1.05) contrast(1.08);
+    }
+    .image-wash {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(5,7,10,.05), rgba(5,7,10,.66));
+      background:
+        linear-gradient(90deg, rgba(3, 4, 5, 0.02) 0%, rgba(3, 4, 5, 0.18) 42%, rgba(3, 4, 5, 0.92) 84%, #030405 100%),
+        linear-gradient(180deg, rgba(3, 4, 5, 0.08) 0%, rgba(3, 4, 5, 0.2) 45%, rgba(3, 4, 5, 0.72) 100%);
+    }
+    .brand, .brand-row, .market-tape { position: relative; z-index: 1; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .brand-row img {
+      width: 430px;
+      max-width: calc(100vw - 56px);
+      height: auto;
+      display: block;
+      filter: drop-shadow(0 0 22px rgba(251, 191, 36, 0.18));
+    }
+    .brand-home {
+      display: block;
+      color: inherit;
+      text-decoration: none;
+    }
+    .brand-home:focus-visible {
+      outline: 2px solid rgba(96, 165, 250, 0.86);
+      outline-offset: 4px;
+      border-radius: 8px;
+    }
+    .brand-row span {
+      border: 1px solid rgba(134, 239, 172, 0.28);
+      border-radius: 999px;
+      background: rgba(8, 27, 20, 0.58);
+      color: var(--green);
+      padding: 9px 12px;
+      white-space: nowrap;
+      backdrop-filter: blur(12px);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .mark {
+      width: 44px;
+      height: 44px;
+      border: 1px solid rgba(242,169,27,.62);
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      background: linear-gradient(135deg, #172436, #090f16);
+    }
+    .brand strong { display: block; font-size: 16px; }
+    .brand span { display: block; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .market-tape {
+      width: min(720px, 100%);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .market-tape span {
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      border-radius: 8px;
+      background: rgba(5, 5, 5, 0.56);
+      padding: 12px 14px;
+      backdrop-filter: blur(16px);
+    }
+    .market-tape strong { margin-left: 6px; color: var(--green); }
+
+    .login-panel {
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      padding: 44px clamp(30px, 4vw, 72px) 38px;
+      background:
+        radial-gradient(circle at 86% 22%, rgba(96, 165, 250, 0.12), transparent 20rem),
+        linear-gradient(90deg, rgba(3, 4, 5, 0.1), #030405 18%, #030405 100%);
+      box-shadow: -42px 0 80px rgba(3, 4, 5, 0.74);
+    }
+    .login-card { width: min(100%, 540px); }
+    .login-card h2 {
+      width: fit-content;
+      margin-bottom: 22px;
+      border: 1px solid rgba(251, 191, 36, 0.34);
+      border-radius: 999px;
+      background: rgba(251, 191, 36, 0.1);
+      color: #fbbf24;
+      padding: 9px 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .login-card h1 {
+      max-width: 620px;
+      font-size: clamp(42px, 4.1vw, 60px);
+      line-height: 1;
+      font-weight: 900;
+      margin-bottom: 18px;
+    }
+    .login-card p {
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.6;
+      max-width: 540px;
+    }
+    .form { display: grid; gap: 12px; margin-top: 22px; }
+    label { display: grid; gap: 7px; color: var(--muted); font-size: 11px; font-weight: 850; text-transform: uppercase; }
+    input, select {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #080d14;
+      color: var(--text);
+      padding: 10px 11px;
+      outline: none;
+    }
+    input:focus, select:focus { border-color: #5b8bc0; box-shadow: 0 0 0 3px rgba(96,165,250,.12); }
+    .button {
+      min-height: 40px;
+      border: 1px solid rgba(242,169,27,.65);
+      border-radius: 7px;
+      background: var(--gold);
+      color: #080d14;
+      padding: 10px 13px;
+      font-weight: 900;
+    }
+    .button.secondary { background: #111a25; color: var(--text); border-color: var(--line); }
+    .button.danger { background: #221119; color: #ffd2d8; border-color: rgba(255,107,122,.45); }
+    .message { min-height: 18px; color: var(--muted); }
+    .message.ok { color: var(--green); }
+    .message.err { color: var(--red); }
+    .login-card .form { gap: 12px; margin-top: 28px; }
+    .login-card label {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+    }
+    .login-card input {
+      min-height: 54px;
+      border-color: rgba(96, 165, 250, 0.34);
+      border-radius: 8px;
+      background: rgba(17, 24, 33, 0.72);
+      padding: 0 16px;
+      font-size: 16px;
+      font-weight: 750;
+      box-shadow: 0 18px 52px rgba(0, 0, 0, 0.28);
+    }
+    .login-card .button {
+      min-height: 54px;
+      border: 0;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 850;
+    }
+
+    .app-shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100vh; }
+    aside {
+      background: linear-gradient(180deg, rgba(9,14,20,.96), rgba(3,5,8,.98));
+      border-right: 1px solid var(--line);
+      padding: 22px 14px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+    nav { display: grid; gap: 8px; margin-top: 26px; }
+    nav a {
+      color: var(--text);
+      text-decoration: none;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 10px 11px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    nav a.active { border-color: #315071; background: #101b28; }
+    .rail-box {
+      margin-top: 24px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 8px;
+      padding: 11px;
+      background: rgba(255,255,255,.035);
+      color: var(--muted);
+      line-height: 1.4;
+      display: grid;
+      gap: 8px;
+    }
+    .main { min-width: 0; padding: 14px 16px 34px; }
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) auto;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid var(--line);
+      background: rgba(15,23,32,.86);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+    .sub { color: var(--muted); margin-top: 4px; }
+    .session { display: flex; gap: 8px; align-items: center; color: var(--muted); }
+    .pill { border: 1px solid var(--line); background: #0b1119; border-radius: 7px; padding: 8px 10px; color: var(--muted); font-size: 12px; }
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-top: 12px; }
+    .kpi, .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(15,23,32,.9);
+      overflow: hidden;
+    }
+    .kpi { padding: 13px; }
+    .kpi span { display: block; color: var(--muted); font-size: 10px; font-weight: 900; text-transform: uppercase; }
+    .kpi strong { display: block; margin-top: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 24px; }
+    .grid { display: grid; grid-template-columns: 380px minmax(0,1fr); gap: 12px; margin-top: 12px; align-items: start; }
+    .panel-head { padding: 12px 13px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 10px; align-items: center; background: linear-gradient(180deg, rgba(255,255,255,.035), transparent); }
+    .panel-body { padding: 13px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .check { display: flex; align-items: center; gap: 7px; padding: 8px; border: 1px solid rgba(255,255,255,.08); border-radius: 7px; background: rgba(255,255,255,.025); color: var(--text); text-transform: none; font-size: 12px; font-weight: 750; }
+    .check input { width: auto; min-height: auto; }
+    .toolbar { display: grid; grid-template-columns: minmax(220px,1fr) 150px 150px auto; gap: 8px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid rgba(255,255,255,.08); padding: 10px 9px; vertical-align: top; text-align: left; }
+    th { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; background: rgba(255,255,255,.025); }
+    td strong { display: block; font-size: 13px; }
+    td small { display: block; color: var(--faint); margin-top: 3px; }
+    .badge { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 4px 7px; margin: 0 4px 4px 0; color: var(--muted); background: #0a1018; font-size: 11px; }
+    .badge.green { color: var(--green); border-color: rgba(99,230,155,.36); }
+    .badge.gold { color: var(--gold); border-color: rgba(242,169,27,.42); }
+    .status-active { color: var(--green); }
+    .status-pending { color: var(--gold); }
+    .status-suspended, .status-closed { color: var(--red); }
+    .analytics-view { display: grid; gap: 12px; margin-top: 12px; }
+    .analytics-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr); gap: 12px; align-items: start; }
+    .chart-bars { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; align-items: end; gap: 6px; min-height: 220px; padding: 14px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .chart-bar { display: grid; align-items: end; gap: 7px; min-width: 0; color: var(--muted); text-align: center; font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .chart-bar i { display: block; min-height: 4px; border-radius: 5px 5px 0 0; background: linear-gradient(180deg, var(--blue), rgba(96,165,250,.22)); box-shadow: 0 0 24px rgba(96,165,250,.16); }
+    .metric-list { display: grid; }
+    .metric-line { display: grid; grid-template-columns: minmax(0,1fr) auto auto auto; gap: 10px; align-items: center; min-height: 38px; border-bottom: 1px solid rgba(255,255,255,.08); padding: 9px 13px; }
+    .metric-line span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .metric-line strong { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .metric-line small { color: var(--faint); }
+    .analytics-note { color: var(--muted); font-size: 12px; }
+    .twitter-view { display: grid; gap: 12px; margin-top: 12px; }
+    .twitter-toolbar { display: grid; grid-template-columns: 170px 220px minmax(240px, 1fr) auto; gap: 8px; align-items: center; }
+    .twitter-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 12px; align-items: start; }
+    .post-list { display: grid; }
+    .post-card {
+      display: grid;
+      grid-template-columns: 108px minmax(0, 1fr) auto;
+      gap: 14px;
+      padding: 12px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      align-items: start;
+    }
+    .post-media {
+      width: 108px;
+      aspect-ratio: 16 / 10;
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #08111a;
+    }
+    .post-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .post-media.empty { display: grid; place-items: center; color: var(--faint); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 18px; }
+    .post-main { min-width: 0; display: grid; gap: 6px; }
+    .post-main h3 { overflow-wrap: anywhere; }
+    .post-main p { color: #d8e1ec; line-height: 1.45; overflow-wrap: anywhere; }
+    .post-meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
+    .post-side { text-align: right; display: grid; gap: 6px; justify-items: end; min-width: 120px; }
+    .post-side a { color: var(--blue); text-decoration: none; font-weight: 800; }
+    .ingest-list { display: grid; }
+    .ingest-line { padding: 11px 13px; border-bottom: 1px solid rgba(255,255,255,.08); display: grid; gap: 4px; }
+    .ingest-line strong { font-size: 12px; }
+    .ingest-line span { color: var(--muted); font-size: 12px; }
+    @media (max-width: 980px) {
+      .login-view, .app-shell, .grid, .twitter-layout { grid-template-columns: 1fr; }
+      .login-hero { min-height: 46vh; }
+      .brand-row { align-items: flex-start; flex-direction: column; }
+      .brand-row img { width: 430px; max-width: min(360px, 80vw); }
+      .market-tape span:nth-child(n + 3) { display: none; }
+      .login-panel { min-height: 54vh; box-shadow: none; }
+      aside { position: static; height: auto; }
+      .kpis { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .toolbar, .twitter-toolbar { grid-template-columns: 1fr; }
+      .post-card { grid-template-columns: 92px minmax(0, 1fr); }
+      .post-side { grid-column: 1 / -1; text-align: left; justify-items: start; }
+    }
+  </style>
+</head>
+<body>
+  <section class="login-view" id="loginView">
+    <div class="login-hero">
+      <img class="sports-image" src="https://terminal.sportsedge.markets/images/login-sports-montage.webp" alt="Sports action with live market trading charts" />
+      <div class="image-wash"></div>
+      <div class="brand-row">
+        <a class="brand-home" href="https://sportsedge.markets/" aria-label="SportsEdge Markets home">
+          <img src="https://terminal.sportsedge.markets/images/sportsedge-markets-logo.png" alt="SportsEdge Markets logo" />
+        </a>
+      </div>
+      <div class="market-tape" aria-label="Admin session preview">
+        <span>ADMIN ROLE <strong>Required</strong></span>
+        <span>SESSION <strong>Encrypted</strong></span>
+        <span>AUDIT MODE <strong>Ready</strong></span>
+      </div>
+    </div>
+    <div class="login-panel">
+      <div class="login-card">
+        <h2>Secure Login</h2>
+        <h1>Admin Terminal</h1>
+        <p>Use your SportsEdge admin account to access user management.</p>
+        <form class="form" id="loginForm">
+          <label>Email<input id="loginEmail" type="email" autocomplete="email" required /></label>
+          <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required /></label>
+          <button class="button" type="submit">Sign In</button>
+          <p class="message" id="loginMessage"></p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="app-shell hidden" id="appShell">
+    <aside>
+      <div class="brand"><div class="mark">SE</div><div><strong>SportsEdge</strong><span>Admin OS</span></div></div>
+      <nav>
+        <a class="active" href="#dashboard">Dashboard</a>
+        <a href="#users">Users <span id="userCount">0</span></a>
+        <a href="#analytics">Analytics</a>
+        <a href="#twitter">Twitter</a>
+        <a href="https://terminal.sportsedge.markets/#login">Terminal</a>
+      </nav>
+      <div class="rail-box">
+        <div>OAuth provider setup lives in Google Cloud Console and Apple Developer.</div>
+        <div id="apiState">API: authenticated</div>
+      </div>
+    </aside>
+    <main class="main">
+      <section class="topbar">
+        <div><h1 id="pageTitle">User Administration</h1><p class="sub" id="pageSubtitle">Accounts, roles, subscriptions, and linked OAuth identities.</p></div>
+        <div class="session"><span class="pill" id="sessionLabel">Signed in</span><button class="button secondary" id="refreshButton" type="button">Refresh</button><button class="button danger" id="logoutButton" type="button">Logout</button></div>
+      </section>
+
+      <section class="kpis" id="userKpis">
+        <div class="kpi"><span>Total Users</span><strong id="kpiUsers">0</strong></div>
+        <div class="kpi"><span>Active</span><strong id="kpiActive">0</strong></div>
+        <div class="kpi"><span>Admins</span><strong id="kpiAdmins">0</strong></div>
+        <div class="kpi"><span>OAuth Linked</span><strong id="kpiOAuth">0</strong></div>
+      </section>
+
+      <section class="grid" id="usersView">
+        <div class="panel">
+          <div class="panel-head"><h2>Create User</h2><span class="badge gold">Admin only</span></div>
+          <div class="panel-body">
+            <form class="form" id="createForm">
+              <label>Email<input id="createEmail" type="email" placeholder="user@sportsedge.markets" required /></label>
+              <label>Full name<input id="createName" type="text" placeholder="Name" /></label>
+              <div class="row">
+                <label>Password<input id="createPassword" type="password" placeholder="Minimum 8 chars" required /></label>
+                <label>Account type<select id="createAccountType"></select></label>
+              </div>
+              <label>Roles<div class="role-grid" id="createRoles"></div></label>
+              <button class="button" type="submit">Create Account</button>
+              <p class="message" id="createMessage"></p>
+            </form>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Users</h2>
+            <div class="toolbar">
+              <input id="searchInput" type="search" placeholder="Search email, name, role, provider" />
+              <select id="statusFilter"><option value="all">All status</option><option>active</option><option>pending</option><option>suspended</option><option>closed</option></select>
+              <select id="levelFilter"><option value="all">All levels</option></select>
+              <button class="button secondary" id="clearFilters" type="button">Clear</button>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th>User</th><th>Status</th><th>Level</th><th>Roles</th><th>OAuth</th><th>Last Login</th><th>Actions</th></tr></thead>
+            <tbody id="usersBody"><tr><td colspan="7">Loading users...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="analytics-view hidden" id="analyticsView">
+        <section class="kpis">
+          <div class="kpi"><span>Pageviews</span><strong id="trafficPageviews">0</strong></div>
+          <div class="kpi"><span>Visitors</span><strong id="trafficVisitors">0</strong></div>
+          <div class="kpi"><span>Sessions</span><strong id="trafficSessions">0</strong></div>
+          <div class="kpi"><span>Countries</span><strong id="trafficCountries">0</strong></div>
+        </section>
+        <div class="panel">
+          <div class="panel-head"><h2>SportsEdge Traffic</h2><span class="badge green" id="trafficSiteLabel">sportsedge.markets</span></div>
+          <div class="chart-bars" id="trafficDailyChart"></div>
+          <div class="panel-body analytics-note">Filtered server-side to SportsEdge domains only. Other sites in traffic_tracker are excluded.</div>
+        </div>
+        <div class="analytics-grid">
+          <div class="panel">
+            <div class="panel-head"><h2>Top Pages</h2><span class="badge">Last 30 days</span></div>
+            <div class="metric-list" id="trafficTopPages"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Referrers</h2><span class="badge">Sources</span></div>
+            <div class="metric-list" id="trafficReferrers"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Countries</h2><span class="badge">Geo</span></div>
+            <div class="metric-list" id="trafficCountriesList"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Latest Visitors</h2><span class="badge">Recent</span></div>
+            <table>
+              <thead><tr><th>Last Seen</th><th>Country</th><th>Device</th><th>Views</th></tr></thead>
+              <tbody id="trafficVisitorsBody"><tr><td colspan="4">Loading traffic...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="twitter-view hidden" id="twitterView">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Twitter Posts</h2>
+            <div class="twitter-toolbar">
+              <select id="twitterSport"><option value="all">All sports</option></select>
+              <select id="twitterAccount"><option value="all">All accounts</option></select>
+              <input id="twitterSearch" type="search" placeholder="Search text, author, handle" />
+              <button class="button secondary" id="twitterClear" type="button">Clear</button>
+            </div>
+          </div>
+          <div class="twitter-layout">
+            <div class="post-list" id="twitterPosts"><div class="panel-body">Loading Twitter posts...</div></div>
+            <div class="panel">
+              <div class="panel-head"><h2>Ingest Events</h2><span class="badge green" id="twitterCount">0 posts</span></div>
+              <div class="ingest-list" id="twitterEvents"><div class="panel-body analytics-note">Latest Twitter ingest status will appear here.</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </section>
+
+  <script>
+    const state = {
+      token: localStorage.getItem("sportsedge.admin.token") || "",
+      user: JSON.parse(localStorage.getItem("sportsedge.admin.user") || "null"),
+      users: [],
+      accountTypes: [],
+      roles: [],
+      analytics: null,
+      twitter: null
+    };
+    const $ = (id) => document.getElementById(id);
+    const fmt = (value) => value ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "Never";
+    const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+
+    function setMessage(id, text, kind = "") {
+      const el = $(id);
+      el.textContent = text || "";
+      el.className = `message ${kind}`;
+    }
+
+    async function api(path, options = {}) {
+      const response = await fetch(path, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}),
+          ...(options.headers || {})
+        }
+      });
+      const payload = response.status === 204 ? {} : await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.detail || `Request failed: ${response.status}`);
+      return payload;
+    }
+
+    function showLogin() {
+      $("loginView").classList.remove("hidden");
+      $("appShell").classList.add("hidden");
+    }
+
+    function showApp() {
+      $("loginView").classList.add("hidden");
+      $("appShell").classList.remove("hidden");
+      $("sessionLabel").textContent = `${state.user.email} · ${(state.user.roles || []).join(", ")}`;
+      $("apiState").textContent = "API: authenticated";
+      renderRoute();
+    }
+
+    function renderMeta() {
+      $("createAccountType").innerHTML = state.accountTypes.map((type) => `<option value="${esc(type.code)}">${esc(type.name)} (${esc(type.code)})</option>`).join("");
+      $("levelFilter").innerHTML = `<option value="all">All levels</option>${state.accountTypes.map((type) => `<option value="${esc(type.code)}">${esc(type.code)}</option>`).join("")}`;
+      $("createRoles").innerHTML = state.roles.map((role) => `<label class="check"><input type="checkbox" value="${esc(role.code)}" ${role.code === "trader" ? "checked" : ""} /> ${esc(role.code)}</label>`).join("");
+    }
+
+    function filteredUsers() {
+      const q = $("searchInput").value.trim().toLowerCase();
+      const status = $("statusFilter").value;
+      const level = $("levelFilter").value;
+      return state.users.filter((user) => {
+        const haystack = [user.email, user.full_name, user.status, user.account_type, ...(user.roles || []), ...(user.oauth_identities || []).map((identity) => identity.provider)].join(" ").toLowerCase();
+        return (!q || haystack.includes(q)) && (status === "all" || user.status === status) && (level === "all" || user.account_type === level);
+      });
+    }
+
+    function renderUsers() {
+      const users = filteredUsers();
+      $("userCount").textContent = String(state.users.length);
+      $("kpiUsers").textContent = String(state.users.length);
+      $("kpiActive").textContent = String(state.users.filter((user) => user.status === "active").length);
+      $("kpiAdmins").textContent = String(state.users.filter((user) => (user.roles || []).includes("admin")).length);
+      $("kpiOAuth").textContent = String(state.users.filter((user) => (user.oauth_identities || []).length > 0).length);
+      if (!users.length) {
+        $("usersBody").innerHTML = `<tr><td colspan="7">No users match the current filters.</td></tr>`;
+        return;
+      }
+      $("usersBody").innerHTML = users.map((user) => `
+        <tr>
+          <td><strong>${esc(user.email)}</strong><small>${esc(user.full_name || "No name")} · created ${fmt(user.created_at)}</small></td>
+          <td><span class="status-${esc(user.status)}">${esc(user.status)}</span></td>
+          <td><span class="badge green">${esc(user.subscription?.plan_name || user.account_type)}</span><small>${esc(user.subscription?.status || "active")}</small></td>
+          <td>${(user.roles || []).map((role) => `<span class="badge">${esc(role)}</span>`).join("") || "None"}</td>
+          <td>${(user.oauth_identities || []).map((identity) => `<span class="badge gold">${esc(identity.provider)}</span>`).join("") || "<span class='badge'>password</span>"}</td>
+          <td>${fmt(user.last_login_at)}</td>
+          <td><select data-action="status" data-id="${esc(user.id)}">${["active", "pending", "suspended", "closed"].map((status) => `<option ${user.status === status ? "selected" : ""}>${status}</option>`).join("")}</select></td>
+        </tr>
+      `).join("");
+    }
+
+    function metricRows(rows, labelKey, valueKey, secondaryKey) {
+      if (!rows || !rows.length) return `<div class="metric-line"><span>No data for SportsEdge yet.</span><strong>0</strong><em></em></div>`;
+      const max = Math.max(...rows.map((row) => Number(row[valueKey] || 0)), 1);
+      return rows.map((row) => {
+        const value = Number(row[valueKey] || 0);
+        const secondary = secondaryKey ? Number(row[secondaryKey] || 0) : null;
+        return `<div class="metric-line"><span>${esc(row[labelKey] || "Unknown")}</span><strong>${value.toLocaleString()}</strong><em style="width:${Math.max(6, Math.round((value / max) * 90))}px;height:7px;border-radius:999px;background:rgba(96,165,250,.38)"></em>${secondaryKey ? `<small>${secondary.toLocaleString()} visitors</small>` : ""}</div>`;
+      }).join("");
+    }
+
+    function renderAnalytics() {
+      const data = state.analytics;
+      if (!data) return;
+      const summary = data.summary || {};
+      $("trafficPageviews").textContent = Number(summary.pageviews || 0).toLocaleString();
+      $("trafficVisitors").textContent = Number(summary.unique_visitors || 0).toLocaleString();
+      $("trafficSessions").textContent = Number(summary.sessions || 0).toLocaleString();
+      $("trafficCountries").textContent = Number(summary.countries || 0).toLocaleString();
+      $("trafficSiteLabel").textContent = (data.site || []).map((site) => site.domain).join(", ") || "sportsedge.markets";
+
+      const daily = data.daily || [];
+      const maxViews = Math.max(...daily.map((row) => Number(row.pageviews || 0)), 1);
+      $("trafficDailyChart").innerHTML = daily.map((row) => {
+        const views = Number(row.pageviews || 0);
+        const height = Math.max(4, Math.round((views / maxViews) * 180));
+        const day = new Date(row.day).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+        return `<div class="chart-bar" title="${views.toLocaleString()} pageviews"><i style="height:${height}px"></i><span>${esc(day)}</span></div>`;
+      }).join("");
+
+      $("trafficTopPages").innerHTML = metricRows(data.topPages, "path", "pageviews", "visitors");
+      $("trafficReferrers").innerHTML = metricRows(data.referrers, "referrer", "pageviews");
+      $("trafficCountriesList").innerHTML = metricRows(data.countries, "country", "pageviews", "visitors");
+      const visitors = data.latestVisitors || [];
+      $("trafficVisitorsBody").innerHTML = visitors.length ? visitors.map((visitor) => `
+        <tr>
+          <td>${fmt(visitor.last_seen_at)}<small>${esc(visitor.last_ip || "")}</small></td>
+          <td>${esc(visitor.last_country_code || "Unknown")}</td>
+          <td>${esc([visitor.device_type, visitor.browser_name, visitor.os_name].filter(Boolean).join(" · ") || "Unknown")}</td>
+          <td>${Number(visitor.pageviews || 0).toLocaleString()}<small>${Number(visitor.sessions || 0).toLocaleString()} sessions</small></td>
+        </tr>
+      `).join("") : `<tr><td colspan="4">No SportsEdge visitors found.</td></tr>`;
+    }
+
+    async function loadAnalytics() {
+      state.analytics = await api("/auth/admin/analytics?days=30");
+      renderAnalytics();
+    }
+
+    function twitterUrl() {
+      const params = new URLSearchParams({ days: "7", limit: "100" });
+      const sport = $("twitterSport").value;
+      const account = $("twitterAccount").value;
+      const q = $("twitterSearch").value.trim();
+      if (sport && sport !== "all") params.set("sport", sport);
+      if (account && account !== "all") params.set("account", account);
+      if (q) params.set("q", q);
+      return `/auth/admin/twitter?${params.toString()}`;
+    }
+
+    function renderTwitterOptions() {
+      const filters = state.twitter?.filters || {};
+      const currentSport = $("twitterSport").value || "all";
+      const currentAccount = $("twitterAccount").value || "all";
+      $("twitterSport").innerHTML = `<option value="all">All sports</option>${(filters.sports || []).map((sport) => `<option value="${esc(sport)}">${esc(sport)}</option>`).join("")}`;
+      $("twitterAccount").innerHTML = `<option value="all">All accounts</option>${(filters.accounts || []).map((account) => `<option value="${esc(account)}">${esc(account)}</option>`).join("")}`;
+      $("twitterSport").value = [...$("twitterSport").options].some((option) => option.value === currentSport) ? currentSport : "all";
+      $("twitterAccount").value = [...$("twitterAccount").options].some((option) => option.value === currentAccount) ? currentAccount : "all";
+    }
+
+    function renderTwitter() {
+      const data = state.twitter;
+      if (!data) return;
+      renderTwitterOptions();
+      const posts = data.posts || [];
+      $("twitterCount").textContent = `${posts.length.toLocaleString()} posts`;
+      $("twitterPosts").innerHTML = posts.length ? posts.map((post) => {
+        const image = post.images?.[0];
+        const metrics = post.metrics || {};
+        return `
+          <article class="post-card">
+            <div class="post-media ${image ? "" : "empty"}">${image ? `<img src="${esc(image)}" alt="" loading="lazy" />` : "X"}</div>
+            <div class="post-main">
+              <h3>${esc(post.author_name || post.account_handle || "Unknown account")}</h3>
+              <p>${esc(post.text || "")}</p>
+              <div class="post-meta">
+                <span>@${esc(post.account_handle || "unknown")}</span>
+                <span>${esc(post.sport || "unknown")}</span>
+                <span>${fmt(post.published_at || post.discovered_at)}</span>
+              </div>
+            </div>
+            <div class="post-side">
+              <span class="badge green">${Number(metrics.like_count || 0).toLocaleString()} likes</span>
+              <span class="badge">${Number(metrics.retweet_count || 0).toLocaleString()} reposts</span>
+              ${post.url ? `<a href="${esc(post.url)}" target="_blank" rel="noopener">Open post</a>` : ""}
+            </div>
+          </article>
+        `;
+      }).join("") : `<div class="panel-body">No Twitter posts match these filters.</div>`;
+
+      const events = data.ingestEvents || [];
+      $("twitterEvents").innerHTML = events.length ? events.map((event) => `
+        <div class="ingest-line">
+          <strong>${esc(event.event_type || "ingest")} · ${esc(event.status || "unknown")}</strong>
+          <span>${Number(event.post_count || 0).toLocaleString()} posts · ${fmt(event.created_at)}</span>
+          ${event.error ? `<span class="status-suspended">${esc(event.error)}</span>` : `<span>${esc(event.message || "")}</span>`}
+        </div>
+      `).join("") : `<div class="panel-body analytics-note">No Twitter ingest events found.</div>`;
+    }
+
+    async function loadTwitter() {
+      $("twitterPosts").innerHTML = `<div class="panel-body">Loading Twitter posts...</div>`;
+      state.twitter = await api(twitterUrl());
+      renderTwitter();
+    }
+
+    function renderRoute() {
+      const route = window.location.hash === "#analytics" ? "analytics" : window.location.hash === "#twitter" ? "twitter" : "users";
+      document.querySelectorAll("nav a").forEach((link) => {
+        const href = link.getAttribute("href");
+        link.classList.toggle("active", href === `#${route}` || (route === "users" && href === "#dashboard"));
+      });
+      $("usersView").classList.toggle("hidden", route !== "users");
+      $("userKpis").classList.toggle("hidden", route !== "users");
+      $("analyticsView").classList.toggle("hidden", route !== "analytics");
+      $("twitterView").classList.toggle("hidden", route !== "twitter");
+      $("pageTitle").textContent = route === "analytics" ? "Traffic Analytics" : route === "twitter" ? "Twitter Feed" : "User Administration";
+      $("pageSubtitle").textContent = route === "analytics" ? "Website traffic filtered to sportsedge.markets only." : route === "twitter" ? "Posts from the SportsEdge Twitter ingest table, with available images and text." : "Accounts, roles, subscriptions, and linked OAuth identities.";
+      if (route === "analytics" && !state.analytics) {
+        loadAnalytics().catch((error) => {
+          $("trafficDailyChart").innerHTML = `<div class="panel-body message err">${esc(error.message)}</div>`;
+        });
+      }
+      if (route === "twitter" && !state.twitter) {
+        loadTwitter().catch((error) => {
+          $("twitterPosts").innerHTML = `<div class="panel-body message err">${esc(error.message)}</div>`;
+        });
+      }
+    }
+
+    async function loadAdmin() {
+      if (!state.token) {
+        showLogin();
+        return;
+      }
+      const me = await api("/auth/me");
+      state.user = me.user;
+      localStorage.setItem("sportsedge.admin.user", JSON.stringify(state.user));
+      const [meta, users] = await Promise.all([api("/auth/admin/meta"), api("/auth/admin/users")]);
+      state.accountTypes = meta.accountTypes || [];
+      state.roles = meta.roles || [];
+      state.users = users.users || [];
+      showApp();
+      renderMeta();
+      renderUsers();
+      if (window.location.hash === "#analytics") await loadAnalytics();
+      if (window.location.hash === "#twitter") await loadTwitter();
+    }
+
+    $("loginForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      setMessage("loginMessage", "Signing in...");
+      try {
+        const payload = await api("/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email: $("loginEmail").value, password: $("loginPassword").value })
+        });
+        state.token = payload.token;
+        state.user = payload.user;
+        localStorage.setItem("sportsedge.admin.token", state.token);
+        localStorage.setItem("sportsedge.admin.user", JSON.stringify(state.user));
+        $("loginPassword").value = "";
+        setMessage("loginMessage", "");
+        await loadAdmin();
+      } catch (error) {
+        setMessage("loginMessage", error.message, "err");
+      }
+    });
+
+    $("createForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      setMessage("createMessage", "Creating user...");
+      const roles = Array.from($("createRoles").querySelectorAll("input:checked")).map((input) => input.value);
+      try {
+        await api("/auth/admin/users", {
+          method: "POST",
+          body: JSON.stringify({
+            email: $("createEmail").value,
+            full_name: $("createName").value,
+            password: $("createPassword").value,
+            account_type: $("createAccountType").value,
+            roles
+          })
+        });
+        $("createForm").reset();
+        renderMeta();
+        setMessage("createMessage", "Account created.", "ok");
+        await loadAdmin();
+      } catch (error) {
+        setMessage("createMessage", error.message, "err");
+      }
+    });
+
+    $("usersBody").addEventListener("change", async (event) => {
+      const target = event.target;
+      if (!target.matches("[data-action='status']")) return;
+      await api(`/auth/admin/users/${target.dataset.id}`, { method: "PATCH", body: JSON.stringify({ status: target.value }) });
+      await loadAdmin();
+    });
+    $("refreshButton").addEventListener("click", () => {
+      state.analytics = null;
+      state.twitter = null;
+      loadAdmin().catch((error) => alert(error.message));
+    });
+    $("logoutButton").addEventListener("click", async () => {
+      try { await api("/auth/logout", { method: "POST" }); } catch {}
+      localStorage.removeItem("sportsedge.admin.token");
+      localStorage.removeItem("sportsedge.admin.user");
+      state.token = "";
+      state.user = null;
+      state.users = [];
+      showLogin();
+    });
+    $("clearFilters").addEventListener("click", () => {
+      $("searchInput").value = "";
+      $("statusFilter").value = "all";
+      $("levelFilter").value = "all";
+      renderUsers();
+    });
+    ["searchInput", "statusFilter", "levelFilter"].forEach((id) => $(id).addEventListener("input", renderUsers));
+    ["twitterSport", "twitterAccount"].forEach((id) => $(id).addEventListener("change", () => loadTwitter().catch((error) => alert(error.message))));
+    $("twitterSearch").addEventListener("input", () => {
+      clearTimeout(state.twitterSearchTimer);
+      state.twitterSearchTimer = setTimeout(() => loadTwitter().catch((error) => alert(error.message)), 300);
+    });
+    $("twitterClear").addEventListener("click", () => {
+      $("twitterSport").value = "all";
+      $("twitterAccount").value = "all";
+      $("twitterSearch").value = "";
+      loadTwitter().catch((error) => alert(error.message));
+    });
+    window.addEventListener("hashchange", renderRoute);
+
+    loadAdmin().catch((error) => {
+      localStorage.removeItem("sportsedge.admin.token");
+      localStorage.removeItem("sportsedge.admin.user");
+      state.token = "";
+      state.user = null;
+      showLogin();
+      setMessage("loginMessage", error.message, "err");
+    });
+  </script>
+</body>
+</html>
