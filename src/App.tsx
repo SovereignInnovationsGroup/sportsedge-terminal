@@ -731,8 +731,9 @@ function fixtureTeams(name: string) {
     .replace(/\s+-\s+More Markets.*$/i, "")
     .replace(/\s+-\s+Exact Score.*$/i, "")
     .replace(/\s+-\s+Player Props.*$/i, "")
+    .replace(/\s+[-–]\s+More .*$/i, "")
     .split(/\s*(?:\/|\s+(?:v|vs|versus)\.?\s+)\s*/i)
-    .map((team) => team.trim())
+    .map((team) => team.replace(/\s+(?:FC|CF|AFC|SC)$/i, "").trim())
     .filter(Boolean)
     .slice(0, 2);
 }
@@ -801,7 +802,27 @@ FOOTBALL_TEAM_ASSETS.forEach((team) => {
 });
 
 function footballTeamAsset(team: string) {
-  return FOOTBALL_TEAM_BY_ALIAS.get(normalizeSelectionKey(team));
+  const key = normalizeSelectionKey(team);
+  const direct = FOOTBALL_TEAM_BY_ALIAS.get(key);
+  if (direct) return direct;
+  let best: FootballTeamAsset | undefined;
+  let bestScore = 0;
+  FOOTBALL_TEAM_BY_ALIAS.forEach((asset, alias) => {
+    if (!alias || alias.length < 4) return;
+    if (key === alias) {
+      best = asset;
+      bestScore = Number.MAX_SAFE_INTEGER;
+      return;
+    }
+    if (key.includes(alias) || alias.includes(key)) {
+      const score = Math.min(alias.length, key.length);
+      if (score > bestScore) {
+        best = asset;
+        bestScore = score;
+      }
+    }
+  });
+  return best;
 }
 
 function teamTicker(team: string) {
@@ -4776,41 +4797,21 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
 
       {!diagnosticExchange && !isMatrixPage && !isEntryDashboard && selectedSport === "football" && (
         <section className="football-region-strip" aria-label="Football regions">
-          <div className="football-region-breadcrumb" aria-label="Football breadcrumb">
-            <button
-              type="button"
-              className={!selectedFootballRegion ? "active" : ""}
-              onClick={() => {
-                setMarketGroup("all");
-                setSelectedFixtureIndex(null);
-              }}
-            >
-              Football
-            </button>
-            {selectedFootballRegion && (
-              <>
-                <span>/</span>
-                <button
-                  type="button"
-                  className={!selectedFootballLeague ? "active" : ""}
-                  onClick={() => {
-                    setMarketGroup(selectedFootballRegion.value);
-                    setSelectedFixtureIndex(null);
-                  }}
-                >
-                  {selectedFootballRegion.label}
-                </button>
-              </>
-            )}
-            {selectedFootballLeague && (
-              <>
-                <span>/</span>
-                <button type="button" className="active">
-                  {selectedFootballLeague.league.label}
-                </button>
-              </>
-            )}
-          </div>
+          {selectedFootballRegion && (
+            <div className="football-region-breadcrumb" aria-label="Football breadcrumb">
+              <button
+                type="button"
+                className={!selectedFootballLeague ? "active" : "parent"}
+                onClick={() => {
+                  setMarketGroup(selectedFootballRegion.value);
+                  setSelectedFixtureIndex(null);
+                }}
+              >
+                {selectedFootballRegion.label}
+              </button>
+              {selectedFootballLeague && <span>/</span>}
+            </div>
+          )}
           <nav className="football-region-tabs" aria-label="Football regions">
             {footballStripOptions.map((region) => (
               <button
