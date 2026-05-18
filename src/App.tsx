@@ -69,15 +69,22 @@ const PRIORITY_SPORTS = [
   }
 ];
 
+const TERMINAL_TOP_SPORTS = [
+  { label: "Football", value: "football", route: "#football" },
+  { label: "Horse Racing", value: "horseracing", route: "#horseracing" },
+  { label: "Tennis", value: "tennis", route: "#tennis" },
+  { label: "Golf", value: "golf", route: "#golf" }
+] as const;
+
 const SPORT_MARKET_GROUPS: Record<string, Array<{ label: string; value: string }>> = {
   football: [
     { label: "All", value: "all" },
-    { label: "Live", value: "live" },
-    { label: "Today", value: "today" },
-    { label: "England", value: "england" },
-    { label: "Europe", value: "europe" },
-    { label: "USA", value: "usa" },
-    { label: "Futures", value: "futures" }
+    { label: "English", value: "english" },
+    { label: "Scottish", value: "scottish" },
+    { label: "UEFA", value: "uefa" },
+    { label: "European", value: "european" },
+    { label: "International", value: "international" },
+    { label: "World", value: "world" }
   ],
   tennis: [
     { label: "All", value: "all" },
@@ -110,6 +117,90 @@ const SPORT_MARKET_GROUPS: Record<string, Array<{ label: string; value: string }
     { label: "Futures", value: "futures" }
   ]
 };
+
+const FOOTBALL_LEAGUE_GROUPS: Record<string, Array<{ label: string; value: string }>> = {
+  english: [
+    { label: "Premier League", value: "premier-league" },
+    { label: "Championship", value: "championship" },
+    { label: "League One", value: "league-one" },
+    { label: "League Two", value: "league-two" },
+    { label: "FA Cup", value: "fa-cup" },
+    { label: "EFL Cup", value: "efl-cup" }
+  ],
+  scottish: [
+    { label: "Premiership", value: "scottish-premiership" },
+    { label: "Championship", value: "scottish-championship" },
+    { label: "League One", value: "scottish-league-one" },
+    { label: "League Two", value: "scottish-league-two" }
+  ],
+  uefa: [
+    { label: "Champions League", value: "champions-league" },
+    { label: "Europa League", value: "europa-league" },
+    { label: "Conference League", value: "conference-league" },
+    { label: "Nations League", value: "nations-league" }
+  ],
+  european: [
+    { label: "La Liga", value: "la-liga" },
+    { label: "Serie A", value: "serie-a" },
+    { label: "Bundesliga", value: "bundesliga" },
+    { label: "Ligue 1", value: "ligue-1" },
+    { label: "Eredivisie", value: "eredivisie" },
+    { label: "Primeira Liga", value: "primeira-liga" }
+  ],
+  international: [
+    { label: "World Cup", value: "world-cup" },
+    { label: "Euro", value: "euro" },
+    { label: "Copa America", value: "copa-america" },
+    { label: "AFCON", value: "afcon" },
+    { label: "Friendlies", value: "friendlies" }
+  ],
+  world: [
+    { label: "Club World Cup", value: "club-world-cup" },
+    { label: "World Cup", value: "world-cup" },
+    { label: "International", value: "international" }
+  ]
+};
+
+const FOOTBALL_GROUP_TERMS: Record<string, string[]> = {
+  "premier-league": ["premier league"],
+  championship: ["championship", "efl championship"],
+  "league-one": ["league one", "efl league one"],
+  "league-two": ["league two", "efl league two"],
+  "fa-cup": ["fa cup"],
+  "efl-cup": ["efl cup", "carabao cup", "league cup"],
+  "scottish-premiership": ["scottish premiership"],
+  "scottish-championship": ["scottish championship"],
+  "scottish-league-one": ["scottish league one"],
+  "scottish-league-two": ["scottish league two"],
+  "champions-league": ["champions league", "uefa champions league"],
+  "europa-league": ["europa league", "uefa europa league"],
+  "conference-league": ["conference league", "uefa conference league"],
+  "nations-league": ["nations league"],
+  "la-liga": ["la liga"],
+  "serie-a": ["serie a"],
+  bundesliga: ["bundesliga"],
+  "ligue-1": ["ligue 1"],
+  eredivisie: ["eredivisie"],
+  "primeira-liga": ["primeira liga"],
+  "world-cup": ["world cup"],
+  euro: [" euro ", "uefa euro", "european championship"],
+  "copa-america": ["copa america", "copa américa"],
+  afcon: ["afcon", "africa cup"],
+  friendlies: ["friendly", "friendlies"],
+  "club-world-cup": ["club world cup", "fifa club world cup"]
+};
+
+function footballRegionByValue(value: string) {
+  return SPORT_MARKET_GROUPS.football.find((region) => region.value === value);
+}
+
+function footballLeagueByValue(value: string) {
+  for (const [region, leagues] of Object.entries(FOOTBALL_LEAGUE_GROUPS)) {
+    const league = leagues.find((item) => item.value === value);
+    if (league) return { region, league };
+  }
+  return null;
+}
 
 const PRIORITY_NEWS_SPORTS = PRIORITY_SPORTS.flatMap((sport) => sport.newsAliases);
 const SPORT_LABELS: Map<string, string> = new Map(PRIORITY_SPORTS.map((sport) => [sport.value, sport.label]));
@@ -307,12 +398,12 @@ function sportFromHash(hash = window.location.hash) {
 
 function terminalSportFromHash(hash = window.location.hash) {
   const normalized = hash.replace(/^#/, "");
-  return PRIORITY_SPORTS.some((sport) => sport.value === normalized) ? normalized : "football";
+  return TERMINAL_TOP_SPORTS.some((sport) => sport.value === normalized) ? normalized : "football";
 }
 
 function isTerminalSportHash(hash = window.location.hash) {
   const normalized = hash.replace(/^#/, "");
-  return PRIORITY_SPORTS.some((sport) => sport.value === normalized);
+  return TERMINAL_TOP_SPORTS.some((sport) => sport.value === normalized);
 }
 
 function apiSportValue(value: string) {
@@ -1007,6 +1098,12 @@ function MatrixEventCell({ name, sport }: { name: string; sport: string }) {
 function searchSport(value: string) {
   const normalized = value.trim().toLowerCase();
   if (!normalized) return null;
+  const terminalSport = TERMINAL_TOP_SPORTS.find((sport) =>
+    sport.value.includes(normalized)
+    || sport.label.toLowerCase().includes(normalized)
+    || (sport.value === "horseracing" && ["horse", "racing", "horse racing"].some((alias) => alias.includes(normalized)))
+  );
+  if (terminalSport) return terminalSport.value;
   return PRIORITY_SPORTS.find((sport) =>
     sport.value.includes(normalized)
     || sport.label.toLowerCase().includes(normalized)
@@ -1038,6 +1135,116 @@ function commandMatches(option: CommandOption, query: string) {
 
 function resolveCommand(query: string) {
   return COMMAND_OPTIONS.find((option) => commandMatches(option, query)) || null;
+}
+
+function logoutToLogin() {
+  window.localStorage.removeItem("sportsedge.auth.token");
+  window.localStorage.removeItem("sportsedge.auth.user");
+  window.location.hash = "#login";
+}
+
+function SportsEdgeTopbar({ active, onLogout = logoutToLogin }: { active?: string; onLogout?: () => void }) {
+  const [query, setQuery] = useState("");
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const options = useMemo(() => COMMAND_OPTIONS.filter((option) => commandMatches(option, query)).slice(0, 7), [query]);
+
+  useEffect(() => {
+    function handleSlash(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable;
+      if (event.key === "/" && !isTyping) {
+        event.preventDefault();
+        inputRef.current?.focus();
+        setCommandOpen(true);
+      }
+    }
+    window.addEventListener("keydown", handleSlash);
+    return () => window.removeEventListener("keydown", handleSlash);
+  }, []);
+
+  function runCommand(option: CommandOption | null) {
+    if (!option) return;
+    window.location.hash = option.route;
+    setQuery("");
+    setCommandOpen(false);
+    inputRef.current?.blur();
+  }
+
+  return (
+    <header className="testboard-topbar global-terminal-topbar">
+      <a className="testboard-brand" href="#dashboard" aria-label="SportsEdge dashboard">
+        <img className="testboard-brand-logo" src={sportsEdgeMarketsLogo} alt="SportsEdge" />
+      </a>
+      <nav className="testboard-nav" aria-label="SportsEdge navigation">
+        {TERMINAL_TOP_SPORTS.map((sport) => (
+          <button
+            className={active === sport.value ? "active" : ""}
+            key={sport.value}
+            type="button"
+            onClick={() => { window.location.hash = sport.route; }}
+          >
+            {sport.label}
+          </button>
+        ))}
+      </nav>
+      <label className="testboard-search">
+        <Search size={15} />
+        <input
+          ref={inputRef}
+          value={query}
+          onFocus={() => setCommandOpen(true)}
+          onBlur={() => window.setTimeout(() => setCommandOpen(false), 160)}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              runCommand(resolveCommand(query) || options[0] || null);
+            }
+            if (event.key === "Escape") {
+              setCommandOpen(false);
+              inputRef.current?.blur();
+            }
+          }}
+          placeholder="Search sport, market, fixture, exchange..."
+        />
+        <kbd>/</kbd>
+        {commandOpen && (
+          <div className="testboard-command-menu">
+            {options.map((option) => (
+              <button type="button" key={option.route} onMouseDown={(event) => event.preventDefault()} onClick={() => runCommand(option)}>
+                <strong>{option.label}</strong>
+                <span>{option.detail}</span>
+              </button>
+            ))}
+            {options.length === 0 && <em>No command found</em>}
+          </div>
+        )}
+      </label>
+      <div className="testboard-settings">
+        <button
+          className="testboard-icon-button"
+          type="button"
+          aria-label="Open settings"
+          aria-expanded={settingsOpen}
+          onClick={() => setSettingsOpen((open) => !open)}
+        >
+          <Settings size={16} />
+        </button>
+        {settingsOpen && (
+          <div className="testboard-settings-menu" role="menu">
+            <button type="button" role="menuitem" onClick={() => { window.location.hash = "#actual"; setSettingsOpen(false); }}>Actual feeds</button>
+            <button type="button" role="menuitem">Routing Rules</button>
+            <button type="button" role="menuitem">Display Density</button>
+          </div>
+        )}
+      </div>
+      <button className="testboard-logout" type="button" onClick={onLogout} aria-label="Log out">
+        <LogOut size={15} />
+      </button>
+    </header>
+  );
 }
 
 function rowMatchesSelectedSport(row: BackendPriceRow, selectedSport: string) {
@@ -1079,10 +1286,18 @@ function rowMatchesMarketGroup(row: BackendPriceRow, group: string) {
   const isToday = start && !Number.isNaN(start.getTime())
     ? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(start) === new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date())
     : false;
+  const footballTerms = FOOTBALL_GROUP_TERMS[group];
+  if (footballTerms) return footballTerms.some((term) => ` ${haystack} `.includes(term));
   if (group === "today") return Boolean(isToday);
   if (group === "live") return haystack.includes("live") || Boolean(isToday);
   if (group === "england") return ["england", "premier league", "championship"].some((term) => haystack.includes(term));
+  if (group === "english") return ["england", "english", "premier league", "championship", "league one", "league two", "fa cup", "efl"].some((term) => haystack.includes(term));
+  if (group === "scottish") return ["scotland", "scottish", "scottish premiership", "scottish championship"].some((term) => haystack.includes(term));
+  if (group === "uefa") return ["uefa", "champions league", "europa league", "conference league", "nations league"].some((term) => haystack.includes(term));
   if (group === "europe") return ["champions league", "europa", "euro", "spain", "la liga", "italy", "serie", "germany", "bundesliga", "france", "ligue"].some((term) => haystack.includes(term));
+  if (group === "european") return ["europe", "european", "spain", "la liga", "italy", "serie", "germany", "bundesliga", "france", "ligue", "eredivisie", "primeira", "super lig"].some((term) => haystack.includes(term));
+  if (group === "international") return ["international", "national", "world cup", "euro", "copa", "afcon", "concacaf", "friendly"].some((term) => haystack.includes(term));
+  if (group === "world") return ["world", "global", "fifa", "club world cup", "world cup", "international"].some((term) => haystack.includes(term));
   if (group === "usa") return ["usa", "mls", "mlb", "nba", "wnba", "pga"].some((term) => haystack.includes(term));
   if (group === "futures") return ["winner", "champion", "2026", "outright", "season"].some((term) => haystack.includes(term));
   if (group === "slam") return ["open", "wimbledon", "roland", "french", "australian", "us open"].some((term) => haystack.includes(term));
@@ -3443,6 +3658,14 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
   }, []);
   const selectedSportLabel = SPORT_LABELS.get(selectedSport) || "Football";
   const marketGroups = SPORT_MARKET_GROUPS[selectedSport] || SPORT_MARKET_GROUPS.football;
+  const selectedFootballLeague = selectedSport === "football" ? footballLeagueByValue(marketGroup) : null;
+  const selectedFootballRegionValue = selectedSport === "football"
+    ? selectedFootballLeague?.region || (FOOTBALL_LEAGUE_GROUPS[marketGroup] ? marketGroup : null)
+    : null;
+  const selectedFootballRegion = selectedFootballRegionValue ? footballRegionByValue(selectedFootballRegionValue) : null;
+  const footballStripOptions = selectedFootballRegionValue
+    ? FOOTBALL_LEAGUE_GROUPS[selectedFootballRegionValue] || []
+    : SPORT_MARKET_GROUPS.football;
   const diagnosticLabel = DIAGNOSTIC_EXCHANGES.find((exchange) => exchange.key === diagnosticExchange)?.label || "";
   const expandedDiagnosticPrices = expandedDiagnosticEvent?.id ? diagnosticPriceRows[expandedDiagnosticEvent.id] || [] : [];
   const entryNewsItems = uniqueNewsItems(entryNews.filter(isSocialNewsItem));
@@ -4452,35 +4675,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
           <img className="testboard-brand-logo" src={sportsEdgeMarketsLogo} alt="SportsEdge" />
         </a>
         <nav className="testboard-nav" aria-label="Sports">
-          <button
-            className={isEntryDashboard && !diagnosticExchange && !isMatrixPage ? "active" : ""}
-            type="button"
-            onClick={() => {
-              setIsEntryDashboard(true);
-              setIsMatrixPage(false);
-              setDiagnosticExchange(null);
-              setMarketSearch("");
-              setSelectedFixtureIndex(null);
-              window.location.hash = "#dashboard";
-            }}
-          >
-            Dashboard
-          </button>
-          <button
-            className={!diagnosticExchange && isMatrixPage ? "active" : ""}
-            type="button"
-            onClick={() => {
-              setIsMatrixPage(true);
-              setIsEntryDashboard(false);
-              setDiagnosticExchange(null);
-              setMarketSearch("");
-              setSelectedFixtureIndex(null);
-              window.location.hash = "#matrix";
-            }}
-          >
-            Matrix
-          </button>
-          {PRIORITY_SPORTS.map((sport) => (
+          {TERMINAL_TOP_SPORTS.map((sport) => (
             <button
               className={!diagnosticExchange && !isMatrixPage && selectedSport === sport.value ? "active" : ""}
               type="button"
@@ -4498,21 +4693,6 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
               {sport.label}
             </button>
           ))}
-          <button
-            className={diagnosticExchange ? "active" : ""}
-            type="button"
-            onClick={() => {
-              setIsMatrixPage(false);
-              setIsEntryDashboard(false);
-              setDiagnosticExchange(diagnosticExchange || "polymarket");
-              setExpandedDiagnosticSport(null);
-              setDiagnosticEventRows({});
-              setSelectedFixtureIndex(null);
-              window.location.hash = "#actual";
-            }}
-          >
-            Actual
-          </button>
         </nav>
         <label className="testboard-search">
           <Search size={15} />
@@ -4556,7 +4736,6 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
             </div>
           )}
         </label>
-        <a className="testboard-route-link" href="#old">Old</a>
         <div className="testboard-settings">
           <button
             className="testboard-icon-button"
@@ -4569,7 +4748,22 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
           </button>
           {settingsOpen && (
             <div className="testboard-settings-menu" role="menu">
-              <button type="button" role="menuitem">Market State</button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setIsMatrixPage(false);
+                  setIsEntryDashboard(false);
+                  setDiagnosticExchange(diagnosticExchange || "polymarket");
+                  setExpandedDiagnosticSport(null);
+                  setDiagnosticEventRows({});
+                  setSelectedFixtureIndex(null);
+                  setSettingsOpen(false);
+                  window.location.hash = "#actual";
+                }}
+              >
+                Actual feeds
+              </button>
               <button type="button" role="menuitem">Routing Rules</button>
               <button type="button" role="menuitem">Display Density</button>
             </div>
@@ -4579,6 +4773,67 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
           <LogOut size={15} />
         </button>
       </header>
+
+      {!diagnosticExchange && !isMatrixPage && !isEntryDashboard && selectedSport === "football" && (
+        <section className="football-region-strip" aria-label="Football regions">
+          <div className="football-region-breadcrumb" aria-label="Football breadcrumb">
+            <button
+              type="button"
+              className={!selectedFootballRegion ? "active" : ""}
+              onClick={() => {
+                setMarketGroup("all");
+                setSelectedFixtureIndex(null);
+              }}
+            >
+              Football
+            </button>
+            {selectedFootballRegion && (
+              <>
+                <span>/</span>
+                <button
+                  type="button"
+                  className={!selectedFootballLeague ? "active" : ""}
+                  onClick={() => {
+                    setMarketGroup(selectedFootballRegion.value);
+                    setSelectedFixtureIndex(null);
+                  }}
+                >
+                  {selectedFootballRegion.label}
+                </button>
+              </>
+            )}
+            {selectedFootballLeague && (
+              <>
+                <span>/</span>
+                <button type="button" className="active">
+                  {selectedFootballLeague.league.label}
+                </button>
+              </>
+            )}
+          </div>
+          <nav className="football-region-tabs" aria-label="Football regions">
+            {footballStripOptions.map((region) => (
+              <button
+                type="button"
+                className={marketGroup === region.value ? "active" : ""}
+                key={region.value}
+                onClick={() => {
+                  setMarketGroup(region.value);
+                  setSelectedFixtureIndex(null);
+                }}
+              >
+                {region.label}
+              </button>
+            ))}
+          </nav>
+          <div className="football-region-status">
+            <strong>{matrixRows.length} markets</strong>
+            <span>{activeExchangeCount}/{EXCHANGE_COLUMNS.length} venues</span>
+            <b>{totalMatched ? formatExchangeMoney(totalMatched, "GBP") : "-"}</b>
+            <em>{backendError || `${clock} CET`}</em>
+          </div>
+        </section>
+      )}
 
       {diagnosticExchange ? (
         <>
@@ -4707,35 +4962,37 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
         renderEntryDashboard()
       ) : (
       <>
-      <section className="testboard-marketbar" aria-label="Market context">
-        <div className="testboard-sport-title">
-          <Radio size={15} />
-          <strong>{selectedSportLabel}</strong>
-          <span>{marketGroup === "all" ? "All markets" : marketGroups.find((group) => group.value === marketGroup)?.label}</span>
-        </div>
-        <nav className="testboard-market-tabs" aria-label={`${selectedSportLabel} market groups`}>
-          {marketGroups.map((group) => (
-            <button
-              className={marketGroup === group.value ? "active" : ""}
-              key={group.value}
-              type="button"
-              onClick={() => {
-                setMarketGroup(group.value);
-                setSelectedFixtureIndex(null);
-              }}
-            >
-              {group.label}
-            </button>
-          ))}
-        </nav>
-        <div className="testboard-live-strip">
-          <span className={socketStatus === "live" ? "positive" : ""}>{socketStatus}</span>
-          <strong>{matrixRows.length} markets</strong>
-          <em>{activeExchangeCount}/{EXCHANGE_COLUMNS.length} venues</em>
-          <b>{totalMatched ? formatExchangeMoney(totalMatched, "GBP") : "-"}</b>
-          <small>{backendError || `${clock} CET`}</small>
-        </div>
-      </section>
+      {selectedSport !== "football" && (
+        <section className="testboard-marketbar" aria-label="Market context">
+          <div className="testboard-sport-title">
+            <Radio size={15} />
+            <strong>{selectedSportLabel}</strong>
+            <span>{marketGroup === "all" ? "All markets" : marketGroups.find((group) => group.value === marketGroup)?.label}</span>
+          </div>
+          <nav className="testboard-market-tabs" aria-label={`${selectedSportLabel} market groups`}>
+            {marketGroups.map((group) => (
+              <button
+                className={marketGroup === group.value ? "active" : ""}
+                key={group.value}
+                type="button"
+                onClick={() => {
+                  setMarketGroup(group.value);
+                  setSelectedFixtureIndex(null);
+                }}
+              >
+                {group.label}
+              </button>
+            ))}
+          </nav>
+          <div className="testboard-live-strip">
+            <span className={socketStatus === "live" ? "positive" : ""}>{socketStatus}</span>
+            <strong>{matrixRows.length} markets</strong>
+            <em>{activeExchangeCount}/{EXCHANGE_COLUMNS.length} venues</em>
+            <b>{totalMatched ? formatExchangeMoney(totalMatched, "GBP") : "-"}</b>
+            <small>{backendError || `${clock} CET`}</small>
+          </div>
+        </section>
+      )}
 
       <section className="testboard-matrix" aria-label={`${selectedSportLabel} exchange matrix`}>
         {selectedFixtureIndex != null ? (() => {
@@ -4994,17 +5251,7 @@ function FootballIntelligenceDemoPage() {
 
   return (
     <main className="football-demo-page">
-      <header className="football-demo-topbar">
-        <a className="football-demo-brand" href="#dashboard" aria-label="SportsEdge dashboard">
-          <img src={sportsEdgeMarketsLogo} alt="SportsEdge" />
-        </a>
-        <nav aria-label="Football intelligence demo navigation">
-          <a href="#dashboard">Dashboard</a>
-          <a href="#matrix">Matrix</a>
-          <a className="active" href="#football-demo">Football intelligence</a>
-          <a href="#login">Beta Login</a>
-        </nav>
-      </header>
+      <SportsEdgeTopbar active="football" />
 
       <section className="football-demo-hero">
         <div>
@@ -5169,6 +5416,311 @@ type FootballTeamProfile = {
   }>;
 };
 
+const PRODUCT_MOCKUP_DATA: Record<string, {
+  label: string;
+  headline: string;
+  events: Array<{ time: string; event: string; market: string; liquidity: string; alert: string }>;
+  matrix: Array<{ selection: string; consensus: string; swing: string; align: string; confidence: string; bf: string; mb: string; se: string }>;
+  profiles: Array<{ name: string; role: string; status: string; impact: string }>;
+  players: Array<{ name: string; role: string; signal: string; note: string }>;
+  news: Array<{ source: string; title: string; tag: string; time: string }>;
+}> = {
+  football: {
+    label: "Football",
+    headline: "Chelsea - Manchester City",
+    events: [
+      { time: "19:30", event: "Chelsea - Manchester City", market: "Match Odds", liquidity: "GBP 2.1m", alert: "Lineup watch" },
+      { time: "15:00", event: "Arsenal - Burnley", market: "Match Odds", liquidity: "GBP 254k", alert: "Home pressure" },
+      { time: "17:30", event: "Newcastle - West Ham", market: "Total Goals", liquidity: "GBP 188k", alert: "News drift" }
+    ],
+    matrix: [
+      { selection: "Chelsea", consensus: "3.45", swing: "Lay", align: "67%", confidence: "72", bf: "L 64", mb: "N 52", se: "Watch" },
+      { selection: "Draw", consensus: "3.30", swing: "Neutral", align: "41%", confidence: "58", bf: "N 55", mb: "N 50", se: "Quiet" },
+      { selection: "Man City", consensus: "2.08", swing: "Back", align: "83%", confidence: "81", bf: "B 79", mb: "B 86", se: "Flag" }
+    ],
+    profiles: [
+      { name: "Chelsea FC", role: "Team profile", status: "Premier League", impact: "High news sensitivity" },
+      { name: "Manchester City FC", role: "Team profile", status: "Premier League", impact: "Sharp venue weighting" }
+    ],
+    players: [
+      { name: "Cole Palmer", role: "Attacking mid", signal: "Shots + assists", note: "Market moves on confirmed start" },
+      { name: "Erling Haaland", role: "Forward", signal: "Scorer pressure", note: "Anytime scorer drives totals" },
+      { name: "Rodri", role: "Midfield", signal: "Team balance", note: "Absence moves match odds" }
+    ],
+    news: [
+      { source: "@FabrizioRomano", title: "Chelsea expected to rotate wide players before Manchester City", tag: "Lineup", time: "12:34" },
+      { source: "@talkSPORT", title: "Manchester City travel squad update lands before market open", tag: "Squad", time: "12:21" },
+      { source: "@SkySportsPL", title: "Manager comments point to unchanged City front line", tag: "Press", time: "11:58" }
+    ]
+  },
+  tennis: {
+    label: "Tennis",
+    headline: "Alcaraz - Sinner",
+    events: [
+      { time: "14:10", event: "Alcaraz - Sinner", market: "Match Winner", liquidity: "GBP 410k", alert: "Serve hold" },
+      { time: "16:20", event: "Swiatek - Gauff", market: "Set Winner", liquidity: "GBP 180k", alert: "Momentum" },
+      { time: "18:00", event: "Djokovic - Rune", market: "Total Games", liquidity: "GBP 132k", alert: "Fitness" }
+    ],
+    matrix: [
+      { selection: "Alcaraz", consensus: "1.82", swing: "Back", align: "80%", confidence: "77", bf: "B 76", mb: "B 84", se: "Flag" },
+      { selection: "Sinner", consensus: "2.16", swing: "Lay", align: "64%", confidence: "68", bf: "L 61", mb: "N 55", se: "Watch" }
+    ],
+    profiles: [
+      { name: "Carlos Alcaraz", role: "Player profile", status: "ATP", impact: "Clay strength" },
+      { name: "Jannik Sinner", role: "Player profile", status: "ATP", impact: "Fitness watch" }
+    ],
+    players: [
+      { name: "Carlos Alcaraz", role: "Return pressure", signal: "Break points", note: "Bias follows second serve win rate" },
+      { name: "Jannik Sinner", role: "Serve quality", signal: "Aces + holds", note: "Watch medical/social feed" }
+    ],
+    news: [
+      { source: "@TennisTV", title: "Alcaraz talks court speed and heavy baseline conditions", tag: "Surface", time: "12:08" },
+      { source: "@ATP", title: "Sinner warm-up session completed without trainer call", tag: "Fitness", time: "11:44" }
+    ]
+  },
+  horseracing: {
+    label: "Horse Racing",
+    headline: "Newmarket 15:05",
+    events: [
+      { time: "13:50", event: "Southwell 6f Handicap", market: "Win Market", liquidity: "GBP 310k", alert: "Going" },
+      { time: "15:05", event: "Newmarket Listed Stakes", market: "Win Market", liquidity: "GBP 1.2m", alert: "Late steam" },
+      { time: "16:10", event: "Chelmsford Nursery", market: "Place Market", liquidity: "GBP 420k", alert: "Non-runner" }
+    ],
+    matrix: [
+      { selection: "Favourite", consensus: "3.80", swing: "Back", align: "79%", confidence: "75", bf: "B 77", mb: "B 82", se: "Watch" },
+      { selection: "Second Fav", consensus: "5.20", swing: "Neutral", align: "51%", confidence: "60", bf: "N 56", mb: "N 50", se: "Quiet" },
+      { selection: "Drifter", consensus: "11.50", swing: "Lay", align: "84%", confidence: "78", bf: "L 81", mb: "L 87", se: "Flag" }
+    ],
+    profiles: [
+      { name: "Newmarket", role: "Course profile", status: "Flat racing", impact: "Going sensitive" },
+      { name: "Southwell", role: "Course profile", status: "All-weather", impact: "Late money sensitive" }
+    ],
+    players: [
+      { name: "Trainer form", role: "Stable profile", signal: "7 day strike", note: "Bias moves with yard strength" },
+      { name: "Jockey booking", role: "Rider profile", signal: "Course record", note: "Sharp money follows booking upgrades" }
+    ],
+    news: [
+      { source: "@RacingTV", title: "Going update posted before Newmarket feature race", tag: "Going", time: "10:33" },
+      { source: "@AtTheRaces", title: "Non-runner alert changes place market shape", tag: "NR", time: "09:41" }
+    ]
+  },
+  baseball: {
+    label: "Baseball",
+    headline: "Yankees - Red Sox",
+    events: [
+      { time: "00:05", event: "Yankees - Red Sox", market: "Moneyline", liquidity: "GBP 227k", alert: "Pitcher confirmed" },
+      { time: "01:10", event: "Mets - Braves", market: "Run Line", liquidity: "GBP 93k", alert: "Bullpen" },
+      { time: "02:40", event: "Dodgers - Giants", market: "Total Runs", liquidity: "GBP 165k", alert: "Weather" }
+    ],
+    matrix: [
+      { selection: "Yankees", consensus: "1.78", swing: "Back", align: "75%", confidence: "74", bf: "-", mb: "B 71", se: "Watch" },
+      { selection: "Red Sox", consensus: "2.18", swing: "Lay", align: "62%", confidence: "66", bf: "-", mb: "L 69", se: "Quiet" }
+    ],
+    profiles: [
+      { name: "New York Yankees", role: "Team profile", status: "MLB", impact: "Pitcher led" },
+      { name: "Boston Red Sox", role: "Team profile", status: "MLB", impact: "Bullpen risk" }
+    ],
+    players: [
+      { name: "Probable starter", role: "Pitcher", signal: "Confirmed", note: "Primary market mover" },
+      { name: "Leadoff hitter", role: "Batting order", signal: "Lineup card", note: "Totals sensitivity" }
+    ],
+    news: [
+      { source: "@MLB", title: "Probable pitchers confirmed ahead of Yankees-Red Sox", tag: "Lineup", time: "10:19" },
+      { source: "@Yankees", title: "Clubhouse update before tonight's rivalry game", tag: "Official", time: "09:57" }
+    ]
+  },
+  basketball: {
+    label: "Basketball",
+    headline: "Lakers - Celtics",
+    events: [
+      { time: "01:30", event: "Lakers - Celtics", market: "Moneyline", liquidity: "GBP 620k", alert: "Injury report" },
+      { time: "03:00", event: "Knicks - Heat", market: "Spread", liquidity: "GBP 312k", alert: "Minutes cap" },
+      { time: "04:30", event: "Warriors - Suns", market: "Total Points", liquidity: "GBP 410k", alert: "Pace" }
+    ],
+    matrix: [
+      { selection: "Lakers", consensus: "2.24", swing: "Lay", align: "70%", confidence: "71", bf: "-", mb: "L 74", se: "Watch" },
+      { selection: "Celtics", consensus: "1.74", swing: "Back", align: "82%", confidence: "80", bf: "-", mb: "B 83", se: "Flag" }
+    ],
+    profiles: [
+      { name: "Los Angeles Lakers", role: "Team profile", status: "NBA", impact: "Injury sensitivity" },
+      { name: "Boston Celtics", role: "Team profile", status: "NBA", impact: "Sharp weighting" }
+    ],
+    players: [
+      { name: "Star forward", role: "Questionable", signal: "Q tag", note: "Market waits for injury report" },
+      { name: "Starting guard", role: "Usage", signal: "High minutes", note: "Props and spread driver" }
+    ],
+    news: [
+      { source: "@UnderdogNBA", title: "Celtics starter upgraded to probable on injury report", tag: "Injury", time: "13:02" },
+      { source: "@NBA", title: "Projected starting lineups updated for late game", tag: "Lineup", time: "12:48" }
+    ]
+  },
+  golf: {
+    label: "Golf",
+    headline: "PGA Championship",
+    events: [
+      { time: "12:00", event: "PGA Championship", market: "Outright Winner", liquidity: "GBP 890k", alert: "Weather" },
+      { time: "13:20", event: "Scheffler - McIlroy", market: "Matchup", liquidity: "GBP 625k", alert: "Tee time" },
+      { time: "14:10", event: "Top 10 Finish", market: "Placement", liquidity: "GBP 210k", alert: "Course fit" }
+    ],
+    matrix: [
+      { selection: "Scheffler", consensus: "3.20", swing: "Back", align: "78%", confidence: "76", bf: "B 73", mb: "B 80", se: "Watch" },
+      { selection: "McIlroy", consensus: "5.60", swing: "Mixed", align: "50%", confidence: "58", bf: "N 53", mb: "L 61", se: "Quiet" }
+    ],
+    profiles: [
+      { name: "Scottie Scheffler", role: "Player profile", status: "PGA", impact: "Course fit" },
+      { name: "Rory McIlroy", role: "Player profile", status: "PGA", impact: "Weather sensitive" }
+    ],
+    players: [
+      { name: "Scottie Scheffler", role: "Approach play", signal: "Strong", note: "Course model supports price" },
+      { name: "Rory McIlroy", role: "Driving", signal: "Volatile", note: "News and weather amplify" }
+    ],
+    news: [
+      { source: "@PGATOUR", title: "Wind expected to build for afternoon wave", tag: "Weather", time: "10:33" },
+      { source: "@GolfChannel", title: "Course setup favors long approach play", tag: "Course", time: "09:41" }
+    ]
+  }
+};
+
+function SportsEdgeProductMockupPage() {
+  const sport = "football";
+  const active = PRODUCT_MOCKUP_DATA[sport] || PRODUCT_MOCKUP_DATA.football;
+
+  return (
+    <main className="product-mockup-page">
+      <SportsEdgeTopbar active={sport} />
+
+      {sport === "football" && (
+        <section className="football-region-strip" aria-label="Football regions">
+          {SPORT_MARKET_GROUPS.football.map((region) => (
+            <button type="button" className={region.value === "all" ? "active" : ""} key={region.value}>
+              {region.label}
+            </button>
+          ))}
+        </section>
+      )}
+
+      <section className="product-mockup-hero">
+        <div>
+          <span>SportsEdge workspace</span>
+          <h1>{active.label}: one sport selected, one live market picture.</h1>
+        </div>
+        <div className="product-mockup-metrics">
+          <div><span>Primary event</span><strong>{active.headline}</strong></div>
+          <div><span>Live modules</span><strong>Matrix / Profiles / News</strong></div>
+          <div><span>Decision layer</span><strong>Consensus + bias</strong></div>
+        </div>
+      </section>
+
+      <section className="product-mockup-grid">
+        <article className="product-mockup-panel events">
+          <div className="product-mockup-panel-head">
+            <span>Today</span>
+            <strong>{active.label} events</strong>
+          </div>
+          <div className="product-mockup-event-list">
+            {active.events.map((event, index) => (
+              <button type="button" className={index === 0 ? "active" : ""} key={`${event.time}-${event.event}`}>
+                <span>{event.time}</span>
+                <strong>{event.event}</strong>
+                <em>{event.market}</em>
+                <b>{event.liquidity}</b>
+                <i>{event.alert}</i>
+              </button>
+            ))}
+          </div>
+        </article>
+
+        <article className="product-mockup-panel matrix">
+          <div className="product-mockup-panel-head">
+            <span>Odds matrix</span>
+            <strong>{active.headline}</strong>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Selection</th>
+                <th>Consensus</th>
+                <th>Swing</th>
+                <th>Align</th>
+                <th>Conf</th>
+                <th>BF</th>
+                <th>MB</th>
+                <th>SE</th>
+              </tr>
+            </thead>
+            <tbody>
+              {active.matrix.map((row) => (
+                <tr key={row.selection}>
+                  <td>{row.selection}</td>
+                  <td className="mono positive">{row.consensus}</td>
+                  <td className={row.swing === "Lay" ? "negative" : row.swing === "Back" ? "positive" : ""}>{row.swing}</td>
+                  <td>{row.align}</td>
+                  <td>{row.confidence}</td>
+                  <td><span className={row.bf.startsWith("B") ? "signal buy" : row.bf.startsWith("L") ? "signal sell" : "signal neutral"}>{row.bf}</span></td>
+                  <td><span className={row.mb.startsWith("B") ? "signal buy" : row.mb.startsWith("L") ? "signal sell" : "signal neutral"}>{row.mb}</span></td>
+                  <td><span className={row.se === "Flag" ? "route flag" : "route"}>{row.se}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </article>
+
+        <aside className="product-mockup-panel news">
+          <div className="product-mockup-panel-head">
+            <span>News</span>
+            <strong>Sport filtered</strong>
+          </div>
+          <div className="product-mockup-news-list">
+            {active.news.map((item) => (
+              <article key={`${item.source}-${item.time}`}>
+                <b>{item.tag}</b>
+                <strong>{item.title}</strong>
+                <span>{item.source}</span>
+                <time>{item.time}</time>
+              </article>
+            ))}
+          </div>
+        </aside>
+
+        <article className="product-mockup-panel profiles">
+          <div className="product-mockup-panel-head">
+            <span>Profiles</span>
+            <strong>Teams / players / competitors</strong>
+          </div>
+          <div className="product-mockup-profile-grid">
+            {active.profiles.map((profile) => (
+              <div key={profile.name}>
+                <TeamLogoStack name={profile.name} />
+                <strong>{profile.name}</strong>
+                <span>{profile.role}</span>
+                <em>{profile.status}</em>
+                <b>{profile.impact}</b>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="product-mockup-panel players">
+          <div className="product-mockup-panel-head">
+            <span>Player layer</span>
+            <strong>Market relevant signals</strong>
+          </div>
+          <div className="product-mockup-player-list">
+            {active.players.map((player) => (
+              <div key={player.name}>
+                <span>{player.role}</span>
+                <strong>{player.name}</strong>
+                <b>{player.signal}</b>
+                <em>{player.note}</em>
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
+    </main>
+  );
+}
+
 function TeamProfilePage({ slug }: { slug: string }) {
   const [profile, setProfile] = useState<FootballTeamProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -5212,16 +5764,7 @@ function TeamProfilePage({ slug }: { slug: string }) {
 
   return (
     <main className="team-profile-page">
-      <header className="team-profile-topbar">
-        <a className="football-demo-brand" href="#dashboard" aria-label="SportsEdge dashboard">
-          <img src={sportsEdgeMarketsLogo} alt="SportsEdge" />
-        </a>
-        <nav>
-          <a href="#dashboard">Dashboard</a>
-          <a href="#matrix">Matrix</a>
-          <a href="#football-demo">Football intelligence</a>
-        </nav>
-      </header>
+      <SportsEdgeTopbar active="football" />
 
       <section className="team-profile-hero">
         <div className="team-profile-title">
@@ -5273,7 +5816,14 @@ function TeamProfilePage({ slug }: { slug: string }) {
             <span>Home Venue</span>
             <strong>{venue?.name || "Stamford Bridge"}</strong>
           </div>
-          {venue?.imageUrl && <img src={venue.imageUrl} alt={venue.name} />}
+          <div className="team-profile-venue-visual" aria-label="Home venue summary">
+            <div>
+              <span>Home ground</span>
+              <strong>{venue?.name || "Stamford Bridge"}</strong>
+              <em>{venue?.city || "London"} / {venue?.capacity?.toLocaleString() || "41,841"} capacity</em>
+            </div>
+            <b>{profile?.asset?.ticker || profile?.code || "CHE"}</b>
+          </div>
           <div className="team-profile-list">
             <span><b>City</b>{venue?.city || "London"}</span>
             <span><b>Address</b>{venue?.address || "Fulham Road"}</span>
@@ -6118,6 +6668,7 @@ export default function App() {
 
   let screen;
   if (hash.startsWith("#team/")) screen = <TeamProfilePage slug={hash.replace("#team/", "") || "chelsea"} />;
+  else if (hash === "#product-map") screen = <SportsEdgeProductMockupPage />;
   else if (hash === "#football-demo") screen = <FootballIntelligenceDemoPage />;
   else if (previewDashboard && (hash === "#dashboard" || hash === "#testboard" || hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash) || !hash)) screen = <TestboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#login") screen = <LoginScreen />;
