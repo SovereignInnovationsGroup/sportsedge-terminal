@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Component, Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -1125,6 +1125,10 @@ function teamLogoAsset(team: string) {
   return TEAM_LOGO_URLS[key] ? { url: TEAM_LOGO_URLS[key], isFlag: false } : null;
 }
 
+function teamLogoUrl(team: string) {
+  return teamLogoAsset(team)?.url || "";
+}
+
 function TeamLogoStack({ name }: { name: string }) {
   const teams = fixtureTeams(name);
   if (teams.length === 0) {
@@ -1253,6 +1257,105 @@ function mergeCommandOptions(options: CommandOption[]) {
     seen.add(key);
     return true;
   });
+}
+
+function StandaloneNewsRail({ sport = "football", label }: { sport?: string; label?: string }) {
+  const [items, setItems] = useState<NewsItem[]>([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams({ limit: "40" });
+    if (sport !== "all") params.set("sport", apiSportValue(sport));
+    fetch(`/api/news?${params.toString()}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const text = await response.text();
+        const payload = text ? JSON.parse(text) : {};
+        if (!response.ok || !Array.isArray(payload.items)) throw new Error("News unavailable");
+        setItems(payload.items);
+      })
+      .catch((error) => {
+        if (error?.name !== "AbortError") setItems([]);
+      });
+    return () => controller.abort();
+  }, [sport]);
+
+  return (
+    <aside className="entry-news-rail terminal-news-rail" aria-label="Live news feed">
+      <div className="sport-news-head entry-news-tabs-head">
+        <div>
+          <h2>News</h2>
+          <span>{label || `${displayLabel(sport, "all").toUpperCase()} SPORTSEDGE NEWS`}</span>
+        </div>
+      </div>
+      <div className="sport-news-list">
+        {items.slice(0, 40).map((item) => (
+          <article className="sport-news-card" key={`standalone-news-${item.id}`} title={newsContextText(item)}>
+            <div className={`sport-news-thumb${newsImageUrl(item) ? "" : " empty"}`}>
+              {newsImageUrl(item) ? <img src={newsImageUrl(item)} alt="" loading="lazy" /> : <span>{teamInitials(item.source_name || item.sport || "SE")}</span>}
+            </div>
+            <div>
+              <strong>{cleanText(item.title)}</strong>
+              <p>{newsContextText(item) || displayLabel(item.source_name, "Source update")}</p>
+            </div>
+            <footer>
+              <span>{displayLabel(item.sport, "news")}</span>
+              {newsOpenUrl(item) && <a href={newsOpenUrl(item)} target="_blank" rel="noreferrer">Open</a>}
+              <time>{formatDate(item.published_at || item.discovered_at)}</time>
+            </footer>
+          </article>
+        ))}
+        {items.length === 0 && (
+          <div className="sport-news-empty">
+            <Newspaper size={18} />
+            <strong>No News yet</strong>
+            <span>The shell is still alive; waiting for SportsEdge news.</span>
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+class RouteErrorBoundary extends Component<
+  { children: ReactNode; routeKey: string; fallback: (message: string) => ReactNode },
+  { failedRoute: string | null; message: string }
+> {
+  state = { failedRoute: null, message: "" };
+
+  static getDerivedStateFromError(error: Error) {
+    return {
+      failedRoute: window.location.hash || "#dashboard",
+      message: error?.message || "Screen failed to render"
+    };
+  }
+
+  componentDidUpdate(previousProps: { routeKey: string }) {
+    if (previousProps.routeKey !== this.props.routeKey && this.state.failedRoute) {
+      this.setState({ failedRoute: null, message: "" });
+    }
+  }
+
+  render() {
+    if (this.state.failedRoute) return this.props.fallback(this.state.message);
+    return this.props.children;
+  }
+}
+
+function TerminalRouteFallback({ message, onLogout }: { message: string; onLogout: () => void }) {
+  return (
+    <main className="testboard-shell">
+      <SportsEdgeTopbar active="dashboard" onLogout={onLogout} />
+      <section className="terminal-workspace">
+        <div className="terminal-workspace-main route-error-panel">
+          <AlertTriangle size={24} />
+          <strong>Screen failed, shell preserved</strong>
+          <span>{message || "The selected screen could not render."}</span>
+          <a href="#dashboard">Back to dashboard</a>
+        </div>
+        <StandaloneNewsRail sport="all" label="ALL SPORTSEDGE NEWS" />
+      </section>
+    </main>
+  );
 }
 
 function logoutToLogin() {
@@ -6078,10 +6181,8 @@ function TeamProfilePage({ slug }: { slug: string }) {
     ["Profile source", "API-Football cache + SportsEdge team registry"]
   ];
 
-  return (
-    <main className="team-profile-page">
-      <SportsEdgeTopbar active="football" />
-
+  const content = (
+    <div className="team-profile-page">
       <section className="team-profile-hero">
         <div className="team-profile-title">
           <div className="team-profile-crest">
@@ -6181,6 +6282,18 @@ function TeamProfilePage({ slug }: { slug: string }) {
             </p>
           )}
         </article>
+      </section>
+    </div>
+  );
+
+  return (
+    <main className="testboard-shell team-profile-shell">
+      <SportsEdgeTopbar active="football" />
+      <section className="terminal-workspace">
+        <div className="terminal-workspace-main team-profile-main">
+          {content}
+        </div>
+        <StandaloneNewsRail sport="football" label="FOOTBALL SPORTSEDGE NEWS" />
       </section>
     </main>
   );
@@ -7005,7 +7118,12 @@ export default function App() {
 
   return (
     <>
-      {screen}
+      <RouteErrorBoundary
+        routeKey={hash || "#dashboard"}
+        fallback={(message) => <TerminalRouteFallback message={message} onLogout={handleLogout} />}
+      >
+        {screen}
+      </RouteErrorBoundary>
       <RefreshUpdateNotice />
     </>
   );
