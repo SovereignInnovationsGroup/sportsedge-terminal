@@ -5169,6 +5169,21 @@ button {
   padding: 2px;
 }
 
+.team-logo-frame.flag-logo {
+  background: rgba(3, 8, 13, 0.94);
+  overflow: hidden;
+}
+
+.team-logo-frame.flag-logo img {
+  background: transparent;
+  object-fit: cover;
+  padding: 0;
+}
+
+.team-logo-frame.flag-logo span {
+  display: none;
+}
+
 .team-logo-stack .team-logo-frame + .team-logo-frame,
 .team-logo-stack .team-logo-frame + .team-badge,
 .team-logo-stack .team-badge + .team-logo-frame,

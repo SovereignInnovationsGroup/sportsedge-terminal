@@ -802,6 +802,11 @@ type FootballTeamAsset = {
   country: string;
   currentLeague: string;
   logoUrl?: string | null;
+  flagUrl?: string | null;
+  countryCode?: string | null;
+  provider?: string | null;
+  providerTeamId?: string | null;
+  national?: boolean;
   aliases: string[];
 };
 
@@ -1111,9 +1116,13 @@ const TEAM_LOGO_URLS: Record<string, string> = {
   "toulouse fc": "https://a.espncdn.com/i/teamlogos/soccer/500/179.png"
 };
 
-function teamLogoUrl(team: string) {
+function teamLogoAsset(team: string) {
   const key = normalizeSelectionKey(team);
-  return footballTeamAsset(team)?.logoUrl || TEAM_LOGO_URLS[key] || "";
+  const asset = footballTeamAsset(team);
+  if (asset?.national && asset.flagUrl) return { url: asset.flagUrl, isFlag: true };
+  if (asset?.logoUrl) return { url: asset.logoUrl, isFlag: false };
+  if (asset?.flagUrl) return { url: asset.flagUrl, isFlag: true };
+  return TEAM_LOGO_URLS[key] ? { url: TEAM_LOGO_URLS[key], isFlag: false } : null;
 }
 
 function TeamLogoStack({ name }: { name: string }) {
@@ -1124,10 +1133,10 @@ function TeamLogoStack({ name }: { name: string }) {
   return (
     <span className="team-logo-stack" aria-hidden="true">
       {teams.map((team) => {
-        const logo = teamLogoUrl(team);
+        const logo = teamLogoAsset(team);
         return logo ? (
-          <span className="team-logo-frame" key={team} title={team}>
-            <img src={logo} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+          <span className={`team-logo-frame${logo.isFlag ? " flag-logo" : ""}`} key={team} title={team}>
+            <img src={logo.url} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />
             <span>{teamInitials(team)}</span>
           </span>
         ) : (
@@ -1144,14 +1153,14 @@ function MatrixEventCell({ name, sport }: { name: string; sport: string }) {
     return (
       <div className="matrix-event-teams" title={name}>
         {teams.map((team, index) => {
-          const logo = teamLogoUrl(team);
+          const logo = teamLogoAsset(team);
           return (
             <Fragment key={`${team}-${index}`}>
               {index > 0 && <span className="matrix-event-vs">-</span>}
               <span className="matrix-team-side">
                 {logo ? (
-                  <span className="team-logo-frame matrix-team-logo" title={team}>
-                    <img src={logo} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+                  <span className={`team-logo-frame matrix-team-logo${logo.isFlag ? " flag-logo" : ""}`} title={team}>
+                    <img src={logo.url} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />
                     <span>{teamInitials(team)}</span>
                   </span>
                 ) : (
@@ -1218,6 +1227,34 @@ function resolveCommand(query: string) {
   return COMMAND_OPTIONS.find((option) => commandMatches(option, query)) || null;
 }
 
+function footballTeamCommand(team: FootballTeamAsset): CommandOption {
+  const name = team.shortName || team.fullName;
+  return {
+    label: `${name} profile`,
+    detail: `${team.country || "Global"} / ${team.currentLeague || "Football"}${team.national ? " / national team" : ""}`,
+    route: `#team/${team.slug}`,
+    keywords: [
+      team.slug,
+      team.ticker,
+      team.fullName,
+      team.shortName,
+      team.country,
+      team.currentLeague,
+      ...(team.aliases || [])
+    ].filter(Boolean)
+  };
+}
+
+function mergeCommandOptions(options: CommandOption[]) {
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    const key = option.route;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function logoutToLogin() {
   window.localStorage.removeItem("sportsedge.auth.token");
   window.localStorage.removeItem("sportsedge.auth.user");
@@ -1228,8 +1265,42 @@ function SportsEdgeTopbar({ active, onLogout = logoutToLogin }: { active?: strin
   const [query, setQuery] = useState("");
   const [commandOpen, setCommandOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [teamSearchResults, setTeamSearchResults] = useState<FootballTeamAsset[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const options = useMemo(() => COMMAND_OPTIONS.filter((option) => commandMatches(option, query)).slice(0, 7), [query]);
+  const options = useMemo(() => {
+    const teamOptions = query.trim().replace(/^\//, "").length >= 2
+      ? teamSearchResults.map(footballTeamCommand)
+      : [];
+    return mergeCommandOptions([
+      ...teamOptions,
+      ...COMMAND_OPTIONS.filter((option) => commandMatches(option, query))
+    ]).slice(0, 10);
+  }, [query, teamSearchResults]);
+
+  useEffect(() => {
+    const search = query.trim().replace(/^\//, "");
+    if (search.length < 2) {
+      setTeamSearchResults([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/assets/football-teams?q=${encodeURIComponent(search)}&active=true&limit=8`, {
+          cache: "no-store",
+          signal: controller.signal
+        });
+        const payload = await response.json();
+        if (response.ok && Array.isArray(payload.teams)) setTeamSearchResults(payload.teams);
+      } catch {
+        if (!controller.signal.aborted) setTeamSearchResults([]);
+      }
+    }, 160);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [query]);
 
   useEffect(() => {
     function handleSlash(event: KeyboardEvent) {
@@ -1281,7 +1352,7 @@ function SportsEdgeTopbar({ active, onLogout = logoutToLogin }: { active?: strin
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
-              runCommand(resolveCommand(query) || options[0] || null);
+              runCommand(options[0] || resolveCommand(query) || null);
             }
             if (event.key === "Escape") {
               setCommandOpen(false);
@@ -3725,6 +3796,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
   const [backendError, setBackendError] = useState("");
   const [snapshotLoaded, setSnapshotLoaded] = useState(false);
   const [marketSearch, setMarketSearch] = useState("");
+  const [teamSearchResults, setTeamSearchResults] = useState<FootballTeamAsset[]>([]);
   const [commandOpen, setCommandOpen] = useState(false);
   const [marketGroup, setMarketGroup] = useState("all");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -3752,7 +3824,15 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
   const rowOrderRef = useRef<Record<string, number>>({});
   const nextRowOrderRef = useRef(0);
   const sportDashboard = SPORT_DASHBOARDS[selectedSport] || SPORT_DASHBOARDS.football;
-  const commandOptions = useMemo(() => COMMAND_OPTIONS.filter((option) => commandMatches(option, marketSearch)).slice(0, 6), [marketSearch]);
+  const commandOptions = useMemo(() => {
+    const teamOptions = marketSearch.trim().replace(/^\//, "").length >= 2
+      ? teamSearchResults.map(footballTeamCommand)
+      : [];
+    return mergeCommandOptions([
+      ...teamOptions,
+      ...COMMAND_OPTIONS.filter((option) => commandMatches(option, marketSearch))
+    ]).slice(0, 10);
+  }, [marketSearch, teamSearchResults]);
 
   function runCommand(option: CommandOption | null) {
     if (!option) return;
@@ -3803,7 +3883,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
     let cancelled = false;
     async function loadFootballTeamAssets() {
       try {
-        const response = await fetch("/api/assets/football-teams?active=true&limit=1000", { cache: "no-store" });
+        const response = await fetch("/api/assets/football-teams?active=true&limit=10000", { cache: "no-store" });
         const payload = await response.json();
         if (!response.ok || !Array.isArray(payload.teams)) return;
         if (!cancelled) {
@@ -3820,6 +3900,31 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const search = marketSearch.trim().replace(/^\//, "");
+    if (search.length < 2) {
+      setTeamSearchResults([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/assets/football-teams?q=${encodeURIComponent(search)}&active=true&limit=10`, {
+          cache: "no-store",
+          signal: controller.signal
+        });
+        const payload = await response.json();
+        if (response.ok && Array.isArray(payload.teams)) setTeamSearchResults(payload.teams as FootballTeamAsset[]);
+      } catch {
+        if (!controller.signal.aborted) setTeamSearchResults([]);
+      }
+    }, 160);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [marketSearch]);
   const selectedSportLabel = SPORT_LABELS.get(selectedSport) || "Football";
   const marketGroups = SPORT_MARKET_GROUPS[selectedSport] || SPORT_MARKET_GROUPS.football;
   const selectedFootballLeague = selectedSport === "football" ? footballLeagueByValue(marketGroup) : null;
@@ -4919,7 +5024,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
-                runCommand(resolveCommand(marketSearch) || commandOptions[0] || null);
+                runCommand(commandOptions[0] || resolveCommand(marketSearch) || null);
               }
               if (event.key === "Escape") {
                 setCommandOpen(false);
