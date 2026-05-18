@@ -1290,6 +1290,10 @@ function rowMatchesSelectedSport(row: BackendPriceRow, selectedSport: string) {
 
 function rowMatchesMarketGroup(row: BackendPriceRow, group: string) {
   if (group === "all") return true;
+  const competitionText = [
+    row.competitionName,
+    ...Object.values(row.matches || {}).map((match) => match?.competitionName)
+  ].join(" ").toLowerCase();
   const haystack = [
     row.name,
     row.sportName,
@@ -1303,16 +1307,23 @@ function rowMatchesMarketGroup(row: BackendPriceRow, group: string) {
       match?.marketType
     ])
   ].join(" ").toLowerCase();
+  const englishCountryContext = /\b(england|english|efl)\b/.test(competitionText);
+  const englishLeagueContext = /\b(championship|league one|league two|fa cup|efl cup|carabao cup)\b/.test(competitionText)
+    || (/\bpremier league\b/.test(competitionText) && !/\b(singapore|malaysia|wales|northern ireland|israel|egypt|ghana|ukraine|russia|canadian|canada|jamaica|kenya|south africa)\b/.test(competitionText));
+  const isEnglishFootball = englishCountryContext || englishLeagueContext;
   const start = row.startAt ? new Date(row.startAt) : null;
   const isToday = start && !Number.isNaN(start.getTime())
     ? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(start) === new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date())
     : false;
   const footballTerms = FOOTBALL_GROUP_TERMS[group];
-  if (footballTerms) return footballTerms.some((term) => ` ${haystack} `.includes(term));
+  if (footballTerms) {
+    if (["premier-league", "championship", "league-one", "league-two", "fa-cup", "efl-cup"].includes(group) && !isEnglishFootball) return false;
+    return footballTerms.some((term) => ` ${haystack} `.includes(term));
+  }
   if (group === "today") return Boolean(isToday);
   if (group === "live") return haystack.includes("live") || Boolean(isToday);
-  if (group === "england") return ["england", "premier league", "championship"].some((term) => haystack.includes(term));
-  if (group === "english") return ["england", "english", "premier league", "championship", "league one", "league two", "fa cup", "efl"].some((term) => haystack.includes(term));
+  if (group === "england") return isEnglishFootball;
+  if (group === "english") return isEnglishFootball;
   if (group === "scottish") return ["scotland", "scottish", "scottish premiership", "scottish championship"].some((term) => haystack.includes(term));
   if (group === "uefa") return ["uefa", "champions league", "europa league", "conference league", "nations league"].some((term) => haystack.includes(term));
   if (group === "europe") return ["champions league", "europa", "euro", "spain", "la liga", "italy", "serie", "germany", "bundesliga", "france", "ligue"].some((term) => haystack.includes(term));
