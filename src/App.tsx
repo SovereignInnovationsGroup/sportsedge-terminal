@@ -4801,6 +4801,17 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
             <div className="football-region-breadcrumb" aria-label="Football breadcrumb">
               <button
                 type="button"
+                className="parent"
+                onClick={() => {
+                  setMarketGroup("all");
+                  setSelectedFixtureIndex(null);
+                }}
+              >
+                All
+              </button>
+              <span>/</span>
+              <button
+                type="button"
                 className={!selectedFootballLeague ? "active" : "parent"}
                 onClick={() => {
                   setMarketGroup(selectedFootballRegion.value);
