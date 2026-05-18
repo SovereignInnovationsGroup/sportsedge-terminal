@@ -3538,10 +3538,7 @@ button {
 
 .football-demo-hero,
 .team-profile-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 24px;
-  align-items: end;
+  display: block;
   padding: 44px 0 28px;
 }
 
@@ -5014,7 +5011,7 @@ button {
   min-width: 1180px;
 }
 
-.sportsedge-broker-table .col-time { width: 60px; }
+.sportsedge-broker-table .col-time { width: 96px; }
 .sportsedge-broker-table .col-market { width: 280px; }
 .sportsedge-broker-table .col-contract { width: 300px; }
 .sportsedge-broker-table .col-liquidity { width: 92px; }
@@ -5070,7 +5067,7 @@ button {
 .testboard-matrix th:first-child,
 .testboard-matrix td:first-child {
   text-align: left;
-  width: 72px;
+  width: 96px;
 }
 
 .testboard-matrix th:nth-child(2),

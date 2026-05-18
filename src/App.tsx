@@ -631,6 +631,7 @@ function extractFixtureExchangeUpdate(channel: string, payload: unknown, sport: 
 
 function competitionCountry(competition: string) {
   const value = competition.toLowerCase();
+  if (value.includes("uefa") || value.includes("champions league") || value.includes("europa")) return "Europe";
   if (value.includes("premier league") || value.includes("uk racing") || value.includes("championship") || value.includes("wimbledon")) return "England";
   if (value.includes("la liga")) return "Spain";
   if (value.includes("serie a")) return "Italy";
@@ -643,7 +644,26 @@ function competitionCountry(competition: string) {
 }
 
 function fixtureGroupLabel(competition: string) {
+  if (String(competition || "").includes(" / ")) return competition;
   return `${competitionCountry(competition)} / ${competition}`;
+}
+
+function fixtureCompetitionLabel(competition: string, eventName: string) {
+  const raw = String(competition || "").trim();
+  const normalizedRaw = normalizeSelectionKey(raw);
+  const isGeneric = !raw || ["soccer", "football", "global", "exchange prices", "sportsedge"].includes(normalizedRaw);
+  const teams = fixtureTeams(eventName);
+  const assets = teams.map((team) => footballTeamAsset(team)).filter(Boolean) as FootballTeamAsset[];
+  const countries = Array.from(new Set(assets.map((asset) => asset.country).filter(Boolean)));
+  const leagues = Array.from(new Set(assets.map((asset) => asset.currentLeague).filter(Boolean)));
+
+  if ((isGeneric || competitionCountry(raw) === "Global") && countries.length === 1) {
+    return `${countries[0]} / ${leagues[0] || "Football"}`;
+  }
+  if ((isGeneric || competitionCountry(raw) === "Global") && countries.length > 1) {
+    return `International / ${raw && !isGeneric ? raw : "Football"}`;
+  }
+  return fixtureGroupLabel(raw || "Football");
 }
 
 function flagEmoji(countryCode: string) {
@@ -2049,6 +2069,8 @@ function displayStartTime(row: Pick<BackendPriceRow, "startAt" | "name" | "marke
   const start = row.startAt ? new Date(row.startAt) : null;
   if (start && !Number.isNaN(start.getTime())) {
     return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
       hour: "2-digit",
       minute: "2-digit",
       timeZone: "Europe/Madrid",
@@ -4613,7 +4635,8 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
   const hasBackendRows = displayPriceRows.length > 0;
   const matrixRows = hasBackendRows ? displayPriceRows.map(({ row, totalValue, marketCount }, fixtureIndex) => {
     const time = displayStartTime(row);
-    const competition = row.competitionName || Object.values(row.matches || {}).find(Boolean)?.competitionName || selectedSportLabel;
+    const rawCompetition = row.competitionName || Object.values(row.matches || {}).find(Boolean)?.competitionName || selectedSportLabel;
+    const competition = fixtureCompetitionLabel(rawCompetition, row.name);
     const primaryMarket = row.marketName || row.marketType || Object.values(row.matches || {}).find(Boolean)?.marketName || "Exchange prices";
     const market = marketCount > 1 ? `${primaryMarket} + ${marketCount - 1} markets` : primaryMarket;
     return {
@@ -6225,11 +6248,6 @@ function TeamProfilePage({ slug }: { slug: string }) {
             </p>
           </div>
         </div>
-        <div className="team-profile-status">
-          <span>{loading ? "Loading" : error ? "Attention" : "Ready"}</span>
-          <strong>{error ? "Profile issue" : "Chelsea profile cache"}</strong>
-          <em>{error || "API-Football team endpoint proved with one request"}</em>
-        </div>
       </section>
 
       <section className="team-profile-grid">
@@ -6261,6 +6279,7 @@ function TeamProfilePage({ slug }: { slug: string }) {
             <span>Home Venue</span>
             <strong>{venue?.name || "Stamford Bridge"}</strong>
           </div>
+          {venue?.imageUrl && <img src={venue.imageUrl} alt={`${venue.name || name} venue`} loading="lazy" />}
           <div className="team-profile-venue-visual" aria-label="Home venue summary">
             <div>
               <span>Home ground</span>
