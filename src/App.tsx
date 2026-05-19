@@ -6218,6 +6218,7 @@ type FootballTeamProfile = {
 type FootballPlayerStat = {
   id: string;
   season: number;
+  providerLeagueId?: string | null;
   leagueName: string | null;
   teamName: string | null;
   position: string | null;
@@ -6225,13 +6226,19 @@ type FootballPlayerStat = {
   lineups: number | null;
   minutes: number | null;
   rating: number | null;
+  captain?: boolean | null;
   goalsTotal: number | null;
   assists: number | null;
   shotsTotal: number | null;
   passesTotal: number | null;
   tacklesTotal: number | null;
+  duelsTotal?: number | null;
+  dribblesAttempts?: number | null;
+  foulsDrawn?: number | null;
   cardsYellow: number | null;
   cardsRed: number | null;
+  penaltiesScored?: number | null;
+  penaltiesMissed?: number | null;
   syncedAt: string | null;
 };
 
@@ -6702,10 +6709,36 @@ function TeamProfilePage({ slug }: { slug: string }) {
           {profile?.squad?.length ? (
           <div className="team-profile-squad-grid">
               {profile.squad.map((player) => (
-                <a href={`#player/${encodeURIComponent(player.id)}`} key={player.id}>
-                  {player.photoUrl ? <img src={player.photoUrl} alt="" /> : <span>{teamInitials(player.name)}</span>}
-                  <strong>{player.name}</strong>
-                  <em>{player.position || "Player"} {player.number ? `#${player.number}` : ""}</em>
+                <a className="team-player-card" href={`#player/${encodeURIComponent(player.id)}`} key={player.id}>
+                  <div className="team-player-card-head">
+                    {player.photoUrl ? <img src={player.photoUrl} alt="" /> : <span>{teamInitials(player.name)}</span>}
+                    <div>
+                      <strong>{player.name}</strong>
+                      <em>{player.position || "Player"} {player.number ? `#${player.number}` : ""}</em>
+                    </div>
+                  </div>
+                  {player.stats?.[0] ? (
+                    <div className="team-player-stat-strip">
+                      <span><b>Season</b>{player.stats[0].season}</span>
+                      <span><b>League</b>{player.stats[0].leagueName || "-"}</span>
+                      <span><b>Apps</b>{player.stats[0].appearances ?? "-"}</span>
+                      <span><b>Starts</b>{player.stats[0].lineups ?? "-"}</span>
+                      <span><b>Mins</b>{player.stats[0].minutes ?? "-"}</span>
+                      <span><b>Rating</b>{player.stats[0].rating ?? "-"}</span>
+                      <span><b>Goals</b>{player.stats[0].goalsTotal ?? "-"}</span>
+                      <span><b>Assists</b>{player.stats[0].assists ?? "-"}</span>
+                      <span><b>Shots</b>{player.stats[0].shotsTotal ?? "-"}</span>
+                      <span><b>Passes</b>{player.stats[0].passesTotal ?? "-"}</span>
+                      <span><b>Tackles</b>{player.stats[0].tacklesTotal ?? "-"}</span>
+                      <span><b>Duels</b>{player.stats[0].duelsTotal ?? "-"}</span>
+                      <span><b>Dribbles</b>{player.stats[0].dribblesAttempts ?? "-"}</span>
+                      <span><b>Fouls Won</b>{player.stats[0].foulsDrawn ?? "-"}</span>
+                      <span><b>YC/RC</b>{player.stats[0].cardsYellow ?? "-"} / {player.stats[0].cardsRed ?? "-"}</span>
+                      <span><b>Pens</b>{player.stats[0].penaltiesScored ?? "-"} / {player.stats[0].penaltiesMissed ?? "-"}</span>
+                    </div>
+                  ) : (
+                    <div className="team-player-stat-empty">Stats queued</div>
+                  )}
                 </a>
               ))}
             </div>
