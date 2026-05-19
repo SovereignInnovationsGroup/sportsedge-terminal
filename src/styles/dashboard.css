@@ -3677,6 +3677,10 @@ button {
   padding: 8px 10px;
 }
 
+.team-profile-hero-facts span.wide {
+  flex: 1 1 620px;
+}
+
 .team-profile-hero-facts b {
   flex: 0 0 auto;
   color: var(--amber);
@@ -3688,10 +3692,12 @@ button {
 
 .team-profile-hero-facts strong {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
   color: #dce6f1;
   font-size: 14px;
   font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .football-demo-team-title strong {

@@ -6585,14 +6585,17 @@ function TeamProfilePage({ slug }: { slug: string }) {
   const shortName = profile?.asset?.shortName || profile?.name || "Chelsea";
   const logoUrl = profile?.asset?.logoUrl || profile?.logoUrl || teamLogoUrl(name);
   const venue = profile?.venue;
+  const venueName = venue?.name || "Home venue";
+  const venueAddress = [venue?.address, venue?.city].filter(Boolean).join(", ") || venue?.city || "Address unavailable";
+  const venueCapacity = venue?.capacity ? `${venue.capacity.toLocaleString()} capacity` : "";
+  const teamCode = profile?.asset?.ticker || profile?.code || teamTicker(name);
   const venueFacts = [
-    ["City", venue?.city || "London"],
-    ["Address", venue?.address || "Fulham Road"],
-    ["Capacity", venue?.capacity?.toLocaleString() || "41,841"],
-    ["Surface", venue?.surface || "grass"]
+    { label: "Venue", value: venueName },
+    { label: "Address", value: [venueAddress, venueCapacity].filter(Boolean).join(" / "), wide: true },
+    { label: "Code", value: teamCode }
   ];
   const profileStats = [
-    ["Code", profile?.asset?.ticker || profile?.code || "CHE"],
+    ["Code", teamCode],
     ["Country", profile?.country || "England"],
     ["League", profile?.asset?.currentLeague || "Premier League"],
     ["Founded", profile?.founded || 1905],
@@ -6617,10 +6620,10 @@ function TeamProfilePage({ slug }: { slug: string }) {
             <span>SportsEdge football profile</span>
             <h1>{name}</h1>
             <div className="team-profile-hero-facts" aria-label="Home venue details">
-              {venueFacts.map(([label, value]) => (
-                <span key={label}>
-                  <b>{label}</b>
-                  <strong>{value}</strong>
+              {venueFacts.map((fact) => (
+                <span className={fact.wide ? "wide" : ""} key={fact.label}>
+                  <b>{fact.label}</b>
+                  <strong>{fact.value}</strong>
                 </span>
               ))}
             </div>
@@ -6653,22 +6656,6 @@ function TeamProfilePage({ slug }: { slug: string }) {
                 <b key={alias}>{alias}</b>
               ))}
             </div>
-          </div>
-        </article>
-
-        <article className="team-profile-panel venue">
-          <div className="team-profile-panel-head">
-            <span>Home Venue</span>
-            <strong>{venue?.name || "Stamford Bridge"}</strong>
-          </div>
-          {venue?.imageUrl && <img src={venue.imageUrl} alt={`${venue.name || name} venue`} loading="lazy" />}
-          <div className="team-profile-venue-visual" aria-label="Home venue summary">
-            <div>
-              <span>Home ground</span>
-              <strong>{venue?.name || "Stamford Bridge"}</strong>
-              <em>{venue?.city || "London"} / {venue?.capacity?.toLocaleString() || "41,841"} capacity</em>
-            </div>
-            <b>{profile?.asset?.ticker || profile?.code || "CHE"}</b>
           </div>
         </article>
 
