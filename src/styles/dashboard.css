@@ -3115,9 +3115,9 @@ button {
 
 .matrix-event-teams .team-badge.small,
 .team-logo-frame.matrix-team-logo {
-  flex: 0 0 24px;
-  width: 24px;
-  height: 24px;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
 }
 
 .matrix-event-teams .team-badge.small {
@@ -3129,8 +3129,8 @@ button {
 }
 
 .team-logo-frame.matrix-team-logo img {
-  width: 24px;
-  height: 24px;
+  width: 100%;
+  height: 100%;
   padding: 2px;
 }
 
@@ -4781,6 +4781,20 @@ button {
   background: transparent;
 }
 
+@media (max-width: 980px) {
+  .team-profile-shell .terminal-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .team-profile-shell .entry-news-rail {
+    display: none;
+  }
+
+  .team-profile-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .route-error-panel {
   display: grid;
   place-content: center;
@@ -5455,10 +5469,11 @@ button {
   flex: 0 0 30px;
   width: 30px;
   height: 30px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  overflow: hidden;
+  border: 1px solid rgba(197, 158, 48, 0.62);
+  border-radius: 50%;
+  background: rgba(3, 8, 13, 0.94);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.42);
 }
 
 .team-logo-frame span {
@@ -5478,21 +5493,18 @@ button {
   z-index: 1;
   width: 100%;
   height: 100%;
-  border-radius: 0;
-  background: transparent;
+  border-radius: 50%;
+  background: rgba(3, 8, 13, 0.94);
   object-fit: contain;
-  padding: 0;
+  padding: 2px;
 }
 
 .team-logo-frame.flag-logo {
   background: rgba(3, 8, 13, 0.94);
-  border-radius: 50%;
-  overflow: hidden;
 }
 
 .team-logo-frame.flag-logo img {
   background: transparent;
-  border-radius: 50%;
   object-fit: cover;
   padding: 0;
 }
