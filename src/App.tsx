@@ -1308,6 +1308,14 @@ function teamLogoAsset(team: string) {
   return TEAM_LOGO_URLS[key] ? { url: TEAM_LOGO_URLS[key], isFlag: false } : null;
 }
 
+function eventLogoAsset(name: string) {
+  const normalized = name.toLowerCase();
+  if (/\bfifa\b|\bworld cup\b|\bclub world cup\b/.test(normalized)) {
+    return { url: "/images/fifa-logo.svg", isFlag: false };
+  }
+  return null;
+}
+
 function teamLogoUrl(team: string) {
   return teamLogoAsset(team)?.url || "";
 }
@@ -1315,6 +1323,17 @@ function teamLogoUrl(team: string) {
 function TeamLogoStack({ name }: { name: string }) {
   const teams = fixtureTeams(name);
   if (teams.length === 0) {
+    const eventLogo = eventLogoAsset(name);
+    if (eventLogo) {
+      return (
+        <span className="team-logo-stack" aria-hidden="true">
+          <span className="team-logo-frame event-logo" title={name}>
+            <img src={eventLogo.url} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+            <span>{teamFallbackBadge(name)}</span>
+          </span>
+        </span>
+      );
+    }
     return <span className={`team-badge${teamFallbackIsFlag(name) ? " flag" : ""}`}>{teamFallbackBadge(name)}</span>;
   }
   return (
@@ -6569,7 +6588,7 @@ function SportsEdgeProductMockupPage() {
 
 function ProfileBreadcrumbs({ items }: { items: Array<{ label: string; href?: string }> }) {
   return (
-    <nav className="profile-breadcrumbs" aria-label="Profile breadcrumb">
+    <nav className="profile-breadcrumbs football-region-breadcrumb" aria-label="Profile breadcrumb">
       {items.map((item, index) => (
         <Fragment key={`${item.label}-${index}`}>
           {item.href ? <a href={item.href}>{item.label}</a> : <span>{item.label}</span>}
@@ -6577,6 +6596,14 @@ function ProfileBreadcrumbs({ items }: { items: Array<{ label: string; href?: st
         </Fragment>
       ))}
     </nav>
+  );
+}
+
+function ProfileBreadcrumbStrip({ items }: { items: Array<{ label: string; href?: string }> }) {
+  return (
+    <section className="football-region-strip profile-region-strip" aria-label="Profile navigation">
+      <ProfileBreadcrumbs items={items} />
+    </section>
   );
 }
 
@@ -6632,13 +6659,6 @@ function TeamProfilePage({ slug }: { slug: string }) {
 
   const content = (
     <div className="team-profile-page">
-      <ProfileBreadcrumbs
-        items={[
-          { label: "Dashboard", href: "#dashboard" },
-          { label: "Football", href: "#football" },
-          { label: name }
-        ]}
-      />
       <section
         className={`team-profile-hero${venue?.imageUrl ? " has-venue-image" : ""}`}
         style={venue?.imageUrl ? { backgroundImage: `linear-gradient(90deg, rgba(3, 5, 8, 0.94) 0%, rgba(3, 5, 8, 0.82) 42%, rgba(3, 5, 8, 0.56) 100%), linear-gradient(180deg, rgba(3, 5, 8, 0.2), rgba(3, 5, 8, 0.88)), url("${venue.imageUrl}")` } : undefined}
@@ -6776,6 +6796,13 @@ function TeamProfilePage({ slug }: { slug: string }) {
   return (
     <main className="testboard-shell team-profile-shell">
       <SportsEdgeTopbar active="football" />
+      <ProfileBreadcrumbStrip
+        items={[
+          { label: "All", href: "#dashboard" },
+          { label: "Football", href: "#football" },
+          { label: name }
+        ]}
+      />
       <section className="terminal-workspace">
         <div className="terminal-workspace-main team-profile-main">
           {content}
@@ -6825,17 +6852,17 @@ function PlayerProfilePage({ id }: { id: string }) {
   return (
     <main className="testboard-shell team-profile-shell">
       <SportsEdgeTopbar active="football" />
+      <ProfileBreadcrumbStrip
+        items={[
+          { label: "All", href: "#dashboard" },
+          { label: "Football", href: "#football" },
+          { label: teamName, href: teamHref },
+          { label: name }
+        ]}
+      />
       <section className="terminal-workspace">
         <div className="terminal-workspace-main team-profile-main">
           <div className="team-profile-page player-profile-page">
-            <ProfileBreadcrumbs
-              items={[
-                { label: "Dashboard", href: "#dashboard" },
-                { label: "Football", href: "#football" },
-                { label: teamName, href: teamHref },
-                { label: name }
-              ]}
-            />
             <section className="team-profile-hero">
               <div className="team-profile-title">
                 <div className="team-profile-crest player-photo">

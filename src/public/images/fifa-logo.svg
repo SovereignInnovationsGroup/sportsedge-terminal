@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="FIFA">
+  <rect width="120" height="120" rx="60" fill="#0a111b"/>
+  <circle cx="60" cy="60" r="53" fill="#12386c" stroke="#c8a02b" stroke-width="6"/>
+  <path d="M30 34h60v13H45v12h36v13H45v24H30V34Z" fill="#fff"/>
+  <path d="M72 74h18v22H72V74Z" fill="#c8a02b"/>
+  <text x="60" y="110" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="15" font-weight="900" fill="#fff">FIFA</text>
+</svg>

@@ -4845,12 +4845,10 @@ button {
   display: flex;
   align-items: center;
   gap: 7px;
-  min-height: 34px;
-  margin: 0 0 10px;
   color: var(--muted);
   font-family: var(--mono);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: 950;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -4868,6 +4866,10 @@ button {
 
 .profile-breadcrumbs span:last-child {
   color: var(--text);
+}
+
+.profile-region-strip {
+  justify-content: flex-start;
 }
 
 @media (max-width: 980px) {
@@ -5586,6 +5588,11 @@ button {
   background: rgba(3, 8, 13, 0.94);
   object-fit: contain;
   padding: 2px;
+}
+
+.team-logo-frame.event-logo img {
+  padding: 0;
+  object-fit: cover;
 }
 
 .team-logo-frame.flag-logo {
