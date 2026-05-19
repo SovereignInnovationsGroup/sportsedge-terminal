@@ -7,7 +7,6 @@ import {
   Bell,
   BriefcaseBusiness,
   CalendarClock,
-  ChevronRight,
   Database,
   Eye,
   EyeOff,
@@ -6592,7 +6591,7 @@ function ProfileBreadcrumbs({ items }: { items: Array<{ label: string; href?: st
       {items.map((item, index) => (
         <Fragment key={`${item.label}-${index}`}>
           {item.href ? <a href={item.href}>{item.label}</a> : <span>{item.label}</span>}
-          {index < items.length - 1 && <ChevronRight size={14} aria-hidden="true" />}
+          {index < items.length - 1 && <span>/</span>}
         </Fragment>
       ))}
     </nav>
@@ -6629,8 +6628,9 @@ function TeamProfilePage({ slug }: { slug: string }) {
     return () => controller.abort();
   }, [slug]);
 
-  const name = profile?.asset?.fullName || profile?.name || "Chelsea";
-  const shortName = profile?.asset?.shortName || profile?.name || "Chelsea";
+  const routeTeamName = decodeURIComponent(slug).replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const name = profile?.asset?.fullName || profile?.name || routeTeamName || "Team";
+  const shortName = profile?.asset?.shortName || profile?.name || routeTeamName || "Team";
   const logoUrl = profile?.asset?.logoUrl || profile?.logoUrl || teamLogoUrl(name);
   const venue = profile?.venue;
   const venueName = venue?.name || "Home venue";
@@ -6644,10 +6644,10 @@ function TeamProfilePage({ slug }: { slug: string }) {
   ];
   const profileStats = [
     ["Code", teamCode],
-    ["Country", profile?.country || "England"],
-    ["League", profile?.asset?.currentLeague || "Premier League"],
-    ["Founded", profile?.founded || 1905],
-    ["Provider ID", profile?.providerTeamId || "49"],
+    ["Country", profile?.country || "-"],
+    ["League", profile?.asset?.currentLeague || "-"],
+    ["Founded", profile?.founded || "-"],
+    ["Provider ID", profile?.providerTeamId || "-"],
     ["Synced", profile?.syncedAt ? formatTimeAgo(profile.syncedAt) : "seeded"]
   ];
   const marketContext = [
@@ -6703,7 +6703,7 @@ function TeamProfilePage({ slug }: { slug: string }) {
           <div className="team-profile-aliases">
             <span>Aliases</span>
             <div>
-              {(profile?.asset?.aliases?.length ? profile.asset.aliases : ["Chelsea", "Chelsea FC", "CHE"]).map((alias) => (
+              {(profile?.asset?.aliases?.length ? profile.asset.aliases : [name, shortName, teamCode].filter(Boolean)).map((alias) => (
                 <b key={alias}>{alias}</b>
               ))}
             </div>
