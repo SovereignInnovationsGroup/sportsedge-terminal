@@ -4888,6 +4888,114 @@ button {
   white-space: nowrap;
 }
 
+.football-dashboard {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-height: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.football-dashboard-head {
+  min-height: 112px;
+}
+
+.football-insight-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.football-dashboard-grid {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.football-dashboard-panel {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--line);
+  background: rgba(6, 10, 16, 0.58);
+}
+
+.football-dashboard-panel.fixtures {
+  border-right: 0;
+}
+
+.football-liquidity-list {
+  display: grid;
+  gap: 0;
+  height: calc(100% - 58px);
+  overflow: auto;
+}
+
+.football-liquidity-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px 10px;
+  border: 0;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.72);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  padding: 12px;
+  text-align: left;
+}
+
+.football-liquidity-list button:hover,
+.football-liquidity-list button:focus-visible {
+  background: rgba(96, 165, 250, 0.1);
+}
+
+.football-liquidity-list .fixture-title-line {
+  grid-column: 1 / -1;
+}
+
+.football-liquidity-list em,
+.football-liquidity-list small {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.football-liquidity-list b {
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.football-liquidity-list small {
+  text-align: right;
+}
+
+.football-fixtures-table {
+  min-width: 980px;
+}
+
+.football-fixtures-table th:first-child,
+.football-fixtures-table td:first-child {
+  width: 118px;
+}
+
+.football-fixtures-table th:nth-child(2),
+.football-fixtures-table td:nth-child(2) {
+  width: 34%;
+}
+
+.football-fixtures-table th:nth-child(3),
+.football-fixtures-table td:nth-child(3) {
+  width: 22%;
+}
+
+.dashboard-empty {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 14px;
+}
+
 .entry-venue-stack {
   display: flex;
   flex-wrap: wrap;
@@ -5008,17 +5116,17 @@ button {
 
 .testboard-matrix .sportsedge-broker-table {
   width: 100%;
-  min-width: 1180px;
+  min-width: 1120px;
 }
 
-.sportsedge-broker-table .col-time { width: 96px; }
-.sportsedge-broker-table .col-market { width: 280px; }
-.sportsedge-broker-table .col-contract { width: 300px; }
-.sportsedge-broker-table .col-liquidity { width: 92px; }
-.sportsedge-broker-table .col-price { width: 74px; }
-.sportsedge-broker-table .col-size { width: 86px; }
-.sportsedge-broker-table .col-spread { width: 66px; }
-.sportsedge-broker-table .col-arb { width: 76px; }
+.sportsedge-broker-table .col-time { width: 104px; }
+.sportsedge-broker-table .col-market { width: 340px; }
+.sportsedge-broker-table .col-contract { width: 250px; }
+.sportsedge-broker-table .col-liquidity { width: 86px; }
+.sportsedge-broker-table .col-price { width: 68px; }
+.sportsedge-broker-table .col-size { width: 78px; }
+.sportsedge-broker-table .col-spread { width: 58px; }
+.sportsedge-broker-table .col-arb { width: 66px; }
 .sportsedge-broker-table .col-route { width: 0; }
 .sportsedge-broker-table .col-confidence,
 .sportsedge-broker-table .col-fresh {

@@ -644,8 +644,26 @@ function competitionCountry(competition: string) {
 }
 
 function fixtureGroupLabel(competition: string) {
-  if (String(competition || "").includes(" / ")) return competition;
-  return `${competitionCountry(competition)} / ${competition}`;
+  const value = String(competition || "").trim() || "Football";
+  if (value.includes(" / ")) {
+    const [country, ...rest] = value.split(" / ");
+    const cleanCountry = country.trim() || "Global";
+    const cleanCompetition = cleanCompetitionName(cleanCountry, rest.join(" / ").trim() || "Football");
+    return `${cleanCountry} / ${cleanCompetition}`;
+  }
+  const country = competitionCountry(value);
+  return `${country} / ${cleanCompetitionName(country, value)}`;
+}
+
+function cleanCompetitionName(country: string, competition: string) {
+  const source = String(competition || "").trim() || "Football";
+  const countryPattern = new RegExp(`^${String(country || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s+`, "i");
+  return source
+    .replace(countryPattern, "")
+    .replace(/^europe\s+/i, "")
+    .replace(/^uk\s+/i, "")
+    .replace(/^usa\s+/i, "")
+    .trim() || source;
 }
 
 function fixtureCompetitionLabel(competition: string, eventName: string) {
@@ -653,17 +671,26 @@ function fixtureCompetitionLabel(competition: string, eventName: string) {
   const normalizedRaw = normalizeSelectionKey(raw);
   const isGeneric = !raw || ["soccer", "football", "global", "exchange prices", "sportsedge"].includes(normalizedRaw);
   const teams = fixtureTeams(eventName);
+  const isInternationalFixture = teams.length >= 2 && teams.every((team) => Boolean(countryCodeForName(team)));
+  if (isInternationalFixture) {
+    const label = raw && !isGeneric && competitionCountry(raw) !== "Global" ? cleanCompetitionName("International", raw) : "Football";
+    return `International / ${label}`;
+  }
   const assets = teams.map((team) => footballTeamAsset(team)).filter(Boolean) as FootballTeamAsset[];
   const countries = Array.from(new Set(assets.map((asset) => asset.country).filter(Boolean)));
   const leagues = Array.from(new Set(assets.map((asset) => asset.currentLeague).filter(Boolean)));
 
+  const firstLeague = leagues[0] || "Football";
+  const leagueCountry = competitionCountry(firstLeague);
   if ((isGeneric || competitionCountry(raw) === "Global") && countries.length === 1) {
-    return `${countries[0]} / ${leagues[0] || "Football"}`;
+    const country = leagueCountry !== "Global" ? leagueCountry : countries[0];
+    return `${country} / ${cleanCompetitionName(country, firstLeague)}`;
   }
   if ((isGeneric || competitionCountry(raw) === "Global") && countries.length > 1) {
     return `International / ${raw && !isGeneric ? raw : "Football"}`;
   }
-  return fixtureGroupLabel(raw || "Football");
+  const country = competitionCountry(raw || "Football");
+  return `${country} / ${cleanCompetitionName(country, raw || "Football")}`;
 }
 
 function flagEmoji(countryCode: string) {
@@ -677,34 +704,88 @@ function flagEmoji(countryCode: string) {
 
 const COUNTRY_FLAG_CODES: Record<string, string> = {
   algeria: "DZ",
+  andorra: "AD",
   argentina: "AR",
+  australia: "AU",
+  austria: "AT",
+  belgium: "BE",
+  "bosnia": "BA",
+  "bosnia and herzegovina": "BA",
   brazil: "BR",
+  "cabo verde": "CV",
+  canada: "CA",
+  chile: "CL",
+  china: "CN",
+  colombia: "CO",
+  croatia: "HR",
+  "cote d ivoire": "CI",
+  "côte d ivoire": "CI",
+  "côte d'ivoire": "CI",
   curacao: "CW",
   "curaçao": "CW",
+  czechia: "CZ",
+  "czech republic": "CZ",
+  denmark: "DK",
   "dr congo": "CD",
   "democratic republic of congo": "CD",
   ecuador: "EC",
+  egypt: "EG",
   england: "GB",
+  finland: "FI",
   france: "FR",
   germany: "DE",
+  ghana: "GH",
+  greece: "GR",
   haiti: "HT",
+  "ir iran": "IR",
+  iran: "IR",
   ireland: "IE",
   italy: "IT",
+  japan: "JP",
+  jordan: "JO",
+  korea: "KR",
+  "korea republic": "KR",
+  "south korea": "KR",
+  mexico: "MX",
+  morocco: "MA",
+  netherlands: "NL",
+  "new zealand": "NZ",
+  norway: "NO",
+  panama: "PA",
   paraguay: "PY",
+  poland: "PL",
   portugal: "PT",
   qatar: "QA",
+  "saudi arabia": "SA",
+  senegal: "SN",
+  singapore: "SG",
   scotland: "GB",
+  "south africa": "ZA",
   spain: "ES",
   switzerland: "CH",
+  sweden: "SE",
+  tunisia: "TN",
+  turkey: "TR",
+  "türkiye": "TR",
+  turkiye: "TR",
+  uruguay: "UY",
   usa: "US",
   "united states": "US",
   "united states of america": "US",
   wales: "GB"
 };
 
+function countryCodeForName(country: string) {
+  return COUNTRY_FLAG_CODES[normalizeSelectionKey(country)] || "";
+}
+
+function countryFlagImageUrl(country: string) {
+  const code = countryCodeForName(country);
+  return code ? `https://flagcdn.com/w80/${code.toLowerCase()}.png` : "";
+}
+
 function directCountryFlag(country: string) {
-  const normalized = normalizeSelectionKey(country);
-  const code = COUNTRY_FLAG_CODES[normalized];
+  const code = countryCodeForName(country);
   if (code) return flagEmoji(code);
   return "";
 }
@@ -720,6 +801,7 @@ function countryFlag(country: string) {
   if (value.includes("france")) return "🇫🇷";
   if (value.includes("usa")) return "🇺🇸";
   if (value.includes("ireland")) return "🇮🇪";
+  if (value.includes("europe")) return "🇪🇺";
   if (value.includes("tour")) return "🌐";
   if (value.includes("international")) return "🌐";
   return "🌐";
@@ -1138,6 +1220,8 @@ const TEAM_LOGO_URLS: Record<string, string> = {
 
 function teamLogoAsset(team: string) {
   const key = normalizeSelectionKey(team);
+  const flagUrl = countryFlagImageUrl(team);
+  if (flagUrl) return { url: flagUrl, isFlag: true };
   const asset = footballTeamAsset(team);
   if (asset?.national && asset.flagUrl) return { url: asset.flagUrl, isFlag: true };
   if (asset?.logoUrl) return { url: asset.logoUrl, isFlag: false };
@@ -4381,7 +4465,10 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
     let cancelled = false;
     async function loadSnapshot() {
       try {
-        const params = new URLSearchParams({ sport: apiSportValue(selectedSport), limit: "40" });
+        const params = new URLSearchParams({
+          sport: apiSportValue(selectedSport),
+          limit: selectedSport === "football" ? "500" : "120"
+        });
         const response = await fetch(`/api/exchange-odds?${params.toString()}`, { cache: "no-store" });
         const payload = await response.json();
         if (!response.ok || !Array.isArray(payload.rows)) {
@@ -4650,6 +4737,13 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
   const activeExchangeCount = EXCHANGE_COLUMNS.filter((exchange) => exchange.supports.includes(selectedSport)).length;
   const totalMatched = matrixRows.reduce((sum, row) => sum + row.totalValue, 0);
   const liveUpdateCount = Object.values(fixtureExchangeUpdates).filter((item) => now.getTime() - item.updatedAt < 30000).length;
+  const isFootballDashboard = selectedSport === "football"
+    && !isEntryDashboard
+    && !isMatrixPage
+    && !diagnosticExchange
+    && marketGroup === "all"
+    && selectedFixtureIndex == null
+    && !marketSearch.trim();
   fixturesRef.current = matrixRows.map((row) => row.fixture);
   const biasMatrixRows = mergeDisplayPriceRows([
     ...liveRows,
@@ -5048,6 +5142,149 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
     );
   }
 
+  function renderFootballDashboard() {
+    const rows = matrixRows.slice(0, 80);
+    const liquidRows = [...matrixRows].sort((a, b) => b.totalValue - a.totalValue).slice(0, 6);
+    const liveRows = matrixRows.filter((item) => sportsEdgeMarketQuote(item.backend).isFresh).length;
+    const competitions = new Set(matrixRows.map((item) => item.fixture[2]).filter(Boolean));
+    const bestLiquidity = liquidRows[0];
+    const latestTick = backendRows
+      .flatMap((row) => Object.values(row.matches || {}))
+      .map((match) => match?.observedAt ? new Date(match.observedAt).getTime() : 0)
+      .reduce((max, value) => Math.max(max, value), 0);
+    const latestTickLabel = latestTick
+      ? new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Madrid", hour12: false }).format(new Date(latestTick))
+      : "-";
+
+    return (
+      <section className="football-dashboard" aria-label="Football dashboard">
+        <div className="entry-head football-dashboard-head">
+          <div>
+            <h1>Football Dashboard</h1>
+            <p>Today’s football fixtures, liquidity, SportsEdge best prices, and live news context.</p>
+          </div>
+          <div className="entry-kpis">
+            <div><span>Fixtures</span><strong>{matrixRows.length}</strong></div>
+            <div><span>Live rows</span><strong>{liveRows}</strong></div>
+            <div><span>Liquidity</span><strong>{totalMatched ? formatExchangeMoney(totalMatched, "GBP") : "-"}</strong></div>
+          </div>
+        </div>
+
+        <div className="entry-insight-grid football-insight-grid" aria-label="Football market summary">
+          <article>
+            <span>Competition coverage</span>
+            <strong>{competitions.size || "-"}</strong>
+            <p>Countries/leagues visible from the current backend state.</p>
+          </article>
+          <article>
+            <span>Top fixture</span>
+            <strong>{bestLiquidity?.totalValue ? formatExchangeMoney(bestLiquidity.totalValue, "GBP") : "-"}</strong>
+            <p>{bestLiquidity?.fixture[1] || "Waiting for football liquidity."}</p>
+          </article>
+          <article>
+            <span>Venue coverage</span>
+            <strong>{activeExchangeCount}/{EXCHANGE_COLUMNS.length}</strong>
+            <p>Backend venues capable of football pricing.</p>
+          </article>
+          <article>
+            <span>Latest price tick</span>
+            <strong>{latestTickLabel}</strong>
+            <p>{backendError || "Redis/API snapshot with WSS patching."}</p>
+          </article>
+        </div>
+
+        <div className="football-dashboard-grid">
+          <section className="football-dashboard-panel">
+            <div className="panel-head compact">
+              <div>
+                <h2>Top Liquidity</h2>
+                <p>Best football markets by usable liquidity</p>
+              </div>
+            </div>
+            <div className="football-liquidity-list">
+              {liquidRows.map(({ fixture, totalValue, backend }) => {
+                const quote = sportsEdgeMarketQuote(backend);
+                return (
+                  <button
+                    type="button"
+                    key={`${fixture[0]}-${fixture[1]}-${fixture[3]}`}
+                    onClick={() => {
+                      const index = matrixRows.findIndex((item) => item.fixture[1] === fixture[1] && item.fixture[3] === fixture[3]);
+                      if (index >= 0) setSelectedFixtureIndex(index);
+                    }}
+                  >
+                    <span className="fixture-title-line">
+                      <TeamLogoStack name={fixture[1]} />
+                      <strong>{fixture[1]}</strong>
+                    </span>
+                    <em>{fixtureGroupLabel(fixture[2])}</em>
+                    <b>{formatExchangeMoney(totalValue, "GBP")}</b>
+                    <small>{quote.bestBack ? `Back ${quote.bestBack.toFixed(2)}` : "No back"} / {quote.bestLay ? `Lay ${quote.bestLay.toFixed(2)}` : "No lay"}</small>
+                  </button>
+                );
+              })}
+              {liquidRows.length === 0 && <div className="dashboard-empty">Waiting for football market state.</div>}
+            </div>
+          </section>
+
+          <section className="football-dashboard-panel fixtures">
+            <div className="panel-head compact">
+              <div>
+                <h2>Today Fixtures</h2>
+                <p>Click a fixture for the full SportsEdge market view</p>
+              </div>
+            </div>
+            <div className="entry-table-wrap">
+              <table className="entry-events-table football-fixtures-table">
+                <thead>
+                  <tr>
+                    <th>Date / Time</th>
+                    <th>Fixture</th>
+                    <th>Competition</th>
+                    <th>Liquidity</th>
+                    <th>Back</th>
+                    <th>Lay</th>
+                    <th>Markets</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(({ fixture, fixtureIndex, totalValue, marketCount, backend }) => {
+                    const quote = sportsEdgeMarketQuote(backend);
+                    return (
+                      <tr
+                        className="clickable-row"
+                        key={`${fixture[0]}-${fixture[1]}-${fixture[3]}-${fixtureIndex}`}
+                        onClick={() => setSelectedFixtureIndex(fixtureIndex)}
+                      >
+                        <td className="mono positive">{fixture[0]}</td>
+                        <td className="entry-event-name">
+                          <div className="fixture-title-line">
+                            <TeamLogoStack name={fixture[1]} />
+                            <strong>{fixture[1]}</strong>
+                          </div>
+                        </td>
+                        <td><span>{fixtureGroupLabel(fixture[2])}</span></td>
+                        <td className="mono">{quote.liquidity || totalValue ? formatExchangeMoney(quote.liquidity || totalValue, "GBP") : "-"}</td>
+                        <td className="mono positive">{quote.bestBack ? quote.bestBack.toFixed(2) : "-"}</td>
+                        <td className="mono sell">{quote.bestLay ? quote.bestLay.toFixed(2) : "-"}</td>
+                        <td className="mono">{marketCount}</td>
+                      </tr>
+                    );
+                  })}
+                  {rows.length === 0 && (
+                    <tr>
+                      <td className="empty" colSpan={7}>{snapshotLoaded ? "No football fixtures returned yet." : "Loading football fixtures."}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+    );
+  }
+
   function renderBiasMatrix() {
     const latestLabel = matrixLatestMs
       ? new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Madrid", hour12: false }).format(new Date(matrixLatestMs))
@@ -5157,6 +5394,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
                 setIsEntryDashboard(false);
                 setDiagnosticExchange(null);
                 setSelectedSport(sport.value);
+                setMarketGroup("all");
                 setMarketSearch("");
                 setSelectedFixtureIndex(null);
                 window.location.hash = `#${sport.value}`;
@@ -5426,6 +5664,8 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
         renderTerminalWorkspace(renderBiasMatrix(), false)
       ) : isEntryDashboard ? (
         renderEntryDashboard()
+      ) : isFootballDashboard ? (
+        renderTerminalWorkspace(renderFootballDashboard(), true)
       ) : (
         renderTerminalWorkspace(
           <>
