@@ -7,6 +7,7 @@ import {
   Bell,
   BriefcaseBusiness,
   CalendarClock,
+  ChevronRight,
   Database,
   Eye,
   EyeOff,
@@ -6566,6 +6567,19 @@ function SportsEdgeProductMockupPage() {
   );
 }
 
+function ProfileBreadcrumbs({ items }: { items: Array<{ label: string; href?: string }> }) {
+  return (
+    <nav className="profile-breadcrumbs" aria-label="Profile breadcrumb">
+      {items.map((item, index) => (
+        <Fragment key={`${item.label}-${index}`}>
+          {item.href ? <a href={item.href}>{item.label}</a> : <span>{item.label}</span>}
+          {index < items.length - 1 && <ChevronRight size={14} aria-hidden="true" />}
+        </Fragment>
+      ))}
+    </nav>
+  );
+}
+
 function TeamProfilePage({ slug }: { slug: string }) {
   const [profile, setProfile] = useState<FootballTeamProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -6618,6 +6632,13 @@ function TeamProfilePage({ slug }: { slug: string }) {
 
   const content = (
     <div className="team-profile-page">
+      <ProfileBreadcrumbs
+        items={[
+          { label: "Dashboard", href: "#dashboard" },
+          { label: "Football", href: "#football" },
+          { label: name }
+        ]}
+      />
       <section
         className={`team-profile-hero${venue?.imageUrl ? " has-venue-image" : ""}`}
         style={venue?.imageUrl ? { backgroundImage: `linear-gradient(90deg, rgba(3, 5, 8, 0.94) 0%, rgba(3, 5, 8, 0.82) 42%, rgba(3, 5, 8, 0.56) 100%), linear-gradient(180deg, rgba(3, 5, 8, 0.2), rgba(3, 5, 8, 0.88)), url("${venue.imageUrl}")` } : undefined}
@@ -6790,6 +6811,8 @@ function PlayerProfilePage({ id }: { id: string }) {
   const name = profile?.name || "Player";
   const stats = profile?.stats || [];
   const latestStat = stats[0];
+  const teamName = profile?.team?.name || "Team";
+  const teamHref = profile?.team?.name ? `#team/${encodeURIComponent(profile.team.name)}` : "#football";
   const profileStats = [
     ["Position", profile?.position || latestStat?.position || "Player"],
     ["Nationality", profile?.nationality || "Unknown"],
@@ -6805,6 +6828,14 @@ function PlayerProfilePage({ id }: { id: string }) {
       <section className="terminal-workspace">
         <div className="terminal-workspace-main team-profile-main">
           <div className="team-profile-page player-profile-page">
+            <ProfileBreadcrumbs
+              items={[
+                { label: "Dashboard", href: "#dashboard" },
+                { label: "Football", href: "#football" },
+                { label: teamName, href: teamHref },
+                { label: name }
+              ]}
+            />
             <section className="team-profile-hero">
               <div className="team-profile-title">
                 <div className="team-profile-crest player-photo">
