@@ -4469,6 +4469,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
           sport: apiSportValue(selectedSport),
           limit: selectedSport === "football" ? "500" : "120"
         });
+        if (selectedSport === "football") params.set("segment", "today");
         const response = await fetch(`/api/exchange-odds?${params.toString()}`, { cache: "no-store" });
         const payload = await response.json();
         if (!response.ok || !Array.isArray(payload.rows)) {
