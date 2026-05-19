@@ -6611,7 +6611,10 @@ function TeamProfilePage({ slug }: { slug: string }) {
 
   const content = (
     <div className="team-profile-page">
-      <section className="team-profile-hero">
+      <section
+        className={`team-profile-hero${venue?.imageUrl ? " has-venue-image" : ""}`}
+        style={venue?.imageUrl ? { backgroundImage: `linear-gradient(90deg, rgba(3, 5, 8, 0.94) 0%, rgba(3, 5, 8, 0.82) 42%, rgba(3, 5, 8, 0.56) 100%), linear-gradient(180deg, rgba(3, 5, 8, 0.2), rgba(3, 5, 8, 0.88)), url("${venue.imageUrl}")` } : undefined}
+      >
         <div className="team-profile-title">
           <div className="team-profile-crest">
             {logoUrl ? <img src={logoUrl} alt={`${shortName} crest`} /> : <span>{teamTicker(name)}</span>}
