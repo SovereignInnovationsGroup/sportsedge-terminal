@@ -631,8 +631,10 @@ function extractFixtureExchangeUpdate(channel: string, payload: unknown, sport: 
 
 function competitionCountry(competition: string) {
   const value = competition.toLowerCase();
+  const explicitCountry = countryNameFromTextPrefix(competition);
+  if (explicitCountry) return explicitCountry;
   if (value.includes("uefa") || value.includes("champions league") || value.includes("europa")) return "Europe";
-  if (value.includes("premier league") || value.includes("uk racing") || value.includes("championship") || value.includes("wimbledon")) return "England";
+  if (value.includes("english premier league") || value === "premier league" || value.includes("uk racing") || value.includes("championship") || value.includes("wimbledon")) return "England";
   if (value.includes("la liga")) return "Spain";
   if (value.includes("serie a")) return "Italy";
   if (value.includes("ligue 1")) return "France";
@@ -772,8 +774,50 @@ const COUNTRY_FLAG_CODES: Record<string, string> = {
   usa: "US",
   "united states": "US",
   "united states of america": "US",
+  armenia: "AM",
+  bhutan: "BT",
+  bulgaria: "BG",
+  ethiopia: "ET",
+  uganda: "UG",
   wales: "GB"
 };
+
+const COUNTRY_DISPLAY_NAMES: Record<string, string> = {
+  "bosnia and herzegovina": "Bosnia and Herzegovina",
+  "cabo verde": "Cabo Verde",
+  "cote d ivoire": "Côte d'Ivoire",
+  "côte d ivoire": "Côte d'Ivoire",
+  "côte d'ivoire": "Côte d'Ivoire",
+  "czech republic": "Czech Republic",
+  "dr congo": "DR Congo",
+  "democratic republic of congo": "DR Congo",
+  "ir iran": "IR Iran",
+  "korea republic": "Korea Republic",
+  "new zealand": "New Zealand",
+  "saudi arabia": "Saudi Arabia",
+  "south africa": "South Africa",
+  "south korea": "Korea Republic",
+  "united states": "United States",
+  "united states of america": "United States"
+};
+
+function countryDisplayName(country: string) {
+  const normalized = normalizeSelectionKey(country);
+  if (COUNTRY_DISPLAY_NAMES[normalized]) return COUNTRY_DISPLAY_NAMES[normalized];
+  return normalized
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function countryNameFromTextPrefix(value: string) {
+  const normalized = normalizeSelectionKey(value);
+  const country = Object.keys(COUNTRY_FLAG_CODES)
+    .sort((a, b) => b.length - a.length)
+    .find((name) => normalized === name || normalized.startsWith(`${name} `));
+  return country ? countryDisplayName(country) : "";
+}
 
 function countryCodeForName(country: string) {
   return COUNTRY_FLAG_CODES[normalizeSelectionKey(country)] || "";
@@ -947,11 +991,45 @@ const FOOTBALL_TEAM_ASSETS: FootballTeamAsset[] = [
 
 const FOOTBALL_TEAM_BY_ALIAS = new Map<string, FootballTeamAsset>();
 
+const FOOTBALL_TEAM_CANONICAL_ALIASES: Record<string, string> = {
+  "bahir dar": "bahardar",
+  "bahir dar kenema": "bahardar",
+  "hadiyah hosanna": "hadiya hosaena",
+  "hadiya hosanna": "hadiya hosaena",
+  "hadiyah hossana": "hadiya hosaena",
+  "ethiopia negd bank": "ethiopia nigd bank",
+  "ethiopia niged bank": "ethiopia nigd bank",
+  "ethiopia nigid bank": "ethiopia nigd bank",
+  "wolaita dicha": "welayta dicha",
+  "wolayita dicha": "welayta dicha",
+  "wolayta dicha": "welayta dicha",
+  "wolaita decha": "welayta dicha",
+  "wolayita decha": "welayta dicha",
+  "maroons fc": "maroons",
+  "rtc fc": "rtc",
+  "paro fc": "paro",
+  "updf fc": "updf",
+  "bul fc": "bul",
+  "kitara fc": "kitara",
+  "vipers sc": "vipers",
+  "calvary fc": "calvary"
+};
+
+function canonicalFootballTeamKey(value: string) {
+  const key = normalizeSelectionKey(value)
+    .replace(/\bfootball club\b/g, "fc")
+    .replace(/\bsports club\b/g, "sc")
+    .replace(/\s+/g, " ")
+    .trim();
+  return FOOTBALL_TEAM_CANONICAL_ALIASES[key] || key;
+}
+
 function registerFootballTeamAssets(teams: FootballTeamAsset[]) {
   teams.forEach((team) => {
     const aliases = [team.fullName, team.shortName, team.slug, team.ticker, ...(team.aliases || [])];
     aliases.forEach((alias) => {
       FOOTBALL_TEAM_BY_ALIAS.set(normalizeSelectionKey(alias), team);
+      FOOTBALL_TEAM_BY_ALIAS.set(canonicalFootballTeamKey(alias), team);
     });
   });
 }
@@ -965,7 +1043,7 @@ FOOTBALL_TEAM_ASSETS.forEach((team) => {
 });
 
 function footballTeamAsset(team: string) {
-  const key = normalizeSelectionKey(team);
+  const key = canonicalFootballTeamKey(team);
   const direct = FOOTBALL_TEAM_BY_ALIAS.get(key);
   if (direct) return direct;
   let best: FootballTeamAsset | undefined;
@@ -1363,13 +1441,14 @@ function mergeCommandOptions(options: CommandOption[]) {
   });
 }
 
-function StandaloneNewsRail({ sport = "football", label }: { sport?: string; label?: string }) {
+function StandaloneNewsRail({ sport = "football", label, query = "" }: { sport?: string; label?: string; query?: string }) {
   const [items, setItems] = useState<NewsItem[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams({ limit: "40" });
     if (sport !== "all") params.set("sport", apiSportValue(sport));
+    if (query.trim()) params.set("q", query.trim());
     fetch(`/api/news?${params.toString()}`, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         const text = await response.text();
@@ -1381,7 +1460,7 @@ function StandaloneNewsRail({ sport = "football", label }: { sport?: string; lab
         if (error?.name !== "AbortError") setItems([]);
       });
     return () => controller.abort();
-  }, [sport]);
+  }, [sport, query]);
 
   return (
     <aside className="entry-news-rail terminal-news-rail" aria-label="Live news feed">
@@ -4124,7 +4203,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
     let cancelled = false;
     async function loadFootballTeamAssets() {
       try {
-        const response = await fetch("/api/assets/football-teams?active=true&limit=10000", { cache: "no-store" });
+        const response = await fetch("/api/assets/football-teams?active=true&limit=25000", { cache: "no-store" });
         const payload = await response.json();
         if (!response.ok || !Array.isArray(payload.teams)) return;
         if (!cancelled) {
@@ -6116,15 +6195,63 @@ type FootballTeamProfile = {
   } | null;
   squad: Array<{
     id: string;
+    providerPlayerId?: string | null;
     name: string;
+    firstname?: string | null;
+    lastname?: string | null;
     age: number | null;
+    birthDate?: string | null;
+    birthPlace?: string | null;
+    birthCountry?: string | null;
     nationality: string | null;
     height: string | null;
     weight: string | null;
+    injured?: boolean | null;
     photoUrl: string | null;
     position: string | null;
     number: number | null;
+    stats?: FootballPlayerStat[];
   }>;
+  staff?: FootballStaffProfile[];
+};
+
+type FootballPlayerStat = {
+  id: string;
+  season: number;
+  leagueName: string | null;
+  teamName: string | null;
+  position: string | null;
+  appearances: number | null;
+  lineups: number | null;
+  minutes: number | null;
+  rating: number | null;
+  goalsTotal: number | null;
+  assists: number | null;
+  shotsTotal: number | null;
+  passesTotal: number | null;
+  tacklesTotal: number | null;
+  cardsYellow: number | null;
+  cardsRed: number | null;
+  syncedAt: string | null;
+};
+
+type FootballStaffProfile = {
+  id: string;
+  name: string;
+  age: number | null;
+  nationality: string | null;
+  photoUrl: string | null;
+  role: string;
+  syncedAt: string | null;
+};
+
+type FootballPlayerProfile = FootballTeamProfile["squad"][number] & {
+  team?: {
+    id: string;
+    name: string;
+    logoUrl: string | null;
+    country: string | null;
+  } | null;
 };
 
 const PRODUCT_MOCKUP_DATA: Record<string, {
@@ -6458,6 +6585,12 @@ function TeamProfilePage({ slug }: { slug: string }) {
   const shortName = profile?.asset?.shortName || profile?.name || "Chelsea";
   const logoUrl = profile?.asset?.logoUrl || profile?.logoUrl || teamLogoUrl(name);
   const venue = profile?.venue;
+  const venueFacts = [
+    ["City", venue?.city || "London"],
+    ["Address", venue?.address || "Fulham Road"],
+    ["Capacity", venue?.capacity?.toLocaleString() || "41,841"],
+    ["Surface", venue?.surface || "grass"]
+  ];
   const profileStats = [
     ["Code", profile?.asset?.ticker || profile?.code || "CHE"],
     ["Country", profile?.country || "England"],
@@ -6480,9 +6613,17 @@ function TeamProfilePage({ slug }: { slug: string }) {
           <div className="team-profile-crest">
             {logoUrl ? <img src={logoUrl} alt={`${shortName} crest`} /> : <span>{teamTicker(name)}</span>}
           </div>
-          <div>
+          <div className="team-profile-title-copy">
             <span>SportsEdge football profile</span>
             <h1>{name}</h1>
+            <div className="team-profile-hero-facts" aria-label="Home venue details">
+              {venueFacts.map(([label, value]) => (
+                <span key={label}>
+                  <b>{label}</b>
+                  <strong>{value}</strong>
+                </span>
+              ))}
+            </div>
             <p>
               Canonical team identity, venue details, provider profile data, aliases, and
               market context ready to link into the Matrix and fixture pages.
@@ -6529,12 +6670,6 @@ function TeamProfilePage({ slug }: { slug: string }) {
             </div>
             <b>{profile?.asset?.ticker || profile?.code || "CHE"}</b>
           </div>
-          <div className="team-profile-list">
-            <span><b>City</b>{venue?.city || "London"}</span>
-            <span><b>Address</b>{venue?.address || "Fulham Road"}</span>
-            <span><b>Capacity</b>{venue?.capacity?.toLocaleString() || "41,841"}</span>
-            <span><b>Surface</b>{venue?.surface || "grass"}</span>
-          </div>
         </article>
 
         <article className="team-profile-panel context">
@@ -6549,24 +6684,44 @@ function TeamProfilePage({ slug }: { slug: string }) {
           </div>
         </article>
 
+        <article className="team-profile-panel staff">
+          <div className="team-profile-panel-head">
+            <span>Staff</span>
+            <strong>{profile?.staff?.length || 0} cached</strong>
+          </div>
+          {profile?.staff?.length ? (
+            <div className="team-profile-squad-grid staff-grid">
+              {profile.staff.map((staff) => (
+                <div key={staff.id}>
+                  {staff.photoUrl ? <img src={staff.photoUrl} alt="" /> : <span>{teamInitials(staff.name)}</span>}
+                  <strong>{staff.name}</strong>
+                  <em>{staff.role || "Staff"} {staff.nationality ? `/ ${staff.nationality}` : ""}</em>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="team-profile-empty">Staff sync is queued for this team.</p>
+          )}
+        </article>
+
         <article className="team-profile-panel squad">
           <div className="team-profile-panel-head">
             <span>Player Profiles</span>
             <strong>{profile?.squad?.length || 0} cached</strong>
           </div>
           {profile?.squad?.length ? (
-            <div className="team-profile-squad-grid">
-              {profile.squad.slice(0, 12).map((player) => (
-                <div key={player.id}>
+          <div className="team-profile-squad-grid">
+              {profile.squad.map((player) => (
+                <a href={`#player/${encodeURIComponent(player.id)}`} key={player.id}>
                   {player.photoUrl ? <img src={player.photoUrl} alt="" /> : <span>{teamInitials(player.name)}</span>}
                   <strong>{player.name}</strong>
                   <em>{player.position || "Player"} {player.number ? `#${player.number}` : ""}</em>
-                </div>
+                </a>
               ))}
             </div>
           ) : (
             <p className="team-profile-empty">
-              Squad/player sync is switched off for this proof so we only spend one of the 100 daily API-Football calls. Turn on `API_FOOTBALL_SYNC_SQUAD=true` when you want the player profile pull.
+              Player profile sync is queued for this team.
             </p>
           )}
         </article>
@@ -6581,7 +6736,136 @@ function TeamProfilePage({ slug }: { slug: string }) {
         <div className="terminal-workspace-main team-profile-main">
           {content}
         </div>
-        <StandaloneNewsRail sport="football" label="FOOTBALL SPORTSEDGE NEWS" />
+        <StandaloneNewsRail sport="football" label={`${name.toUpperCase()} NEWS`} query={name} />
+      </section>
+    </main>
+  );
+}
+
+function PlayerProfilePage({ id }: { id: string }) {
+  const [profile, setProfile] = useState<FootballPlayerProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError("");
+    fetch(`/api/football/players/${encodeURIComponent(id)}/profile`, { signal: controller.signal, cache: "no-store" })
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload?.detail || "Player profile unavailable");
+        setProfile(payload.profile || null);
+      })
+      .catch((fetchError) => {
+        if (fetchError.name !== "AbortError") setError(fetchError.message || "Player profile unavailable");
+      })
+      .finally(() => setLoading(false));
+    return () => controller.abort();
+  }, [id]);
+
+  const name = profile?.name || "Player";
+  const stats = profile?.stats || [];
+  const latestStat = stats[0];
+  const profileStats = [
+    ["Position", profile?.position || latestStat?.position || "Player"],
+    ["Nationality", profile?.nationality || "Unknown"],
+    ["Age", profile?.age || "-"],
+    ["Height", profile?.height || "-"],
+    ["Weight", profile?.weight || "-"],
+    ["Injury", profile?.injured ? "Flagged" : "Clear"]
+  ];
+
+  return (
+    <main className="testboard-shell team-profile-shell">
+      <SportsEdgeTopbar active="football" />
+      <section className="terminal-workspace">
+        <div className="terminal-workspace-main team-profile-main">
+          <div className="team-profile-page player-profile-page">
+            <section className="team-profile-hero">
+              <div className="team-profile-title">
+                <div className="team-profile-crest player-photo">
+                  {profile?.photoUrl ? <img src={profile.photoUrl} alt={`${name} profile`} /> : <span>{teamInitials(name)}</span>}
+                </div>
+                <div>
+                  <span>SportsEdge player profile</span>
+                  <h1>{name}</h1>
+                  <p>
+                    Player identity, squad link, season stat rows, and news filtered to this player.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {loading && <p className="team-profile-empty">Loading player profile.</p>}
+            {error && <p className="team-profile-empty">{error}</p>}
+
+            {!loading && !error && (
+              <section className="team-profile-grid">
+                <article className="team-profile-panel main">
+                  <div className="team-profile-panel-head">
+                    <span>Player Details</span>
+                    <strong>{profile?.providerPlayerId || "api-football"}</strong>
+                  </div>
+                  <div className="team-profile-stat-grid">
+                    {profileStats.map(([label, value]) => (
+                      <div key={label}>
+                        <span>{label}</span>
+                        <strong>{value}</strong>
+                      </div>
+                    ))}
+                  </div>
+                  {profile?.team && (
+                    <a className="player-team-link" href={`#team/${encodeURIComponent(profile.team.name)}`}>
+                      {profile.team.logoUrl ? <img src={profile.team.logoUrl} alt="" /> : <TeamLogoStack name={profile.team.name} />}
+                      <strong>{profile.team.name}</strong>
+                      <span>{profile.team.country || "Football"}</span>
+                    </a>
+                  )}
+                </article>
+
+                <article className="team-profile-panel stats">
+                  <div className="team-profile-panel-head">
+                    <span>Season Stats</span>
+                    <strong>{stats.length} rows</strong>
+                  </div>
+                  <div className="player-stat-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Season</th>
+                          <th>League</th>
+                          <th>Apps</th>
+                          <th>Mins</th>
+                          <th>Goals</th>
+                          <th>Assists</th>
+                          <th>Rating</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {stats.map((row) => (
+                          <tr key={row.id}>
+                            <td>{row.season}</td>
+                            <td>{row.leagueName || row.teamName || "-"}</td>
+                            <td>{row.appearances ?? "-"}</td>
+                            <td>{row.minutes ?? "-"}</td>
+                            <td>{row.goalsTotal ?? "-"}</td>
+                            <td>{row.assists ?? "-"}</td>
+                            <td>{row.rating ?? "-"}</td>
+                          </tr>
+                        ))}
+                        {stats.length === 0 && (
+                          <tr><td colSpan={7}>Stats sync is queued for this player.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              </section>
+            )}
+          </div>
+        </div>
+        <StandaloneNewsRail sport="football" label={`${name.toUpperCase()} NEWS`} query={name} />
       </section>
     </main>
   );
@@ -7384,7 +7668,8 @@ export default function App() {
   }
 
   let screen;
-  if (hash.startsWith("#team/")) screen = <TeamProfilePage slug={hash.replace("#team/", "") || "chelsea"} />;
+  if (hash.startsWith("#player/")) screen = <PlayerProfilePage id={hash.replace("#player/", "")} />;
+  else if (hash.startsWith("#team/")) screen = <TeamProfilePage slug={hash.replace("#team/", "") || "chelsea"} />;
   else if (hash === "#product-map") screen = <SportsEdgeProductMockupPage />;
   else if (hash === "#football-demo") screen = <FootballIntelligenceDemoPage />;
   else if (previewDashboard && (hash === "#dashboard" || hash === "#testboard" || hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash) || !hash)) screen = <TestboardPage onLogout={handleLogout} />;

@@ -3543,7 +3543,7 @@ button {
 }
 
 .football-demo-hero span,
-.team-profile-title span,
+.team-profile-title-copy > span,
 .football-demo-panel-head span,
 .team-profile-panel-head span {
   color: var(--amber);
@@ -3651,6 +3651,49 @@ button {
   gap: 16px;
 }
 
+.team-profile-title-copy {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.team-profile-hero-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 1040px;
+}
+
+.team-profile-hero-facts span {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  min-height: 34px;
+  max-width: 100%;
+  border: 1px solid rgba(36, 50, 65, 0.84);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text);
+  padding: 8px 10px;
+}
+
+.team-profile-hero-facts b {
+  flex: 0 0 auto;
+  color: var(--amber);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.team-profile-hero-facts strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #dce6f1;
+  font-size: 14px;
+  font-weight: 950;
+}
+
 .football-demo-team-title strong {
   display: block;
   font-size: 18px;
@@ -3696,11 +3739,43 @@ button {
 }
 
 .football-demo-player-grid > div,
-.team-profile-squad-grid > div {
+.team-profile-squad-grid > div,
+.team-profile-squad-grid > a {
+  color: inherit;
+  text-decoration: none;
   border: 1px solid rgba(36, 50, 65, 0.76);
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.035);
   padding: 13px;
+}
+
+.team-profile-squad-grid > a {
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.team-profile-squad-grid > a:hover {
+  border-color: rgba(96, 165, 250, 0.7);
+  background: rgba(30, 64, 103, 0.18);
+  transform: translateY(-1px);
+}
+
+.team-profile-squad-grid img {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.team-profile-squad-grid.staff-grid img {
+  object-position: top center;
+}
+
+.team-profile-squad-grid em {
+  display: block;
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .football-demo-player-grid strong,
@@ -3717,6 +3792,77 @@ button {
   color: #b7c4d1;
   font-weight: 750;
   line-height: 1.5;
+}
+
+.player-photo img {
+  object-fit: cover;
+  object-position: top center;
+}
+
+.player-team-link {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px 12px;
+  align-items: center;
+  margin: 0 14px 14px;
+  border: 1px solid rgba(36, 50, 65, 0.76);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.035);
+  color: inherit;
+  padding: 12px;
+  text-decoration: none;
+}
+
+.player-team-link img {
+  grid-row: span 2;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.player-team-link strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.player-team-link span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.player-stat-table {
+  overflow: auto;
+}
+
+.player-stat-table table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+.player-stat-table th,
+.player-stat-table td {
+  border-bottom: 1px solid rgba(36, 50, 65, 0.7);
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.player-stat-table th {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.player-stat-table td {
+  color: var(--text);
 }
 
 .football-demo-player-grid footer {
@@ -5295,10 +5441,10 @@ button {
   flex: 0 0 30px;
   width: 30px;
   height: 30px;
-  border: 1px solid rgba(197, 158, 48, 0.58);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.42);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .team-logo-frame span {
@@ -5318,19 +5464,21 @@ button {
   z-index: 1;
   width: 100%;
   height: 100%;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
+  border-radius: 0;
+  background: transparent;
   object-fit: contain;
-  padding: 2px;
+  padding: 0;
 }
 
 .team-logo-frame.flag-logo {
   background: rgba(3, 8, 13, 0.94);
+  border-radius: 50%;
   overflow: hidden;
 }
 
 .team-logo-frame.flag-logo img {
   background: transparent;
+  border-radius: 50%;
   object-fit: cover;
   padding: 0;
 }
