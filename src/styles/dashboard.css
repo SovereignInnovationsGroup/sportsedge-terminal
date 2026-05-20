@@ -5527,6 +5527,7 @@ button {
 .agtest-grid-wrap {
   height: calc(100vh - 92px);
   margin-top: 12px;
+  overflow: hidden;
 }
 
 .ag-theme-quartz-dark {
@@ -5541,11 +5542,69 @@ button {
   --ag-wrapper-border-radius: 8px;
 }
 
-.ag-fixture-cell {
-  display: grid;
-  gap: 3px;
+.agtest-page .ag-root-wrapper,
+.agtest-page .ag-root,
+.agtest-page .ag-body-viewport,
+.agtest-page .ag-center-cols-viewport,
+.agtest-page .ag-pinned-left-cols-container,
+.agtest-page .ag-pinned-left-header,
+.agtest-page .ag-header,
+.agtest-page .ag-header-viewport {
+  background: #05080d;
+}
+
+.agtest-page .ag-root-wrapper {
+  border: 1px solid rgba(36, 50, 65, 0.9);
+  border-radius: 8px;
+}
+
+.agtest-page .ag-header,
+.agtest-page .ag-header-cell,
+.agtest-page .ag-pinned-left-header {
+  background: #081019;
+  border-color: rgba(36, 50, 65, 0.9);
+  color: rgba(203, 213, 225, 0.92);
+}
+
+.agtest-page .ag-header-cell-label {
+  color: rgba(203, 213, 225, 0.92);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.agtest-page .ag-row,
+.agtest-page .ag-cell {
+  background: #05080d;
+  border-color: rgba(36, 50, 65, 0.76);
+  color: rgba(226, 232, 240, 0.95);
+}
+
+.agtest-page .ag-row-odd,
+.agtest-page .ag-row-odd .ag-cell {
+  background: #080d13;
+}
+
+.agtest-page .ag-row-hover,
+.agtest-page .ag-row-hover .ag-cell {
+  background: rgba(96, 165, 250, 0.1);
+}
+
+.agtest-page .ag-cell {
+  display: flex;
+  align-items: center;
   min-width: 0;
-  padding-top: 8px;
+  overflow: hidden;
+  line-height: 1.1;
+}
+
+.ag-fixture-cell {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
 }
 
 .ag-fixture-cell strong,
@@ -5562,17 +5621,19 @@ button {
 
 .ag-fixture-cell span {
   color: var(--muted);
-  font-size: 11px;
+  flex: 0 1 auto;
+  font-size: 10px;
   font-weight: 800;
 }
 
 .ag-stack-cell {
-  display: grid;
-  gap: 4px;
-  padding-top: 8px;
+  display: block;
+  min-width: 0;
+  width: 100%;
 }
 
 .ag-stack-cell span {
+  display: block;
   overflow: hidden;
   color: rgba(226, 232, 240, 0.94);
   font-weight: 850;
@@ -5582,13 +5643,15 @@ button {
 }
 
 .ag-price-stack span {
-  color: rgba(203, 213, 225, 0.94);
+  color: rgba(203, 213, 225, 0.9);
   font-family: var(--mono);
   font-size: 10px;
 }
 
 .ag-coverage {
-  padding-top: 21px;
+  align-items: center;
+  display: flex;
+  gap: 5px;
 }
 
 .agtest-error {

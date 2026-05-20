@@ -8194,7 +8194,7 @@ function AgStackCell({ values, className = "" }: { values?: string[]; className?
   const displayValues = values?.length ? values : ["-"];
   return (
     <div className={`ag-stack-cell ${className}`}>
-      {displayValues.map((value, index) => <span key={`${value}-${index}`}>{value}</span>)}
+      <span>{displayValues.join("  |  ")}</span>
     </div>
   );
 }
@@ -8240,7 +8240,8 @@ function AgTestPage() {
               liquidity: quote.liquidity || matched?.totalValue ? formatExchangeMoney(quote.liquidity || matched?.totalValue || 0, "GBP") : "-",
               fresh: quote.updatedAt || "watch"
             };
-          });
+          })
+          .filter((row) => row.coverage.some((exchange) => exchange.available));
 
         if (!cancelled) {
           setRows(nextRows);
@@ -8311,7 +8312,7 @@ function AgTestPage() {
           rowData={rows}
           columnDefs={columnDefs}
           loading={loading}
-          rowHeight={76}
+          rowHeight={38}
           headerHeight={34}
           animateRows
           suppressCellFocus
