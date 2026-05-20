@@ -5538,6 +5538,7 @@ button {
 .agtest-grid-wrap {
   height: calc(100vh - 82px);
   overflow: hidden;
+  width: 100%;
 }
 
 .ag-theme-quartz-dark {
@@ -5557,6 +5558,7 @@ button {
 
 .agtest-page .ag-root-wrapper,
 .agtest-page .ag-root,
+.agtest-page .ag-root-wrapper-body,
 .agtest-page .ag-body-viewport,
 .agtest-page .ag-center-cols-viewport,
 .agtest-page .ag-pinned-left-cols-container,
@@ -5564,6 +5566,12 @@ button {
 .agtest-page .ag-header,
 .agtest-page .ag-header-viewport {
   background: #05080d;
+}
+
+.agtest-page .ag-root-wrapper,
+.agtest-page .ag-root-wrapper-body,
+.agtest-page .ag-root {
+  width: 100%;
 }
 
 .agtest-page .ag-root-wrapper {
