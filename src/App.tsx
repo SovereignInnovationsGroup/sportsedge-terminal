@@ -8299,28 +8299,37 @@ function AgTestPage() {
   ], []);
 
   return (
-    <main className="agtest-page">
-      <header className="agtest-head">
-        <div>
-          <span>SportsEdge / AGTEST</span>
-          <h1>Football Exchange Grid</h1>
-        </div>
-        <button type="button" onClick={() => { window.location.hash = "#football"; }}>Back to terminal</button>
-      </header>
-      <section className="agtest-grid-wrap ag-theme-quartz-dark">
-        <AgGridReact
-          rowData={rows}
-          columnDefs={columnDefs}
-          loading={loading}
-          rowHeight={38}
-          headerHeight={34}
-          animateRows
-          suppressCellFocus
-          defaultColDef={{ sortable: true, resizable: true, filter: true }}
-        />
-      </section>
-      {error && <div className="agtest-error">{error}</div>}
-    </main>
+    <>
+      <SportsEdgeTopbar active="football" />
+      <main className="agtest-page">
+        <section className="agtest-subbar" aria-label="AG test market context">
+          <nav aria-label="Football matrix sections">
+            <button type="button" onClick={() => { window.location.hash = "#football"; }}>All</button>
+            <button type="button" onClick={() => { window.location.hash = "#football"; }}>English</button>
+            <button type="button" onClick={() => { window.location.hash = "#matrix"; }}>Bias matrix</button>
+            <button className="active" type="button">AGTEST</button>
+          </nav>
+          <div>
+            <span>{rows.length} markets</span>
+            <span>BF / MB / SX</span>
+            <span>{loading ? "loading" : "live snapshot"}</span>
+          </div>
+        </section>
+        <section className="agtest-grid-wrap ag-theme-quartz-dark">
+          <AgGridReact
+            rowData={rows}
+            columnDefs={columnDefs}
+            loading={loading}
+            rowHeight={36}
+            headerHeight={34}
+            animateRows
+            suppressCellFocus
+            defaultColDef={{ sortable: true, resizable: true, filter: false, suppressHeaderMenuButton: true }}
+          />
+        </section>
+        {error && <div className="agtest-error">{error}</div>}
+      </main>
+    </>
   );
 }
 
