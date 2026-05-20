@@ -2458,6 +2458,33 @@ function footballFixtureCompetition(fixture: FootballFixture) {
   return country ? `${country} / ${mappedLeague}` : mappedLeague;
 }
 
+function isDisplayableFootballFixture(fixture: FootballFixture) {
+  const status = String(fixture.statusShort || "").toUpperCase();
+  return !["CANC", "ABD", "PST", "SUSP"].includes(status);
+}
+
+function footballFixtureConflictKey(fixture: FootballFixture) {
+  const start = fixture.kickoffAt ? new Date(fixture.kickoffAt).getTime() : 0;
+  const minuteBucket = start && Number.isFinite(start) ? Math.round(start / 60000) : 0;
+  const teams = [fixture.home, fixture.away]
+    .map((team) => team.providerTeamId ? `id:${team.providerTeamId}` : normalizeSelectionKey(team.name))
+    .filter(Boolean)
+    .sort();
+  return `${minuteBucket}:${teams.join("|")}`;
+}
+
+function cleanFootballFixtures(fixtures: FootballFixture[]) {
+  const seen = new Set<string>();
+  return fixtures
+    .filter(isDisplayableFootballFixture)
+    .filter((fixture) => {
+      const key = footballFixtureConflictKey(fixture);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
 function formatFootballFixtureTime(fixture: FootballFixture) {
   const start = fixture.kickoffAt ? new Date(fixture.kickoffAt) : null;
   if (!start || Number.isNaN(start.getTime())) return "TBD";
@@ -5133,8 +5160,9 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
     ? collapseRowsByFixture(priceRows)
     : priceRows.map((row) => ({ row, totalValue: rowMatchedValue(row), marketCount: 1 }));
   const hasBackendRows = displayPriceRows.length > 0;
-  const providerFootballRows = selectedSport === "football" && !isMatrixPage && footballFixtures.length
-    ? footballFixtures
+  const displayFootballFixtures = cleanFootballFixtures(footballFixtures);
+  const providerFootballRows = selectedSport === "football" && !isMatrixPage && displayFootballFixtures.length
+    ? displayFootballFixtures
       .filter((fixture) => footballFixtureMatchesMarketGroup(fixture, marketGroup))
       .map((fixture, fixtureIndex) => {
         const name = footballFixtureName(fixture);
@@ -5585,7 +5613,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
 
   function renderFootballDashboard() {
     const matchedRowsByFixture = new Map(matrixRows.map((row) => [fixtureBackendKey(row.fixture[1], row.backend.startAt), row]));
-    const fixtureRows = footballFixtures
+    const fixtureRows = displayFootballFixtures
       .filter((fixture) => footballFixtureMatchesMarketGroup(fixture, marketGroup))
       .slice(0, 300)
       .map((fixture, fixtureIndex) => {
