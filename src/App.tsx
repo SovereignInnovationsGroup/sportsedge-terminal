@@ -8212,7 +8212,7 @@ function AgTestPage() {
       try {
         const [fixtureResponse, oddsResponse] = await Promise.all([
           fetch("/api/football/fixtures?days=4&limit=2000&timezone=Europe/London", { cache: "no-store" }),
-          fetch("/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&limit=500", { cache: "no-store" })
+          fetch("/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=500", { cache: "no-store" })
         ]);
         const fixturePayload = await fixtureResponse.json();
         const oddsPayload = await oddsResponse.json();
