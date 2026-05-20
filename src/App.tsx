@@ -4981,7 +4981,38 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
     ? collapseRowsByFixture(priceRows)
     : priceRows.map((row) => ({ row, totalValue: rowMatchedValue(row), marketCount: 1 }));
   const hasBackendRows = displayPriceRows.length > 0;
-  const matrixRows = hasBackendRows ? displayPriceRows.map(({ row, totalValue, marketCount }, fixtureIndex) => {
+  const marketRowsByFixture = new Map(displayPriceRows.map((item) => [
+    fixtureBackendKey(displayEventName(item.row.name), item.row.startAt),
+    item
+  ]));
+  const providerFootballRows = selectedSport === "football" && !isMatrixPage && footballFixtures.length
+    ? footballFixtures
+      .filter((fixture) => footballFixtureMatchesMarketGroup(fixture, marketGroup))
+      .map((fixture, fixtureIndex) => {
+        const name = footballFixtureName(fixture);
+        const competition = footballFixtureCompetition(fixture);
+        const matched = marketRowsByFixture.get(fixtureBackendKey(name, fixture.kickoffAt));
+        const backend = matched?.row || {
+          id: `fixture:${fixture.id}`,
+          name,
+          sportName: "football",
+          competitionName: competition,
+          marketName: "Provider fixture",
+          marketType: "fixture",
+          startAt: fixture.kickoffAt,
+          matches: {},
+          arbs: []
+        };
+        return {
+          fixture: [formatFootballFixtureTime(fixture), name, competition, matched ? (matched.row.marketName || matched.row.marketType || "Exchange prices") : "Provider fixture"] as FixtureRow,
+          fixtureIndex,
+          totalValue: matched?.totalValue || 0,
+          marketCount: matched?.marketCount || 0,
+          backend
+        };
+      })
+    : [];
+  const matrixRows = providerFootballRows.length ? providerFootballRows : hasBackendRows ? displayPriceRows.map(({ row, totalValue, marketCount }, fixtureIndex) => {
     const time = displayStartTime(row);
     const rawCompetition = row.competitionName || Object.values(row.matches || {}).find(Boolean)?.competitionName || selectedSportLabel;
     const competition = fixtureCompetitionLabel(rawCompetition, row.name);
