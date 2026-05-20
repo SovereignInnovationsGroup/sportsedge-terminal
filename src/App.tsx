@@ -1354,6 +1354,29 @@ function TeamLogoStack({ name }: { name: string }) {
   );
 }
 
+function FixtureTeamLogoStack({ fixture }: { fixture: FootballFixture }) {
+  const teams = [fixture.home, fixture.away];
+  return (
+    <span className="team-logo-stack" aria-hidden="true">
+      {teams.map((team) => {
+        const fallbackLogo = teamLogoAsset(team.name);
+        const logoUrl = team.logoUrl || fallbackLogo?.url || "";
+        const isFlag = !team.logoUrl && Boolean(fallbackLogo?.isFlag);
+        return logoUrl ? (
+          <span className={`team-logo-frame${isFlag ? " flag-logo" : ""}`} key={`${fixture.id}-${team.providerTeamId || team.name}`} title={team.name}>
+            <img src={logoUrl} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+            <span>{teamInitials(team.name)}</span>
+          </span>
+        ) : (
+          <span className={`team-badge small${teamFallbackIsFlag(team.name) ? " flag" : ""}`} key={`${fixture.id}-${team.name}`}>
+            {teamFallbackBadge(team.name)}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 function MatrixEventCell({ name, sport }: { name: string; sport: string }) {
   const teams = fixtureTeams(name);
   if (teams.length >= 2) {
@@ -1947,6 +1970,34 @@ type EntryEventRow = {
   exchanges: string[];
 };
 
+type FootballFixture = {
+  id: string;
+  provider: string;
+  providerFixtureId: string;
+  providerLeagueId: string | null;
+  season: number | null;
+  round: string | null;
+  leagueName: string | null;
+  leagueType: string | null;
+  country: string | null;
+  countryCode: string | null;
+  leagueLogoUrl: string | null;
+  countryFlagUrl: string | null;
+  kickoffAt: string | null;
+  timezone: string | null;
+  statusShort: string | null;
+  statusLong: string | null;
+  elapsed: number | null;
+  venueName: string | null;
+  venueCity: string | null;
+  referee: string | null;
+  home: { providerTeamId: string | null; name: string; logoUrl: string | null; winner: boolean | null };
+  away: { providerTeamId: string | null; name: string; logoUrl: string | null; winner: boolean | null };
+  goals: { home: number | null; away: number | null };
+  syncedAt: string | null;
+  updatedAt: string | null;
+};
+
 function backendExchangeCode(exchange: string) {
   if (exchange === "matchbook") return "mb";
   if (exchange === "betfair") return "bf";
@@ -2296,6 +2347,44 @@ function displayStartTime(row: Pick<BackendPriceRow, "startAt" | "name" | "marke
   const text = `${row.name || ""} ${row.marketName || ""} ${row.marketType || ""}`.toLowerCase();
   if (/\b(winner|futures?|outright|championship|league|2026|2027)\b/.test(text)) return "FUT";
   return "TBD";
+}
+
+function footballFixtureName(fixture: FootballFixture) {
+  return `${fixture.home.name} vs ${fixture.away.name}`;
+}
+
+function footballFixtureCompetition(fixture: FootballFixture) {
+  return [fixture.country, fixture.leagueName].filter(Boolean).join(" / ") || "Football";
+}
+
+function formatFootballFixtureTime(fixture: FootballFixture) {
+  const start = fixture.kickoffAt ? new Date(fixture.kickoffAt) : null;
+  if (!start || Number.isNaN(start.getTime())) return "TBD";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Madrid",
+    hour12: false
+  }).format(start);
+}
+
+function fixtureBackendKey(name: string, startAt: string | null) {
+  return displayFixtureKey({ name, startAt });
+}
+
+function footballFixtureMatchesMarketGroup(fixture: FootballFixture, group: string) {
+  return rowMatchesMarketGroup({
+    id: fixture.id,
+    name: footballFixtureName(fixture),
+    sportName: "football",
+    competitionName: [fixture.country, fixture.leagueName].filter(Boolean).join(" "),
+    marketName: "Match Odds",
+    marketType: "one_x_two",
+    startAt: fixture.kickoffAt,
+    matches: {}
+  }, group);
 }
 
 function displayEventName(name: string) {
@@ -4179,6 +4268,9 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
   const [entryEvents, setEntryEvents] = useState<EntryEventRow[]>([]);
   const [entryEventsLoading, setEntryEventsLoading] = useState(false);
   const [entryEventsError, setEntryEventsError] = useState("");
+  const [footballFixtures, setFootballFixtures] = useState<FootballFixture[]>([]);
+  const [footballFixturesLoading, setFootballFixturesLoading] = useState(false);
+  const [footballFixturesError, setFootballFixturesError] = useState("");
   const [entryNews, setEntryNews] = useState<NewsItem[]>([]);
   const [now, setNow] = useState(() => new Date());
   const socketRef = useRef<WebSocket | null>(null);
@@ -4298,6 +4390,42 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
       window.clearTimeout(timer);
     };
   }, [marketSearch]);
+
+  useEffect(() => {
+    if (selectedSport !== "football" || diagnosticExchange) return;
+    let cancelled = false;
+
+    async function loadFootballFixtures() {
+      setFootballFixturesLoading(true);
+      try {
+        const params = new URLSearchParams({
+          days: "1",
+          limit: "2000",
+          timezone: "Europe/London"
+        });
+        const response = await fetch(`/api/football/fixtures?${params.toString()}`, { cache: "no-store" });
+        const payload = await response.json();
+        if (!response.ok || !Array.isArray(payload.fixtures)) {
+          throw new Error(payload.detail || "football fixtures failed");
+        }
+        if (!cancelled) {
+          setFootballFixtures(payload.fixtures as FootballFixture[]);
+          setFootballFixturesError("");
+        }
+      } catch (error) {
+        if (!cancelled) setFootballFixturesError(error instanceof Error ? error.message : "football fixtures failed");
+      } finally {
+        if (!cancelled) setFootballFixturesLoading(false);
+      }
+    }
+
+    loadFootballFixtures();
+    const timer = window.setInterval(loadFootballFixtures, 60000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [selectedSport, diagnosticExchange]);
   const selectedSportLabel = SPORT_LABELS.get(selectedSport) || "Football";
   const marketGroups = SPORT_MARKET_GROUPS[selectedSport] || SPORT_MARKET_GROUPS.football;
   const selectedFootballLeague = selectedSport === "football" ? footballLeagueByValue(marketGroup) : null;
@@ -5276,10 +5404,19 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
   }
 
   function renderFootballDashboard() {
-    const rows = matrixRows.slice(0, 80);
+    const matchedRowsByFixture = new Map(matrixRows.map((row) => [fixtureBackendKey(row.fixture[1], row.backend.startAt), row]));
+    const fixtureRows = footballFixtures
+      .filter((fixture) => footballFixtureMatchesMarketGroup(fixture, marketGroup))
+      .slice(0, 300)
+      .map((fixture, fixtureIndex) => {
+        const name = footballFixtureName(fixture);
+        const matched = matchedRowsByFixture.get(fixtureBackendKey(name, fixture.kickoffAt));
+        return { fixture, fixtureIndex, matched };
+      });
+    const rows = fixtureRows.slice(0, 120);
     const liquidRows = [...matrixRows].sort((a, b) => b.totalValue - a.totalValue).slice(0, 6);
     const liveRows = matrixRows.filter((item) => sportsEdgeMarketQuote(item.backend).isFresh).length;
-    const competitions = new Set(matrixRows.map((item) => item.fixture[2]).filter(Boolean));
+    const competitions = new Set(fixtureRows.map((item) => footballFixtureCompetition(item.fixture)).filter(Boolean));
     const bestLiquidity = liquidRows[0];
     const latestTick = backendRows
       .flatMap((row) => Object.values(row.matches || {}))
@@ -5294,10 +5431,10 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
         <div className="entry-head football-dashboard-head">
           <div>
             <h1>Football Dashboard</h1>
-            <p>Today’s football fixtures, liquidity, SportsEdge best prices, and live news context.</p>
+            <p>Today’s API-Football fixture spine, team logos, league context, and SportsEdge market overlays.</p>
           </div>
           <div className="entry-kpis">
-            <div><span>Fixtures</span><strong>{matrixRows.length}</strong></div>
+            <div><span>Fixtures</span><strong>{fixtureRows.length}</strong></div>
             <div><span>Live rows</span><strong>{liveRows}</strong></div>
             <div><span>Liquidity</span><strong>{totalMatched ? formatExchangeMoney(totalMatched, "GBP") : "-"}</strong></div>
           </div>
@@ -5307,7 +5444,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
           <article>
             <span>Competition coverage</span>
             <strong>{competitions.size || "-"}</strong>
-            <p>Countries/leagues visible from the current backend state.</p>
+            <p>Countries/leagues from the fixture provider cache.</p>
           </article>
           <article>
             <span>Top fixture</span>
@@ -5364,7 +5501,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
             <div className="panel-head compact">
               <div>
                 <h2>Today Fixtures</h2>
-                <p>Click a fixture for the full SportsEdge market view</p>
+                <p>Provider fixtures first; market prices attach when matched</p>
               </div>
             </div>
             <div className="entry-table-wrap">
@@ -5381,32 +5518,37 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map(({ fixture, fixtureIndex, totalValue, marketCount, backend }) => {
-                    const quote = sportsEdgeMarketQuote(backend);
+                  {rows.map(({ fixture, matched }) => {
+                    const name = footballFixtureName(fixture);
+                    const competition = footballFixtureCompetition(fixture);
+                    const quote = matched ? sportsEdgeMarketQuote(matched.backend) : { liquidity: 0, bestBack: null, bestLay: null };
                     return (
                       <tr
-                        className="clickable-row"
-                        key={`${fixture[0]}-${fixture[1]}-${fixture[3]}-${fixtureIndex}`}
-                        onClick={() => setSelectedFixtureIndex(fixtureIndex)}
+                        className={matched ? "clickable-row" : ""}
+                        key={fixture.id}
+                        onClick={() => {
+                          if (matched) setSelectedFixtureIndex(matched.fixtureIndex);
+                          else setMarketSearch(name);
+                        }}
                       >
-                        <td className="mono positive">{fixture[0]}</td>
+                        <td className="mono positive">{formatFootballFixtureTime(fixture)}</td>
                         <td className="entry-event-name">
                           <div className="fixture-title-line">
-                            <TeamLogoStack name={fixture[1]} />
-                            <strong>{fixture[1]}</strong>
+                            <FixtureTeamLogoStack fixture={fixture} />
+                            <strong>{name}</strong>
                           </div>
                         </td>
-                        <td><span>{fixtureGroupLabel(fixture[2])}</span></td>
-                        <td className="mono">{quote.liquidity || totalValue ? formatExchangeMoney(quote.liquidity || totalValue, "GBP") : "-"}</td>
+                        <td><span>{fixtureGroupLabel(competition)}</span></td>
+                        <td className="mono">{quote.liquidity ? formatExchangeMoney(quote.liquidity, "GBP") : "-"}</td>
                         <td className="mono positive">{quote.bestBack ? quote.bestBack.toFixed(2) : "-"}</td>
                         <td className="mono sell">{quote.bestLay ? quote.bestLay.toFixed(2) : "-"}</td>
-                        <td className="mono">{marketCount}</td>
+                        <td className="mono">{matched?.marketCount || "-"}</td>
                       </tr>
                     );
                   })}
                   {rows.length === 0 && (
                     <tr>
-                      <td className="empty" colSpan={7}>{snapshotLoaded ? "No football fixtures returned yet." : "Loading football fixtures."}</td>
+                      <td className="empty" colSpan={7}>{footballFixturesLoading ? "Loading provider football fixtures." : footballFixturesError || "No provider football fixtures returned yet."}</td>
                     </tr>
                   )}
                 </tbody>
