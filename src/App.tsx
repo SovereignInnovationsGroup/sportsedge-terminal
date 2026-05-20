@@ -6355,52 +6355,70 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
                   </tr>
                 </thead>
                 <tbody>
-            {matrixRows.flatMap(({ fixture, fixtureIndex, totalValue, backend }) => {
+            {matrixRows.map(({ fixture, fixtureIndex, totalValue, backend }) => {
               const quote = sportsEdgeMarketQuote(backend);
               const rowKey = backend ? stableDisplayRowKey(backend) : `${fixture[0]}-${fixture[1]}-${fixture[3]}-${fixtureIndex}`;
               const outcomes = tradeableOutcomeRows(backend);
-              const visibleOutcomes = outcomes.length ? outcomes : [undefined];
+              const visibleOutcomes = outcomes.slice(0, 3);
               const coverage = exchangeCoverage(backend);
               const coverageText = exchangeCoverageLabel(backend);
               const biasLabel = rowHasMultiBettingExchange(backend) ? biasFromQuote(quote) : rowHasBettingExchange(backend) ? "Single route" : "No route";
-              return visibleOutcomes.slice(0, 3).map((outcome, outcomeIndex) => (
+              return (
                 <tr
-                  className={`clickable-row${outcomeIndex > 0 ? " repeated-fixture-row" : ""}`}
-                  key={`${rowKey}-${outcome?.key || "fixture"}-${outcomeIndex}`}
+                  className="clickable-row"
+                  key={rowKey}
                   onClick={() => setSelectedFixtureIndex(fixtureIndex)}
                 >
-                  <td className="mono positive">{outcomeIndex === 0 ? fixture[0] : ""}</td>
+                  <td className="mono positive">{fixture[0]}</td>
                   <td className="testboard-fixture">
-                    {outcomeIndex === 0 && (
-                      <>
-                        <div className="fixture-title-line">
-                          <TeamLogoStack name={fixture[1]} />
-                          <strong>{fixture[1]}</strong>
-                        </div>
-                        <span><em>{countryFlag(competitionCountry(fixture[2]))}</em>{fixtureGroupLabel(fixture[2])}</span>
-                      </>
-                    )}
+                    <div className="fixture-title-line">
+                      <TeamLogoStack name={fixture[1]} />
+                      <strong>{fixture[1]}</strong>
+                    </div>
+                    <span><em>{countryFlag(competitionCountry(fixture[2]))}</em>{fixtureGroupLabel(fixture[2])}</span>
                   </td>
                   <td>
-                    {outcomeIndex === 0 && (
-                      <div className="exchange-coverage" title={coverageText}>
-                        {coverage.map((exchange) => (
-                          <span className={exchange.isAvailable ? "available" : ""} key={exchange.key}>{exchange.label}</span>
-                        ))}
-                      </div>
-                    )}
+                    <div className="exchange-coverage" title={coverageText}>
+                      {coverage.map((exchange) => (
+                        <span className={exchange.isAvailable ? "available" : ""} key={exchange.key}>{exchange.label}</span>
+                      ))}
+                    </div>
                   </td>
-                  <td className="contract-cell">{outcome?.label || fixture[3]}</td>
-                  <td className="mono exchange-odds-cell">{formatOutcomeCell(outcome, "bf")}</td>
-                  <td className="mono exchange-odds-cell">{formatOutcomeCell(outcome, "mb")}</td>
-                  <td className="mono exchange-odds-cell">{formatOutcomeCell(outcome, "sx")}</td>
+                  <td className="contract-cell">
+                    <div className="outcome-stack">
+                      {visibleOutcomes.length ? visibleOutcomes.map((outcome) => (
+                        <span key={outcome.key}>{outcome.label}</span>
+                      )) : <span>{fixture[3]}</span>}
+                    </div>
+                  </td>
+                  <td className="mono exchange-odds-cell">
+                    <div className="outcome-stack price-stack">
+                      {visibleOutcomes.length ? visibleOutcomes.map((outcome) => (
+                        <span key={`${outcome.key}-bf`}>{formatOutcomeCell(outcome, "bf")}</span>
+                      )) : <span>-</span>}
+                    </div>
+                  </td>
+                  <td className="mono exchange-odds-cell">
+                    <div className="outcome-stack price-stack">
+                      {visibleOutcomes.length ? visibleOutcomes.map((outcome) => (
+                        <span key={`${outcome.key}-mb`}>{formatOutcomeCell(outcome, "mb")}</span>
+                      )) : <span>-</span>}
+                    </div>
+                  </td>
+                  <td className="mono exchange-odds-cell">
+                    <div className="outcome-stack price-stack">
+                      {visibleOutcomes.length ? visibleOutcomes.map((outcome) => (
+                        <span key={`${outcome.key}-sx`}>{formatOutcomeCell(outcome, "sx")}</span>
+                      )) : <span>-</span>}
+                    </div>
+                  </td>
                   <td>
                     <span className={`bias-pill ${rowHasMultiBettingExchange(backend) ? "active" : ""}`}>{biasLabel}</span>
                   </td>
                   <td className="mono">{quote.liquidity || totalValue ? formatExchangeMoney(quote.liquidity || totalValue, "GBP") : "-"}</td>
                   <td className="mono">{quote.isFresh ? quote.updatedAt || "Live" : quote.updatedAt || "watch"}</td>
                 </tr>
-              ));
+              );
             })}
             {matrixRows.length === 0 && (
               <tr>

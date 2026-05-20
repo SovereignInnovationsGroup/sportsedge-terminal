@@ -5426,17 +5426,17 @@ button {
 
 .testboard-matrix .sportsedge-broker-table {
   width: 100%;
-  min-width: 1120px;
+  min-width: 1040px;
 }
 
-.sportsedge-broker-table .col-time { width: 104px; }
-.sportsedge-broker-table .col-market { width: 300px; }
-.sportsedge-broker-table .col-coverage { width: 112px; }
-.sportsedge-broker-table .col-contract { width: 190px; }
-.sportsedge-broker-table .col-exchange-price { width: 146px; }
-.sportsedge-broker-table .col-bias { width: 104px; }
-.sportsedge-broker-table .col-liquidity { width: 92px; }
-.sportsedge-broker-table .col-fresh { width: 86px; }
+.sportsedge-broker-table .col-time { width: 96px; }
+.sportsedge-broker-table .col-market { width: 270px; }
+.sportsedge-broker-table .col-coverage { width: 92px; }
+.sportsedge-broker-table .col-contract { width: 170px; }
+.sportsedge-broker-table .col-exchange-price { width: 132px; }
+.sportsedge-broker-table .col-bias { width: 94px; }
+.sportsedge-broker-table .col-liquidity { width: 82px; }
+.sportsedge-broker-table .col-fresh { width: 72px; }
 
 .testboard-matrix .sportsedge-broker-table th,
 .testboard-matrix .sportsedge-broker-table td {
@@ -5458,9 +5458,27 @@ button {
 
 .sportsedge-broker-table .exchange-odds-cell {
   color: rgba(226, 232, 240, 0.92);
-  font-size: 11px;
+  font-size: 10px;
   text-align: left;
   white-space: normal;
+}
+
+.outcome-stack {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.outcome-stack span {
+  display: block;
+  min-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.price-stack span {
+  color: rgba(203, 213, 225, 0.92);
 }
 
 .testboard-matrix thead th {
