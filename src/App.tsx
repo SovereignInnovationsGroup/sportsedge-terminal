@@ -6585,11 +6585,13 @@ function SportsEdgeProductMockupPage() {
   );
 }
 
-function ProfileBreadcrumbs({ items }: { items: Array<{ label: string; href?: string }> }) {
+type ProfileBreadcrumbItem = { label: string; href?: string };
+
+function ProfileBreadcrumbs({ items }: { items: ProfileBreadcrumbItem[] }) {
   return (
     <nav className="profile-breadcrumbs football-region-breadcrumb" aria-label="Profile breadcrumb">
       {items.map((item, index) => (
-        <Fragment key={`${item.label}-${index}`}>
+        <Fragment key={`${item.href || "current"}-${item.label}-${index}`}>
           {item.href ? <a href={item.href}>{item.label}</a> : <span>{item.label}</span>}
           {index < items.length - 1 && <span>/</span>}
         </Fragment>
@@ -6598,11 +6600,36 @@ function ProfileBreadcrumbs({ items }: { items: Array<{ label: string; href?: st
   );
 }
 
-function ProfileBreadcrumbStrip({ items }: { items: Array<{ label: string; href?: string }> }) {
+function ProfileBreadcrumbStrip({ items }: { items: ProfileBreadcrumbItem[] }) {
   return (
     <section className="football-region-strip profile-region-strip" aria-label="Profile navigation">
       <ProfileBreadcrumbs items={items} />
     </section>
+  );
+}
+
+function FootballProfileShell({
+  breadcrumbs,
+  newsLabel,
+  newsQuery,
+  children
+}: {
+  breadcrumbs: ProfileBreadcrumbItem[];
+  newsLabel: string;
+  newsQuery: string;
+  children: ReactNode;
+}) {
+  return (
+    <main className="testboard-shell team-profile-shell">
+      <SportsEdgeTopbar active="football" />
+      <ProfileBreadcrumbStrip items={breadcrumbs} />
+      <section className="terminal-workspace">
+        <div className="terminal-workspace-main team-profile-main">
+          {children}
+        </div>
+        <StandaloneNewsRail sport="football" label={newsLabel} query={newsQuery} />
+      </section>
+    </main>
   );
 }
 
@@ -6656,6 +6683,7 @@ function TeamProfilePage({ slug }: { slug: string }) {
     ["News sensitivity", "Transfers, injuries, lineups, manager comments"],
     ["Profile source", "API-Football cache + SportsEdge team registry"]
   ];
+  const aliases = Array.from(new Set((profile?.asset?.aliases?.length ? profile.asset.aliases : [name, shortName, teamCode]).filter(Boolean)));
 
   const content = (
     <div className="team-profile-page">
@@ -6703,8 +6731,8 @@ function TeamProfilePage({ slug }: { slug: string }) {
           <div className="team-profile-aliases">
             <span>Aliases</span>
             <div>
-              {(profile?.asset?.aliases?.length ? profile.asset.aliases : [name, shortName, teamCode].filter(Boolean)).map((alias) => (
-                <b key={alias}>{alias}</b>
+              {aliases.map((alias, index) => (
+                <b key={`${alias}-${index}`}>{alias}</b>
               ))}
             </div>
           </div>
@@ -6794,22 +6822,17 @@ function TeamProfilePage({ slug }: { slug: string }) {
   );
 
   return (
-    <main className="testboard-shell team-profile-shell">
-      <SportsEdgeTopbar active="football" />
-      <ProfileBreadcrumbStrip
-        items={[
+    <FootballProfileShell
+      breadcrumbs={[
           { label: "All", href: "#dashboard" },
           { label: "Football", href: "#football" },
           { label: name }
-        ]}
-      />
-      <section className="terminal-workspace">
-        <div className="terminal-workspace-main team-profile-main">
-          {content}
-        </div>
-        <StandaloneNewsRail sport="football" label={`${name.toUpperCase()} NEWS`} query={name} />
-      </section>
-    </main>
+      ]}
+      newsLabel={`${name.toUpperCase()} NEWS`}
+      newsQuery={name}
+    >
+      {content}
+    </FootballProfileShell>
   );
 }
 
@@ -6850,18 +6873,16 @@ function PlayerProfilePage({ id }: { id: string }) {
   ];
 
   return (
-    <main className="testboard-shell team-profile-shell">
-      <SportsEdgeTopbar active="football" />
-      <ProfileBreadcrumbStrip
-        items={[
+    <FootballProfileShell
+      breadcrumbs={[
           { label: "All", href: "#dashboard" },
           { label: "Football", href: "#football" },
           { label: teamName, href: teamHref },
           { label: name }
-        ]}
-      />
-      <section className="terminal-workspace">
-        <div className="terminal-workspace-main team-profile-main">
+      ]}
+      newsLabel={`${name.toUpperCase()} NEWS`}
+      newsQuery={name}
+    >
           <div className="team-profile-page player-profile-page">
             <section className="team-profile-hero">
               <div className="team-profile-title">
@@ -6945,10 +6966,7 @@ function PlayerProfilePage({ id }: { id: string }) {
               </section>
             )}
           </div>
-        </div>
-        <StandaloneNewsRail sport="football" label={`${name.toUpperCase()} NEWS`} query={name} />
-      </section>
-    </main>
+    </FootballProfileShell>
   );
 }
 
