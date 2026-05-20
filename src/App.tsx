@@ -634,7 +634,7 @@ function competitionCountry(competition: string) {
   const explicitCountry = countryNameFromTextPrefix(competition);
   if (explicitCountry) return explicitCountry;
   if (value.includes("uefa") || value.includes("champions league") || value.includes("europa")) return "Europe";
-  if (value.includes("english premier league") || value === "premier league" || value.includes("uk racing") || value.includes("championship") || value.includes("wimbledon")) return "England";
+  if (value.includes("english premier league") || value.includes("england premier league") || value.includes("efl") || value.includes("uk racing") || value.includes("wimbledon")) return "England";
   if (value.includes("la liga")) return "Spain";
   if (value.includes("serie a")) return "Italy";
   if (value.includes("ligue 1")) return "France";
@@ -684,14 +684,16 @@ function fixtureCompetitionLabel(competition: string, eventName: string) {
 
   const firstLeague = leagues[0] || "Football";
   const leagueCountry = competitionCountry(firstLeague);
-  if ((isGeneric || competitionCountry(raw) === "Global") && countries.length === 1) {
-    const country = leagueCountry !== "Global" ? leagueCountry : countries[0];
-    return `${country} / ${cleanCompetitionName(country, firstLeague)}`;
+  const rawCountry = competitionCountry(raw);
+  if ((isGeneric || rawCountry === "Global") && countries.length === 1) {
+    const country = countries[0] || leagueCountry;
+    const competitionName = raw && !isGeneric ? raw : firstLeague;
+    return `${country} / ${cleanCompetitionName(country, competitionName)}`;
   }
-  if ((isGeneric || competitionCountry(raw) === "Global") && countries.length > 1) {
+  if ((isGeneric || rawCountry === "Global") && countries.length > 1) {
     return `International / ${raw && !isGeneric ? raw : "Football"}`;
   }
-  const country = competitionCountry(raw || "Football");
+  const country = rawCountry;
   return `${country} / ${cleanCompetitionName(country, raw || "Football")}`;
 }
 
@@ -1724,6 +1726,41 @@ function rowMatchesSelectedSport(row: BackendPriceRow, selectedSport: string) {
   return sports.length === 0;
 }
 
+function rowFixtureCountries(row: BackendPriceRow) {
+  const values = [
+    row.name,
+    ...Object.values(row.matches || {}).map((match) => match?.name)
+  ];
+  return Array.from(new Set(values.flatMap((name) => (
+    fixtureTeams(String(name || ""))
+      .map((team) => footballTeamAsset(team)?.country)
+      .filter(Boolean) as string[]
+  ))));
+}
+
+function rowCompetitionCountries(row: BackendPriceRow) {
+  const values = [
+    row.competitionName,
+    ...Object.values(row.matches || {}).map((match) => match?.competitionName)
+  ];
+  return Array.from(new Set(values
+    .map((value) => countryNameFromTextPrefix(String(value || "")))
+    .filter(Boolean)));
+}
+
+function rowHasEnglishContext(row: BackendPriceRow, competitionText: string) {
+  const competitionCountries = rowCompetitionCountries(row);
+  if (competitionCountries.some((country) => normalizeSelectionKey(country) !== "england")) return false;
+  if (competitionCountries.some((country) => normalizeSelectionKey(country) === "england")) return true;
+
+  const fixtureCountries = rowFixtureCountries(row);
+  if (fixtureCountries.length > 0) {
+    return fixtureCountries.every((country) => normalizeSelectionKey(country) === "england");
+  }
+
+  return /\b(england|english|efl|epl)\b/.test(competitionText);
+}
+
 function rowMatchesMarketGroup(row: BackendPriceRow, group: string) {
   if (group === "all") return true;
   const competitionText = [
@@ -1743,10 +1780,7 @@ function rowMatchesMarketGroup(row: BackendPriceRow, group: string) {
       match?.marketType
     ])
   ].join(" ").toLowerCase();
-  const englishCountryContext = /\b(england|english|efl)\b/.test(competitionText);
-  const englishLeagueContext = /\b(championship|league one|league two|fa cup|efl cup|carabao cup)\b/.test(competitionText)
-    || (/\bpremier league\b/.test(competitionText) && !/\b(singapore|malaysia|wales|northern ireland|israel|egypt|ghana|ukraine|russia|canadian|canada|jamaica|kenya|south africa)\b/.test(competitionText));
-  const isEnglishFootball = englishCountryContext || englishLeagueContext;
+  const isEnglishFootball = rowHasEnglishContext(row, competitionText);
   const start = row.startAt ? new Date(row.startAt) : null;
   const isToday = start && !Number.isNaN(start.getTime())
     ? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(start) === new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date())
