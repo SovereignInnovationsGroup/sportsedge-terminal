@@ -1,10 +1,13 @@
 
   import { defineConfig, loadEnv } from 'vite';
   import react from '@vitejs/plugin-react';
+  import { execFile } from 'node:child_process';
   import path from 'path';
+  import { promisify } from 'node:util';
 
   let newsPoolPromise: Promise<any> | null = null;
   let newsPoolConnectionString = '';
+  const execFileAsync = promisify(execFile);
 
   function getNewsConnectionString(server: any) {
     const env = loadEnv(server.config.mode, server.config.root, '');
@@ -23,6 +26,18 @@
     proxy.on('proxyReqWs', (proxyReq: any) => {
       proxyReq.removeHeader('origin');
     });
+  }
+
+  function escapeSql(value: unknown) {
+    return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  }
+
+  function quote(value: unknown) {
+    return `'${escapeSql(value)}'`;
+  }
+
+  function shellQuote(value: string) {
+    return `'${value.replace(/'/g, `'\\''`)}'`;
   }
 
   function getNewsPool(connectionString: string) {
@@ -191,6 +206,59 @@
     res.statusCode = response.status;
     res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json');
     res.end(body);
+  }
+
+  async function fetchTwitterNewsRows(requestUrl: URL) {
+    const sport = requestUrl.searchParams.get('sport')?.trim() || '';
+    const search = requestUrl.searchParams.get('q')?.trim() || '';
+    const limit = Math.min(Number.parseInt(requestUrl.searchParams.get('limit') || '120', 10) || 120, 200);
+    const clauses = ["post.discovered_at >= now64(3, 'UTC') - INTERVAL 7 DAY"];
+    if (sport && sport !== 'all') clauses.push(`post.sport = ${quote(apiSportForSql(sport))}`);
+    if (search) {
+      const term = quote(search.toLowerCase());
+      clauses.push(`(positionCaseInsensitive(post.text, ${term}) > 0 OR positionCaseInsensitive(post.author_name, ${term}) > 0 OR positionCaseInsensitive(post.account_handle, ${term}) > 0)`);
+    }
+    const query = `
+      SELECT
+        post.tweet_id,
+        post.source_id,
+        post.source_type,
+        post.sport,
+        post.account_handle,
+        post.author_name,
+        post.text,
+        post.analysis_text,
+        post.url,
+        post.published_at,
+        post.discovered_at,
+        impact.news_type,
+        impact.market_relevance,
+        impact.impact_score,
+        impact.confidence,
+        impact.urgency,
+        impact.direction,
+        impact.affected_entity,
+        impact.affected_side,
+        impact.reason
+      FROM sportsedge.sports_hl_twitter_posts post
+      LEFT JOIN sportsedge.sports_hl_twitter_impact_assessments impact
+        ON post.item_hash = impact.item_hash
+      WHERE ${clauses.join(' AND ')}
+      ORDER BY coalesce(post.published_at, post.discovered_at) DESC
+      LIMIT ${limit}
+      FORMAT JSONEachRow
+    `;
+    const { stdout } = await execFileAsync('ssh', [
+      '-o',
+      'BatchMode=yes',
+      'root@sportsedge-prod',
+      `clickhouse-client --query ${shellQuote(query)}`
+    ], { maxBuffer: 1024 * 1024 * 8 });
+    return stdout.split('\n').filter(Boolean).map((line) => JSON.parse(line));
+  }
+
+  function apiSportForSql(value: string) {
+    return value === 'horseracing' ? 'horse_racing' : value;
   }
 
   function normalizeOddsApiRows(events: any[]) {
@@ -481,6 +549,20 @@
             });
           }
         });
+        server.middlewares.use('/api/twitter-news', async (req: any, res: any) => {
+          try {
+            const requestUrl = new URL(req.url || '/', 'http://127.0.0.1');
+            const rows = await fetchTwitterNewsRows(requestUrl);
+            sendJson(res, 200, { rows });
+          } catch (error: any) {
+            sendJson(res, 200, {
+              ok: false,
+              detail: 'Twitter/X news unavailable',
+              message: error?.message || 'Unknown error',
+              rows: []
+            });
+          }
+        });
         server.middlewares.use('/api/v2/football-odds', async (req: any, res: any) => {
           try {
             const requestUrl = new URL(req.url || '/', 'http://127.0.0.1');
@@ -551,9 +633,13 @@
       target: 'esnext',
       outDir: 'build',
     },
+    preview: {
+      allowedHosts: true,
+    },
     server: {
       port: 3000,
       open: true,
+      allowedHosts: true,
       proxy: {
         '/auth': {
           target: 'https://api.sportsedge.markets',

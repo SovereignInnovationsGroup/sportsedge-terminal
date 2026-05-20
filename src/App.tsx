@@ -77,6 +77,7 @@ const PRIORITY_SPORTS = [
 
 const TERMINAL_TOP_SPORTS = [
   { label: "Football", value: "football", route: "#football" },
+  { label: "News", value: "news", route: "#news" },
   { label: "Horse Racing", value: "horseracing", route: "#horseracing" },
   { label: "Tennis", value: "tennis", route: "#tennis" },
   { label: "Golf", value: "golf", route: "#golf" }
@@ -7027,6 +7028,727 @@ function SportsEdgeProductMockupPage() {
   );
 }
 
+function AgtestBloombergMockupPage() {
+  const [screen, setScreen] = useState<"monitor" | "match" | "diagnostics">("monitor");
+  const rows = [
+    ["19:45", "ARS-TOT", "Premier League", "Arsenal", "2.04", "2.01", "+1.5%", "GBP 1.42m", "84", "12s", "LINEUP"],
+    ["19:45", "ARS-TOT", "Premier League", "Draw", "3.72", "3.80", "-2.1%", "GBP 860k", "71", "12s", "WATCH"],
+    ["19:45", "ARS-TOT", "Premier League", "Tottenham", "3.96", "4.08", "-2.9%", "GBP 1.08m", "78", "12s", "DRIFT"],
+    ["20:00", "CHE-MCI", "Premier League", "Man City", "1.88", "1.84", "+2.2%", "GBP 2.31m", "91", "8s", "SHARP"],
+    ["20:00", "CHE-MCI", "Premier League", "Chelsea", "4.50", "4.62", "-2.6%", "GBP 1.16m", "73", "8s", "NEWS"],
+    ["20:15", "LIV-NEW", "Premier League", "Over 2.5", "1.74", "1.70", "+2.4%", "GBP 774k", "69", "18s", "TOTALS"],
+    ["21:00", "PSG-RMA", "Champions League", "Real Madrid", "2.92", "2.86", "+2.1%", "GBP 1.91m", "82", "21s", "UEFA"],
+    ["Tomorrow", "SAKA", "Player Props", "Assist", "3.35", "3.22", "+4.0%", "GBP 184k", "76", "44s", "PLAYER"]
+  ];
+  const news = [
+    ["12:34", "ARS", "Saka pictured in full training; assist and shot markets firm"],
+    ["12:31", "EPL", "Fixture congestion model raises rotation risk for top-six sides"],
+    ["12:25", "MCI", "City travel squad confirmed with no late forward absence"],
+    ["12:17", "TOT", "Defensive injuries keep Arsenal win pressure elevated"],
+    ["12:04", "UEFA", "Madrid lineup leak moves away side by 2.1%"],
+    ["11:58", "NEWS", "TalkSPORT segment flags Chelsea tactical switch"]
+  ];
+  const venues = [
+    ["Betfair", "2.02", "2.06", "GBP 620k", "live", "27ms"],
+    ["Matchbook", "2.00", "2.08", "GBP 418k", "live", "41ms"],
+    ["SX", "2.04", "2.10", "GBP 92k", "live", "88ms"],
+    ["Kalshi", "-", "-", "-", "mapped", "310ms"],
+    ["Polymarket", "2.01", "2.09", "USD 141k", "watch", "155ms"]
+  ];
+
+  return (
+    <>
+      <SportsEdgeTopbar active="football" searchPlaceholder="ARSENAL, EPL, PLAYER: SAKA, MATCH: ARS-TOT, NEWS, MATRIX..." />
+      <main className="agtest-page bb-demo-shell">
+        <section className="agtest-subbar bb-demo-subbar" aria-label="AGTEST mockup controls">
+          <nav aria-label="Mockup screens">
+            {(["monitor", "match", "diagnostics"] as const).map((key) => (
+              <button className={screen === key ? "active" : ""} key={key} type="button" onClick={() => setScreen(key)}>
+                {key}
+              </button>
+            ))}
+          </nav>
+          <div>
+            <span>AGTEST layout demo</span>
+            <span>SportsEdge-first</span>
+            <span>WSS live</span>
+          </div>
+        </section>
+        <div className="bb-demo-layout">
+          <aside className="bb-demo-left">
+            <section>
+              <strong>Sports</strong>
+              {["Football", "Tennis", "Baseball", "Basketball", "Golf"].map((item, index) => <button className={index === 0 ? "active" : ""} type="button" key={item}>{item}</button>)}
+            </section>
+            <section>
+              <strong>Leagues</strong>
+              {["Premier League", "Champions League", "La Liga", "NBA", "ATP"].map((item) => <button type="button" key={item}>{item}</button>)}
+            </section>
+            <section>
+              <strong>Watchlists</strong>
+              {["London derby", "Sharp moves", "Lineup risk", "Saved: EPL Close"].map((item) => <button type="button" key={item}>{item}</button>)}
+            </section>
+            <section>
+              <strong>Alerts</strong>
+              <div className="bb-demo-alert">4 price flags</div>
+              <div className="bb-demo-alert hot">2 news shocks</div>
+            </section>
+          </aside>
+
+          <section className="bb-demo-center">
+            {screen === "monitor" && (
+              <>
+                <div className="bb-demo-strip"><span>SportsEdge picture</span><strong>Football / EPL / Top Liquidity</strong><em>Consensus first. Venues one layer down.</em></div>
+                <table className="bb-demo-table">
+                  <thead><tr>{["Time", "Code", "League", "Selection", "SE Fair", "Mkt", "Edge", "Liquidity", "Conf", "Fresh", "Flag"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+                  <tbody>{rows.map((row) => <tr key={`${row[1]}-${row[3]}`}>{row.map((cell, index) => <td className={index === 6 ? (cell.startsWith("+") ? "bb-pos" : "bb-neg") : index === 10 ? "bb-flag" : index >= 4 && index <= 9 ? "bb-mono" : ""} key={`${cell}-${index}`}>{cell}</td>)}</tr>)}</tbody>
+                </table>
+              </>
+            )}
+
+            {screen === "match" && (
+              <div className="bb-demo-match">
+                <div className="bb-demo-match-head">
+                  <div><span>MATCH: ARS-TOT</span><h1>Arsenal - Tottenham Hotspur</h1><p>Premier League / Emirates Stadium / live market picture</p></div>
+                  <div><b>SE Fair 2.04</b><strong className="bb-pos">+1.5% edge</strong><em>Confidence 84 / Fresh 12s</em></div>
+                </div>
+                <div className="bb-demo-kpis">{[["Consensus", "Arsenal lean"], ["Liquidity", "GBP 1.42m"], ["Bias", "Home pressure"], ["News impact", "Lineup +72"], ["Risk", "Rotation watch"]].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
+                <table className="bb-demo-table compact">
+                  <thead><tr>{["Market", "Selection", "SE Fair", "Market", "Edge", "Liquidity", "Flag"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+                  <tbody>{rows.slice(0, 3).map((row) => <tr key={`match-${row[3]}`}><td>Match Odds</td><td>{row[3]}</td><td className="bb-mono">{row[4]}</td><td className="bb-mono">{row[5]}</td><td className={row[6].startsWith("+") ? "bb-pos bb-mono" : "bb-neg bb-mono"}>{row[6]}</td><td className="bb-mono">{row[7]}</td><td className="bb-flag">{row[10]}</td></tr>)}</tbody>
+                </table>
+                <div className="bb-demo-subgrid"><section><strong>Player Context</strong><p>Bukayo Saka: assist market +4.0%, full training signal, lineup probability 86%.</p></section><section><strong>Team Context</strong><p>Arsenal home trend and Tottenham defensive injuries align with home pressure.</p></section></div>
+              </div>
+            )}
+
+            {screen === "diagnostics" && (
+              <div className="bb-demo-diagnostics">
+                <div className="bb-demo-strip"><span>Diagnostics</span><strong>Raw exchange route state for ARS-TOT / Arsenal</strong><em>Hidden from main client view unless opened.</em></div>
+                <table className="bb-demo-table">
+                  <thead><tr>{["Venue", "Back", "Lay", "Depth", "Status", "Latency"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+                  <tbody>{venues.map((row) => <tr key={row[0]}><td>{row[0]}</td><td className="bb-pos bb-mono">{row[1]}</td><td className="bb-neg bb-mono">{row[2]}</td><td className="bb-mono">{row[3]}</td><td className="bb-flag">{row[4]}</td><td className="bb-mono">{row[5]}</td></tr>)}</tbody>
+                </table>
+                <div className="bb-demo-json"><span>route.composite</span><code>{"{ fair: 2.04, market: 2.01, edge: 0.015, confidence: 84, flags: ['LINEUP','SHARP'] }"}</code></div>
+              </div>
+            )}
+          </section>
+
+          <aside className="bb-demo-news">
+            <div className="bb-demo-news-head"><strong>News</strong><span>{screen === "match" ? "MATCH: ARS-TOT" : "FOOTBALL / EPL"}</span></div>
+            {news.map((item) => <article key={`${item[0]}-${item[1]}`}><time>{item[0]}</time><b>{item[1]}</b><p>{item[2]}</p></article>)}
+          </aside>
+        </div>
+      </main>
+    </>
+  );
+}
+
+type TwitterNewsRow = {
+  tweet_id: string;
+  source_id: string;
+  source_type: string;
+  sport: string;
+  account_handle: string;
+  author_name: string;
+  text: string;
+  analysis_text?: string;
+  url?: string;
+  published_at: string | null;
+  discovered_at: string;
+  news_type?: string;
+  market_relevance?: number;
+  impact_score?: number;
+  confidence?: number;
+  urgency?: string;
+  direction?: string;
+  affected_entity?: string;
+  affected_side?: string;
+  reason?: string;
+};
+
+const NEWS_FEED_SPORT_FILTERS = [
+  ["all", "Top"],
+  ["football", "Football"],
+  ["tennis", "Tennis"],
+  ["baseball", "Baseball"],
+  ["basketball", "Basketball"],
+  ["golf", "Golf"],
+  ["horse_racing", "Racing"],
+  ["rugby", "Rugby"],
+  ["cricket", "Cricket"],
+  ["formula_1", "F1"],
+  ["mma", "MMA"],
+  ["ice_hockey", "Hockey"]
+] as const;
+
+function BloombergNewsFeedMockupPage() {
+  const [selectedId, setSelectedId] = useState("");
+  const [items, setItems] = useState<NewsItem[]>([]);
+  const [twitterRows, setTwitterRows] = useState<TwitterNewsRow[]>([]);
+  const [feedMode, setFeedMode] = useState<"all" | "sites" | "twitter">("all");
+  const [intelligenceView, setIntelligenceView] = useState("top");
+  const [sport, setSport] = useState("football");
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [socketStatus, setSocketStatus] = useState<"offline" | "connecting" | "live" | "waiting">("offline");
+  const socketRef = useRef<WebSocket | null>(null);
+  const reconnectTimerRef = useRef<number | null>(null);
+  const sportRef = useRef(sport);
+
+  useEffect(() => {
+    sportRef.current = sport;
+  }, [sport]);
+
+  function storyTime(item: NewsItem) {
+    const value = item.published_at || item.discovered_at;
+    if (!value) return "--:--:--";
+    return new Intl.DateTimeFormat("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    }).format(new Date(value));
+  }
+
+  function storyTag(item: NewsItem) {
+    const base = item.entity_name || item.competition || item.sport || item.source_name || "NEWS";
+    const words = cleanText(base).split(/\s+/).filter(Boolean);
+    if (words.length >= 2) return words.map((word) => word[0]).join("").slice(0, 5).toUpperCase();
+    return cleanText(base).replace(/[^a-z0-9]/gi, "").slice(0, 5).toUpperCase() || "NEWS";
+  }
+
+  function storyUrgency(item: NewsItem) {
+    const score = Number(item.impact_assessment?.impact_score || 0);
+    const urgency = String(item.impact_assessment?.urgency || "").toLowerCase();
+    if (urgency === "immediate" || score >= 75) return "1";
+    if (urgency === "high" || score >= 50) return "2";
+    if (score >= 25 || item.impact_assessment) return "3";
+    return "4";
+  }
+
+  function storyImpact(item: NewsItem) {
+    const impact = newsImpactLabel(item.impact_assessment);
+    if (impact) {
+      return [impact.eventType, impact.score ? `${impact.score}` : "", impact.direction].filter(Boolean).join(" / ");
+    }
+    return displayLabel(item.competition || item.entity_name || item.sport, "Monitor");
+  }
+
+  function storyBody(item: NewsItem) {
+    return cleanText(item.impact_assessment?.trading_note || item.analysis_text || item.display_summary || item.summary || item.title);
+  }
+
+  function rowTime(value: string | null | undefined) {
+    if (!value) return "--:--:--";
+    return new Intl.DateTimeFormat("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false
+    }).format(new Date(value));
+  }
+
+  function twitterUrgency(row: TwitterNewsRow) {
+    const score = Number(row.impact_score || 0);
+    const urgency = String(row.urgency || "").toLowerCase();
+    if (urgency === "immediate" || score >= 75) return "1";
+    if (urgency === "high" || score >= 50) return "2";
+    if (urgency === "medium" || score >= 25) return "3";
+    return "4";
+  }
+
+  function cleanSocialText(value: string | null | undefined) {
+    return cleanText(value)
+      .replace(/https?:\/\/\S+/gi, "")
+      .replace(/\bpic\.twitter\.com\/\S+/gi, "")
+      .replace(/\s+#/g, " #")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function twitterSummary(row: TwitterNewsRow) {
+    const reason = cleanSocialText(row.reason);
+    const text = cleanSocialText(row.text);
+    const type = displayLabel(row.news_type, "update").toLowerCase();
+    const score = Number(row.impact_score || 0);
+    if (reason && !/^no clear market-moving phrase/i.test(reason)) {
+      return `${displayLabel(row.account_handle || row.author_name, "Twitter/X")} ${type}: ${reason}`;
+    }
+    if (score >= 40) return `${displayLabel(row.account_handle || row.author_name, "Twitter/X")} ${type}: ${text}`;
+    return text;
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+
+    async function loadNewsFeed() {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({ limit: "160", include_context: "1" });
+        if (sport !== "all") params.set("sport", apiSportValue(sport));
+        if (query.trim()) params.set("q", query.trim());
+        const response = await fetch(`/api/news?${params.toString()}`, { cache: "no-store", signal: controller.signal });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !Array.isArray(payload.items)) {
+          throw new Error(payload.message || payload.detail || "News feed unavailable");
+        }
+        if (!cancelled) {
+          setItems((current) => mergeNewsItems(payload.items as NewsItem[], current).slice(0, 180));
+          setError("");
+        }
+      } catch (err) {
+        if (!cancelled && !controller.signal.aborted) setError(err instanceof Error ? err.message : "News feed unavailable");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadNewsFeed();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [sport, query]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+
+    async function loadTwitterNews() {
+      if (feedMode === "sites") return;
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({ limit: "160" });
+        if (sport !== "all") params.set("sport", apiSportValue(sport));
+        if (query.trim()) params.set("q", query.trim());
+        const response = await fetch(`/api/twitter-news?${params.toString()}`, { cache: "no-store", signal: controller.signal });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !Array.isArray(payload.rows)) throw new Error(payload.message || payload.detail || "Twitter/X feed unavailable");
+        if (!cancelled) {
+          setTwitterRows(payload.rows as TwitterNewsRow[]);
+          setError("");
+        }
+      } catch (err) {
+        if (!cancelled && !controller.signal.aborted) setError(err instanceof Error ? err.message : "Twitter/X feed unavailable");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadTwitterNews();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [feedMode, sport, query]);
+
+  useEffect(() => {
+    const token = window.localStorage.getItem("sportsedge.auth.token");
+    let closedByEffect = false;
+
+    function clearReconnect() {
+      if (reconnectTimerRef.current) {
+        window.clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+    }
+
+    function subscribe(socket: WebSocket) {
+      socket.send(JSON.stringify({
+        type: "subscribe",
+        channel: "news",
+        filters: sportRef.current === "all" ? {} : { sport: apiSportValue(sportRef.current) }
+      }));
+    }
+
+    function connect() {
+      clearReconnect();
+      if (!token) {
+        setSocketStatus("waiting");
+        return;
+      }
+      setSocketStatus("connecting");
+      const socket = new WebSocket(sportsEdgeWsUrl(token));
+      socketRef.current = socket;
+
+      socket.addEventListener("open", () => {
+        setSocketStatus("live");
+        subscribe(socket);
+      });
+
+      socket.addEventListener("message", (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message?.type !== "news.item" || !message.payload) return;
+          const item = { ...(message.payload as NewsItem), isNew: true };
+          if (sportRef.current !== "all" && !sportMatchesNewsFilter(item.sport, sportRef.current)) return;
+          setItems((current) => mergeNewsItems([item], current).slice(0, 180));
+        } catch {
+          // Keep the feed alive if one socket payload is malformed.
+        }
+      });
+
+      socket.addEventListener("close", () => {
+        if (closedByEffect) return;
+        setSocketStatus("offline");
+        reconnectTimerRef.current = window.setTimeout(connect, 2500);
+      });
+
+      socket.addEventListener("error", () => setSocketStatus("offline"));
+    }
+
+    connect();
+    return () => {
+      closedByEffect = true;
+      clearReconnect();
+      socketRef.current?.close();
+      socketRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    socket.send(JSON.stringify({
+      type: "subscribe",
+      channel: "news",
+      filters: sport === "all" ? {} : { sport: apiSportValue(sport) }
+    }));
+  }, [sport]);
+
+  const stories = useMemo(() => {
+    const socialStories = twitterRows
+        .filter((row) => sport === "all" || normalizeSport(row.sport) === normalizeSport(apiSportValue(sport)))
+        .map((row) => ({
+          id: `twitter:${row.tweet_id}`,
+          kind: "social",
+          twitter: row,
+          time: rowTime(row.published_at || row.discovered_at),
+          sortTime: new Date(row.published_at || row.discovered_at).getTime() || 0,
+          tag: (row.account_handle || row.sport || "X").replace(/^@/, "").slice(0, 8).toUpperCase(),
+          urgency: twitterUrgency(row),
+          source: "SOCIAL",
+          headline: cleanSocialText(row.text) || cleanSocialText(row.analysis_text),
+          rawType: row.news_type || "",
+          rawScore: Number(row.impact_score || 0),
+          impact: [row.news_type, row.impact_score ? `${row.impact_score}` : "", row.direction].filter(Boolean).join(" / ") || "Monitor",
+          body: twitterSummary(row)
+        }));
+    const mediaStories = uniqueNewsItems(items)
+        .filter((item) => sport === "all" || sportMatchesNewsFilter(item.sport, sport))
+        .map((item) => ({
+          id: item.id || newsFingerprint(item),
+          kind: "media",
+          item,
+          time: storyTime(item),
+          sortTime: new Date(item.published_at || item.discovered_at).getTime() || 0,
+          tag: storyTag(item),
+          urgency: storyUrgency(item),
+          source: displayLabel(item.source_name || item.source_type, "SE NEWS").toUpperCase().slice(0, 18),
+          headline: cleanText(item.title),
+          rawType: [item.source_type, item.entity_type, item.impact_assessment?.event_type].filter(Boolean).join(" "),
+          rawScore: Number(item.impact_assessment?.impact_score || 0),
+          impact: storyImpact(item),
+          body: storyBody(item)
+        }));
+    const merged = feedMode === "twitter" ? socialStories : feedMode === "sites" ? mediaStories : [...socialStories, ...mediaStories];
+    return merged
+      .filter((story) => {
+        const text = `${story.rawType} ${story.headline} ${story.impact}`.toLowerCase();
+        if (intelligenceView === "impact") return story.rawScore >= 50 || story.urgency === "1" || story.urgency === "2";
+        if (intelligenceView === "official") return text.includes("official") || text.includes("club") || text.includes("league");
+        if (intelligenceView === "rumours") return text.includes("rumour") || text.includes("rumor") || text.includes("transfer");
+        if (intelligenceView === "lineups") return text.includes("lineup") || text.includes("squad") || text.includes("team_news");
+        if (intelligenceView === "injuries") return text.includes("injur") || text.includes("fitness") || text.includes("doubtful");
+        if (intelligenceView === "transfers") return text.includes("transfer") || text.includes("sign") || text.includes("contract");
+        return true;
+      })
+      .sort((a, b) => b.rawScore - a.rawScore || b.sortTime - a.sortTime)
+      .slice(0, 220);
+  }, [feedMode, intelligenceView, items, sport, twitterRows]);
+
+  useEffect(() => {
+    if (!stories.length) return;
+    if (!selectedId || !stories.some((story) => story.id === selectedId)) setSelectedId(stories[0].id);
+  }, [selectedId, stories]);
+
+  const selected = stories.find((story) => story.id === selectedId) || stories[0];
+
+  return (
+    <>
+      <SportsEdgeTopbar active="news" onSearchChange={setQuery} searchPlaceholder="NEWS, ARS, EPL, PLAYER: SAKA, MATCH: ARS-TOT..." />
+      <main className="agtest-page bb-news-page">
+        <section className="agtest-subbar bb-demo-subbar" aria-label="News feed controls">
+          <nav aria-label="News feed modes">
+            <button className={feedMode === "all" ? "active" : ""} type="button" onClick={() => setFeedMode("all")}>All</button>
+            <button className={feedMode === "sites" ? "active" : ""} type="button" onClick={() => setFeedMode("sites")}>Media</button>
+            <button className={feedMode === "twitter" ? "active" : ""} type="button" onClick={() => setFeedMode("twitter")}>Social</button>
+            {NEWS_FEED_SPORT_FILTERS.map(([value, label]) => (
+              <button className={sport === value ? "active" : ""} type="button" key={value} onClick={() => setSport(value)}>
+                {label}
+              </button>
+            ))}
+          </nav>
+          <div>
+            <span>{stories.length}{query.trim() ? ` / ${feedMode === "twitter" ? twitterRows.length : feedMode === "sites" ? items.length : twitterRows.length + items.length}` : ""} headlines</span>
+            <span>{sport === "all" ? "all sports" : sport}</span>
+            <span>{feedMode === "twitter" ? "social" : feedMode === "sites" ? "media" : "all feeds"}</span>
+          </div>
+        </section>
+        <div className="bb-news-layout">
+          <aside className="bb-news-filters">
+            <strong>News Functions</strong>
+            {[
+              ["top", "Top"],
+              ["impact", "High Impact"],
+              ["official", "Official"],
+              ["rumours", "Rumours"],
+              ["lineups", "Lineups"],
+              ["injuries", "Injuries"],
+              ["transfers", "Transfers"],
+              ["alerts", "Alerts"],
+              ["saved", "Saved"]
+            ].map(([value, label]) => (
+              <button className={intelligenceView === value ? "active" : ""} type="button" key={value} onClick={() => setIntelligenceView(value)}>
+                {label}
+              </button>
+            ))}
+            <div className="bb-news-filter-card">
+              <span>Live Feed</span>
+              <b>{loading ? "Loading" : error ? "Needs attention" : "Connected"}</b>
+              <em>{error || "One intelligence tape ranked from media and social sources."}</em>
+            </div>
+          </aside>
+
+          <section className="bb-news-tape" aria-label="Bloomberg style news headline tape">
+            <div className="bb-news-tape-head">
+              <span>Time</span>
+              <span>Tag</span>
+              <span>U</span>
+              <span>Source</span>
+              <span>Headline</span>
+              <span>Market Impact</span>
+            </div>
+            {loading && stories.length === 0 && <div className="bb-news-state">Loading SportsEdge news feed.</div>}
+            {error && stories.length === 0 && <div className="bb-news-state error">{error}</div>}
+            {stories.map((story) => (
+              <button className={story.id === selected.id ? "selected" : ""} type="button" key={story.id} onClick={() => setSelectedId(story.id)}>
+                <time>{story.time}</time>
+                <b>{story.tag}</b>
+                <i className={`urgency u${story.urgency}`}>{story.urgency}</i>
+                <span>{story.source}</span>
+                <strong>{story.headline}</strong>
+                <em>{story.impact}</em>
+              </button>
+            ))}
+            {!loading && !error && stories.length === 0 && <div className="bb-news-state">No real news matched the current filter.</div>}
+          </section>
+
+          <aside className="bb-news-detail">
+            {selected ? (
+              <>
+                <div className="bb-news-detail-head">
+                  <span>{selected.source}</span>
+                  <b>{selected.time}</b>
+                </div>
+                <h1>{selected.headline}</h1>
+                <div className="bb-news-impact">
+                  <span>SportsEdge Impact</span>
+                  <strong>{selected.impact}</strong>
+                </div>
+                <p>{selected.body}</p>
+                <table>
+                  <tbody>
+                    <tr>
+                      <th>Original</th>
+                      <td>
+                        {selected.twitter?.url || selected.item?.external_url || selected.item?.canonical_url || selected.item?.source_url ? (
+                          <a className="bb-news-source-link" href={selected.twitter?.url || selected.item?.external_url || selected.item?.canonical_url || selected.item?.source_url || "#"} target="_blank" rel="noreferrer">
+                            {selected.twitter ? `@${selected.twitter.account_handle || selected.twitter.author_name || "source"}` : selected.item?.source_name || selected.source}
+                          </a>
+                        ) : (
+                          selected.source
+                        )}
+                      </td>
+                    </tr>
+                    <tr><th>Linked markets</th><td>{selected.item?.impact_assessment?.affected_markets?.join(", ") || selected.twitter?.affected_entity || displayLabel(selected.item?.competition, "Market watch")}</td></tr>
+                    <tr><th>Entities</th><td>{selected.twitter ? [selected.twitter.account_handle, selected.twitter.sport, selected.twitter.news_type].filter(Boolean).join(", ") : [selected.item?.entity_name, selected.item?.competition, selected.item?.sport].filter(Boolean).join(", ") || selected.tag}</td></tr>
+                    <tr><th>Action</th><td>{selected.item?.impact_assessment?.watch_items?.join(", ") || selected.twitter?.reason || "Keep headline visible in rail and update confidence, not raw venue columns."}</td></tr>
+                  </tbody>
+                </table>
+              </>
+            ) : (
+              <div className="bb-news-state">Select a headline to inspect the real SportsEdge item.</div>
+            )}
+          </aside>
+        </div>
+      </main>
+    </>
+  );
+}
+
+function BloombergProfileMockupPage() {
+  const [profileMode, setProfileMode] = useState<"team" | "player">("team");
+  const teamKpis = [
+    ["SE Rating", "82.4", "+1.8", "bb-pos"],
+    ["Market Bias", "Home pressure", "+2.1%", "bb-pos"],
+    ["Liquidity", "GBP 4.8m", "5 venues", ""],
+    ["News Impact", "Lineup +72", "11m fresh", "bb-pos"],
+    ["Confidence", "86", "stable", ""]
+  ];
+  const playerKpis = [
+    ["SE Rating", "88.1", "+2.4", "bb-pos"],
+    ["Prop Bias", "Assist lean", "+4.0%", "bb-pos"],
+    ["Minutes", "82 est", "starts 86%", ""],
+    ["News Impact", "Training +64", "9m fresh", "bb-pos"],
+    ["Risk", "Low", "fitness clear", ""]
+  ];
+  const markets = [
+    ["ARS-TOT", "Match Odds", "Arsenal", "2.04", "2.01", "+1.5%", "GBP 1.42m", "84", "LINEUP"],
+    ["ARS-TOT", "Asian Handicap", "Arsenal -0.5", "2.08", "2.03", "+2.5%", "GBP 620k", "78", "SHARP"],
+    ["ARS-TOT", "Total Goals", "Over 2.5", "1.74", "1.70", "+2.4%", "GBP 774k", "69", "TOTALS"],
+    ["ARS-NEW", "Match Odds", "Arsenal", "1.62", "1.59", "+1.9%", "GBP 580k", "73", "WATCH"]
+  ];
+  const playerMarkets = [
+    ["ARS-TOT", "Player Assist", "Bukayo Saka", "3.35", "3.22", "+4.0%", "GBP 184k", "76", "TRAIN"],
+    ["ARS-TOT", "Anytime Goal", "Bukayo Saka", "3.10", "3.18", "-2.5%", "GBP 240k", "71", "PRICE"],
+    ["ARS-TOT", "Shots On Target", "Saka 1+", "1.82", "1.77", "+2.8%", "GBP 96k", "68", "PROP"],
+    ["ARS-NEW", "Player Assist", "Bukayo Saka", "3.55", "3.41", "+4.1%", "GBP 72k", "62", "EARLY"]
+  ];
+  const squad = [
+    ["Bukayo Saka", "RW", "88.1", "+4.0%", "86%", "Fit", "Assist"],
+    ["Martin Odegaard", "AM", "84.6", "+1.7%", "91%", "Fit", "Key pass"],
+    ["Declan Rice", "DM", "81.8", "+0.9%", "94%", "Fit", "Control"],
+    ["Gabriel", "CB", "78.4", "-0.4%", "88%", "Watch", "Cards"],
+    ["Kai Havertz", "FW", "76.9", "+1.2%", "74%", "Rotate", "Goal"]
+  ];
+  const stats = [
+    ["Premier League", "32", "16", "9", "7.42", "2.7", "4.0%", "86%"],
+    ["Champions League", "10", "4", "3", "7.31", "2.3", "2.6%", "79%"],
+    ["All Competitions", "44", "22", "13", "7.39", "2.6", "3.8%", "84%"]
+  ];
+  const news = [
+    ["23:22", "ARS", "Saka pictured in full training; assist market firms"],
+    ["23:17", "EPL", "Fixture congestion model raises Arsenal rotation watch"],
+    ["23:09", "TOT", "Spurs defensive injuries keep home pressure elevated"],
+    ["22:58", "SOCIAL", "Lineup accounts converge on unchanged Arsenal front three"],
+    ["22:44", "MEDIA", "Club notes confirm no late attacking absence"]
+  ];
+  const leftItems = profileMode === "team"
+    ? ["Overview", "Market Picture", "Squad", "Fixtures", "News", "Diagnostics", "Alerts", "Saved"]
+    : ["Overview", "Props", "Stats", "Fitness", "Team Link", "News", "Diagnostics", "Alerts"];
+  const activeMarkets = profileMode === "team" ? markets : playerMarkets;
+  const activeKpis = profileMode === "team" ? teamKpis : playerKpis;
+
+  return (
+    <>
+      <SportsEdgeTopbar active="football" searchPlaceholder="TEAM: ARSENAL, PLAYER: SAKA, NEWS, PROPS, DIAGNOSTICS..." />
+      <main className="agtest-page bb-profile-page">
+        <section className="agtest-subbar bb-demo-subbar" aria-label="Profile mockup controls">
+          <nav aria-label="Profile type">
+            <button className={profileMode === "team" ? "active" : ""} type="button" onClick={() => setProfileMode("team")}>Team</button>
+            <button className={profileMode === "player" ? "active" : ""} type="button" onClick={() => setProfileMode("player")}>Player</button>
+            <button type="button">Markets</button>
+            <button type="button">News</button>
+            <button type="button">Diagnostics</button>
+          </nav>
+          <div>
+            <span>{profileMode === "team" ? "TEAM: ARSENAL" : "PLAYER: SAKA"}</span>
+            <span>Football / Premier League</span>
+            <span>SportsEdge profile</span>
+          </div>
+        </section>
+
+        <div className="bb-profile-layout">
+          <aside className="bb-news-filters">
+            <strong>Profile Functions</strong>
+            {leftItems.map((item, index) => (
+              <button className={index === 0 ? "active" : ""} type="button" key={item}>{item}</button>
+            ))}
+            <div className="bb-news-filter-card">
+              <span>Context</span>
+              <b>{profileMode === "team" ? "Arsenal / EPL" : "Bukayo Saka / Arsenal"}</b>
+              <em>Profile as a live market object, not a static biography.</em>
+            </div>
+          </aside>
+
+          <section className="bb-profile-main">
+            <div className="bb-profile-identity">
+              <div className="bb-profile-badge">
+                {profileMode === "team" ? <img src="https://resources.premierleague.com/premierleague/badges/70/t3.png" alt="Arsenal crest" /> : <span>BS</span>}
+              </div>
+              <div>
+                <span>{profileMode === "team" ? "ARS LN / FOOTBALL TEAM" : "SAKA / PLAYER PROP OBJECT"}</span>
+                <h1>{profileMode === "team" ? "Arsenal FC" : "Bukayo Saka"}</h1>
+                <p>{profileMode === "team" ? "England / Premier League / Emirates Stadium / next: Tottenham" : "Arsenal / Right Wing / England / next: Tottenham"}</p>
+              </div>
+              <div className="bb-profile-score">
+                <span>SportsEdge Fair</span>
+                <strong>{profileMode === "team" ? "2.04" : "3.35"}</strong>
+                <em className="bb-pos">{profileMode === "team" ? "+1.5% edge" : "+4.0% assist edge"}</em>
+              </div>
+            </div>
+
+            <div className="bb-profile-kpis">
+              {activeKpis.map(([label, value, delta, className]) => (
+                <div key={label}>
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                  <em className={className}>{delta}</em>
+                </div>
+              ))}
+            </div>
+
+            <div className="bb-demo-strip"><span>SportsEdge Picture</span><strong>{profileMode === "team" ? "Arsenal live market surface" : "Bukayo Saka player prop surface"}</strong><em>Consensus, confidence and flags first.</em></div>
+            <table className="bb-demo-table bb-profile-market-table">
+              <thead><tr>{["Code", "Market", "Selection", "SE Fair", "Mkt", "Edge", "Liquidity", "Conf", "Flag"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+              <tbody>
+                {activeMarkets.map((row) => (
+                  <tr key={`${row[0]}-${row[1]}-${row[2]}`}>
+                    {row.map((cell, index) => (
+                      <td className={index === 5 ? (cell.startsWith("+") ? "bb-pos bb-mono" : "bb-neg bb-mono") : index >= 3 ? "bb-mono" : ""} key={`${cell}-${index}`}>{cell}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="bb-profile-grid">
+              <section>
+                <div className="bb-demo-strip"><span>{profileMode === "team" ? "Squad Lens" : "Season Lens"}</span><strong>{profileMode === "team" ? "Players ranked by market relevance" : "Production, price and minutes context"}</strong><em>Expandable rows.</em></div>
+                <table className="bb-demo-table compact">
+                  <thead><tr>{(profileMode === "team" ? ["Player", "Pos", "SE Rt", "Edge", "Start", "Status", "Flag"] : ["Competition", "Apps", "Goals", "Assists", "Rating", "Shots", "Edge", "Start"]).map((item) => <th key={item}>{item}</th>)}</tr></thead>
+                  <tbody>
+                    {(profileMode === "team" ? squad : stats).map((row) => (
+                      <tr key={row.join("-")}>{row.map((cell, index) => <td className={index >= 2 ? "bb-mono" : ""} key={`${cell}-${index}`}>{cell}</td>)}</tr>
+                    ))}
+                  </tbody>
+                </table>
+              </section>
+              <section>
+                <div className="bb-demo-strip"><span>Diagnostics</span><strong>{profileMode === "team" ? "Why Arsenal moved" : "Why Saka moved"}</strong><em>One layer down.</em></div>
+                <div className="bb-profile-diagnostics">
+                  <div><span>Model Drivers</span><strong>{profileMode === "team" ? "Lineup strength, home pressure, opponent injuries" : "Training signal, projected minutes, chance creation"}</strong></div>
+                  <div><span>Data Freshness</span><strong>Prices 12s / News 9m / Team sheet est 84m</strong></div>
+                  <div><span>Flags</span><strong className="bb-flag">{profileMode === "team" ? "LINEUP / SHARP / SOCIAL" : "TRAIN / PROP / SOCIAL"}</strong></div>
+                  <div><span>Raw Venues</span><strong>Betfair, Matchbook, SX, Polymarket hidden until opened</strong></div>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <aside className="bb-demo-news">
+            <div className="bb-demo-news-head"><strong>Intelligence</strong><span>{profileMode === "team" ? "ARSENAL" : "SAKA"}</span></div>
+            {news.map((item) => <article key={`${item[0]}-${item[1]}-${item[2]}`}><time>{item[0]}</time><b>{item[1]}</b><p>{item[2]}</p></article>)}
+          </aside>
+        </div>
+      </main>
+    </>
+  );
+}
+
 type ProfileBreadcrumbItem = { label: string; href?: string };
 
 function ProfileBreadcrumbs({ items }: { items: ProfileBreadcrumbItem[] }) {
@@ -7050,27 +7772,103 @@ function ProfileBreadcrumbStrip({ items }: { items: ProfileBreadcrumbItem[] }) {
   );
 }
 
+function storySourceTag(item: NewsItem) {
+  const source = item.source_name || item.source_type || item.sport || "NEWS";
+  const words = cleanText(source).split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return words.map((word) => word[0]).join("").slice(0, 6).toUpperCase();
+  return cleanText(source).replace(/[^a-z0-9]/gi, "").slice(0, 6).toUpperCase() || "NEWS";
+}
+
+function ProfileTextNewsRail({ sport = "football", label, query = "" }: { sport?: string; label: string; query?: string }) {
+  const [items, setItems] = useState<NewsItem[]>([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams({ limit: "32", include_context: "1" });
+    if (sport !== "all") params.set("sport", apiSportValue(sport));
+    if (query.trim()) params.set("q", query.trim());
+    fetch(`/api/news?${params.toString()}`, { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !Array.isArray(payload.items)) throw new Error("News unavailable");
+        setItems(payload.items);
+      })
+      .catch((error) => {
+        if (error?.name !== "AbortError") setItems([]);
+      });
+    return () => controller.abort();
+  }, [sport, query]);
+
+  return (
+    <aside className="bb-demo-news bb-profile-news-rail" aria-label="Profile intelligence rail">
+      <div className="bb-demo-news-head"><strong>Intelligence</strong><span>{label}</span></div>
+      {items.map((item) => (
+        <article key={`profile-news-${item.id}`}>
+          <time>{formatTimeAgo(item.published_at || item.discovered_at)}</time>
+          <b>{storySourceTag(item)}</b>
+          <p>{cleanText(item.title)}</p>
+        </article>
+      ))}
+      {items.length === 0 && (
+        <div className="bb-news-state">No matched news yet.</div>
+      )}
+    </aside>
+  );
+}
+
 function FootballProfileShell({
   breadcrumbs,
   newsLabel,
   newsQuery,
+  mode = "team",
+  contextLabel,
   children
 }: {
   breadcrumbs: ProfileBreadcrumbItem[];
   newsLabel: string;
   newsQuery: string;
+  mode?: "team" | "player";
+  contextLabel?: string;
   children: ReactNode;
 }) {
+  const functions = mode === "team"
+    ? ["Overview", "Market Picture", "Squad", "Fixtures", "News", "Diagnostics", "Alerts", "Saved"]
+    : ["Overview", "Props", "Stats", "Fitness", "Team Link", "News", "Diagnostics", "Alerts"];
+
   return (
-    <main className="testboard-shell team-profile-shell">
-      <SportsEdgeTopbar active="football" />
-      <ProfileBreadcrumbStrip items={breadcrumbs} />
-      <section className="terminal-workspace">
-        <div className="terminal-workspace-main team-profile-main">
-          {children}
+    <main className="agtest-page bb-profile-page">
+      <SportsEdgeTopbar active="football" searchPlaceholder="TEAM: ARSENAL, PLAYER: SAKA, NEWS, PROPS, DIAGNOSTICS..." />
+      <section className="agtest-subbar bb-demo-subbar profile-command-subbar" aria-label="Profile navigation">
+        <nav aria-label="Profile breadcrumb">
+          {breadcrumbs.map((item, index) => item.href ? (
+            <button type="button" key={`${item.label}-${index}`} onClick={() => { window.location.hash = item.href || "#dashboard"; }}>{item.label}</button>
+          ) : (
+            <button className="active" type="button" key={`${item.label}-${index}`}>{item.label}</button>
+          ))}
+        </nav>
+        <div>
+          <span>{mode === "team" ? "Team profile" : "Player profile"}</span>
+          <span>{contextLabel || newsLabel}</span>
+          <span>SportsEdge picture</span>
         </div>
-        <StandaloneNewsRail sport="football" label={newsLabel} query={newsQuery} />
       </section>
+      <div className="bb-profile-layout">
+        <aside className="bb-news-filters">
+          <strong>Profile Functions</strong>
+          {functions.map((item, index) => (
+            <button className={index === 0 ? "active" : ""} type="button" key={item}>{item}</button>
+          ))}
+          <div className="bb-news-filter-card">
+            <span>Context</span>
+            <b>{contextLabel || newsLabel}</b>
+            <em>Live profile object: identity, stats, news and market readiness.</em>
+          </div>
+        </aside>
+        <section className="bb-profile-main">
+          {children}
+        </section>
+        <ProfileTextNewsRail sport="football" label={newsLabel} query={newsQuery} />
+      </div>
     </main>
   );
 }
@@ -7126,6 +7924,115 @@ function TeamProfilePage({ slug }: { slug: string }) {
     ["Profile source", "API-Football cache + SportsEdge team registry"]
   ];
   const aliases = Array.from(new Set((profile?.asset?.aliases?.length ? profile.asset.aliases : [name, shortName, teamCode]).filter(Boolean)));
+  const squadRows = profile?.squad || [];
+  const staffRows = profile?.staff || [];
+  const statRowCount = squadRows.reduce((sum, player) => sum + (player.stats?.length || 0), 0);
+  const profileStatus = loading ? "Loading" : error ? "Needs attention" : profile ? "Enriched" : "Waiting";
+  const enrichedFreshness = profile?.syncedAt ? formatTimeAgo(profile.syncedAt) : profile ? "seeded" : "not enriched";
+  const enrichedRows = [
+    ["Team Identity", name, profile ? "Enriched" : "Waiting", profile?.provider || "api-football", enrichedFreshness, "High", "PROFILE"],
+    ["Squad", `${squadRows.length} players`, squadRows.length ? "Enriched" : "Waiting", "api-football", enrichedFreshness, squadRows.length ? "High" : "Pending", "SQUAD"],
+    ["Staff", `${staffRows.length} staff`, staffRows.length ? "Enriched" : "Waiting", "api-football", enrichedFreshness, staffRows.length ? "Medium" : "Pending", "STAFF"],
+    ["Stats", `${statRowCount} rows`, statRowCount ? "Enriched" : "Waiting", "api-football", enrichedFreshness, statRowCount ? "Medium" : "Pending", "STATS"],
+    ["Market Link", "SportsEdge fair", "Waiting", "matrix", "not linked", "Pending", "NO FAKE PRICE"]
+  ];
+
+  return (
+    <FootballProfileShell
+      breadcrumbs={[
+        { label: "All", href: "#dashboard" },
+        { label: "Football", href: "#football" },
+        { label: name }
+      ]}
+      newsLabel={`${name.toUpperCase()} NEWS`}
+      newsQuery={name}
+      mode="team"
+      contextLabel={`${profile?.country || "Football"} / ${profile?.asset?.currentLeague || venueName}`}
+    >
+      <div className="bb-profile-identity">
+        <div className="bb-profile-badge">
+          {logoUrl ? <img src={logoUrl} alt={`${shortName} crest`} /> : <span>{teamTicker(name)}</span>}
+        </div>
+        <div>
+          <span>{teamCode} / FOOTBALL TEAM</span>
+          <h1>{name}</h1>
+          <p>{[profile?.country, profile?.asset?.currentLeague, venueName].filter(Boolean).join(" / ") || "Football profile"}</p>
+        </div>
+        <div className="bb-profile-score">
+          <span>Profile Status</span>
+          <strong>{profileStatus}</strong>
+          <em className={profile ? "bb-pos" : ""}>{enrichedFreshness}</em>
+        </div>
+      </div>
+
+      <div className="bb-profile-kpis">
+        {[
+          ["Players", `${squadRows.length}`, squadRows.length ? "enriched" : "waiting"],
+          ["Staff", `${staffRows.length}`, staffRows.length ? "enriched" : "waiting"],
+          ["Stat Rows", `${statRowCount}`, statRowCount ? "enriched" : "waiting"],
+          ["Venue", venue?.name ? "Enriched" : "Waiting", venue?.city || "pending"],
+          ["Market Data", "Waiting", "field reserved"]
+        ].map(([label, value, delta]) => (
+          <div key={label}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+            <em className={String(delta).includes("enriched") ? "bb-pos" : ""}>{delta}</em>
+          </div>
+        ))}
+      </div>
+
+      {loading && <div className="bb-news-state">Loading team profile.</div>}
+      {error && <div className="bb-news-state error">{error}</div>}
+
+      <div className="bb-demo-strip"><span>SportsEdge Picture</span><strong>{name} profile enrichment surface</strong><em>Price fields remain reserved until real market data is linked.</em></div>
+      <table className="bb-demo-table bb-profile-market-table">
+        <thead><tr>{["Surface", "Object", "Status", "Source", "Fresh", "Conf", "Flag"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+        <tbody>
+          {enrichedRows.map((row) => (
+            <tr key={`${row[0]}-${row[1]}`}>
+              {row.map((cell, index) => <td className={index >= 4 ? "bb-mono" : index === 6 ? "bb-flag" : ""} key={`${cell}-${index}`}>{cell}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="bb-profile-grid">
+        <section>
+          <div className="bb-demo-strip"><span>Squad Lens</span><strong>Players ranked by cached profile coverage</strong><em>{squadRows.length} rows.</em></div>
+          <table className="bb-demo-table compact">
+            <thead><tr>{["Player", "Pos", "Age", "Apps", "Mins", "Rating", "G+A", "Status"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+            <tbody>
+              {squadRows.slice(0, 16).map((player) => {
+                const latest = player.stats?.[0];
+                return (
+                  <tr key={player.id}>
+                    <td><a className="bb-profile-table-link" href={`#player/${encodeURIComponent(player.id)}`}>{player.name}</a></td>
+                    <td>{player.position || "-"}</td>
+                    <td className="bb-mono">{player.age ?? "-"}</td>
+                    <td className="bb-mono">{latest?.appearances ?? "-"}</td>
+                    <td className="bb-mono">{latest?.minutes ?? "-"}</td>
+                    <td className="bb-mono">{latest?.rating ?? "-"}</td>
+                    <td className="bb-mono">{(latest?.goalsTotal ?? 0) + (latest?.assists ?? 0) || "-"}</td>
+                    <td className={player.injured ? "bb-neg" : "bb-pos"}>{player.injured ? "Injury flag" : latest ? "Enriched" : "Waiting"}</td>
+                  </tr>
+                );
+              })}
+              {!squadRows.length && <tr><td colSpan={8}>Squad enrichment is waiting for this team.</td></tr>}
+            </tbody>
+          </table>
+        </section>
+        <section>
+          <div className="bb-demo-strip"><span>Diagnostics</span><strong>Enrichment and market readiness</strong><em>Raw data one layer down.</em></div>
+          <div className="bb-profile-diagnostics">
+            <div><span>Venue</span><strong>{[venueName, venueAddress, venueCapacity].filter(Boolean).join(" / ") || "Waiting for venue enrichment"}</strong></div>
+            <div><span>Aliases</span><strong>{aliases.join(", ") || "Waiting"}</strong></div>
+            <div><span>Market Fields</span><strong>SE Fair, market price, edge, liquidity and confidence are reserved; values appear only when real market data is linked.</strong></div>
+            <div><span>Provider</span><strong>{profile?.provider || "api-football"} / {profile?.providerTeamId || "waiting"}</strong></div>
+          </div>
+        </section>
+      </div>
+    </FootballProfileShell>
+  );
 
   const content = (
     <div className="team-profile-page">
@@ -7313,6 +8220,110 @@ function PlayerProfilePage({ id }: { id: string }) {
     ["Weight", profile?.weight || "-"],
     ["Injury", profile?.injured ? "Flagged" : "Clear"]
   ];
+  const playerStatus = loading ? "Loading" : error ? "Needs attention" : profile ? "Enriched" : "Waiting";
+  const statFreshness = latestStat?.syncedAt ? formatTimeAgo(latestStat.syncedAt) : stats.length ? "cached" : "not enriched";
+  const playerSurfaceRows = [
+    ["Player Identity", name, profile ? "Enriched" : "Waiting", "api-football", statFreshness, profile ? "High" : "Pending", "PROFILE"],
+    ["Current Team", teamName, profile?.team ? "Enriched" : "Waiting", "api-football", statFreshness, profile?.team ? "High" : "Pending", "TEAM"],
+    ["Season Stats", `${stats.length} rows`, stats.length ? "Enriched" : "Waiting", "api-football", statFreshness, stats.length ? "Medium" : "Pending", "STATS"],
+    ["Fitness", profile?.injured ? "Injury flag" : "Clear", profile ? "Enriched" : "Waiting", "api-football", statFreshness, profile?.injured ? "High" : "Medium", profile?.injured ? "INJURY" : "CLEAR"],
+    ["Prop Market Link", "SE fair / edge / liquidity", "Waiting", "matrix", "not linked", "Pending", "NO FAKE PRICE"]
+  ];
+
+  return (
+    <FootballProfileShell
+      breadcrumbs={[
+          { label: "All", href: "#dashboard" },
+          { label: "Football", href: "#football" },
+          { label: teamName, href: teamHref },
+          { label: name }
+      ]}
+      newsLabel={`${name.toUpperCase()} NEWS`}
+      newsQuery={name}
+      mode="player"
+      contextLabel={`${teamName} / ${profile?.position || latestStat?.position || "Player"}`}
+    >
+      <div className="bb-profile-identity">
+        <div className="bb-profile-badge player-photo">
+          {profile?.photoUrl ? <img src={profile.photoUrl} alt={`${name} profile`} /> : <span>{teamInitials(name)}</span>}
+        </div>
+        <div>
+          <span>PLAYER / FOOTBALL PROFILE</span>
+          <h1>{name}</h1>
+          <p>{[teamName, profile?.position || latestStat?.position, profile?.nationality].filter(Boolean).join(" / ") || "Player profile"}</p>
+        </div>
+        <div className="bb-profile-score">
+          <span>Profile Status</span>
+          <strong>{playerStatus}</strong>
+          <em className={profile ? "bb-pos" : ""}>{statFreshness}</em>
+        </div>
+      </div>
+
+      <div className="bb-profile-kpis">
+        {[
+          ["Position", profile?.position || latestStat?.position || "Waiting", profile ? "enriched" : "waiting"],
+          ["Team", teamName, profile?.team ? "enriched" : "waiting"],
+          ["Stat Rows", `${stats.length}`, stats.length ? "enriched" : "waiting"],
+          ["Apps", `${latestStat?.appearances ?? "-"}`, latestStat ? "latest row" : "waiting"],
+          ["Market Data", "Waiting", "field reserved"]
+        ].map(([label, value, delta]) => (
+          <div key={label}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+            <em className={String(delta).includes("enriched") ? "bb-pos" : ""}>{delta}</em>
+          </div>
+        ))}
+      </div>
+
+      {loading && <div className="bb-news-state">Loading player profile.</div>}
+      {error && <div className="bb-news-state error">{error}</div>}
+
+      <div className="bb-demo-strip"><span>SportsEdge Picture</span><strong>{name} profile and prop readiness</strong><em>Prop price fields stay blank until real data is linked.</em></div>
+      <table className="bb-demo-table bb-profile-market-table">
+        <thead><tr>{["Surface", "Object", "Status", "Source", "Fresh", "Conf", "Flag"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+        <tbody>
+          {playerSurfaceRows.map((row) => (
+            <tr key={`${row[0]}-${row[1]}`}>
+              {row.map((cell, index) => <td className={index >= 4 ? "bb-mono" : index === 6 ? "bb-flag" : ""} key={`${cell}-${index}`}>{cell}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="bb-profile-grid">
+        <section>
+          <div className="bb-demo-strip"><span>Season Lens</span><strong>Cached player production rows</strong><em>{stats.length} rows.</em></div>
+          <table className="bb-demo-table compact">
+            <thead><tr>{["Season", "League", "Apps", "Mins", "Goals", "Assists", "Rating", "Cards"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+            <tbody>
+              {stats.map((row) => (
+                <tr key={row.id}>
+                  <td className="bb-mono">{row.season}</td>
+                  <td>{row.leagueName || row.teamName || "-"}</td>
+                  <td className="bb-mono">{row.appearances ?? "-"}</td>
+                  <td className="bb-mono">{row.minutes ?? "-"}</td>
+                  <td className="bb-mono">{row.goalsTotal ?? "-"}</td>
+                  <td className="bb-mono">{row.assists ?? "-"}</td>
+                  <td className="bb-mono">{row.rating ?? "-"}</td>
+                  <td className="bb-mono">{row.cardsYellow ?? "-"} / {row.cardsRed ?? "-"}</td>
+                </tr>
+              ))}
+              {!stats.length && <tr><td colSpan={8}>Stats enrichment is waiting for this player.</td></tr>}
+            </tbody>
+          </table>
+        </section>
+        <section>
+          <div className="bb-demo-strip"><span>Diagnostics</span><strong>Player enrichment and prop readiness</strong><em>Raw context one layer down.</em></div>
+          <div className="bb-profile-diagnostics">
+            <div><span>Player Details</span><strong>{profileStats.map(([label, value]) => `${label}: ${value}`).join(" / ")}</strong></div>
+            <div><span>Team Link</span><strong>{profile?.team ? `${profile.team.name}${profile.team.country ? ` / ${profile.team.country}` : ""}` : "Waiting for team link"}</strong></div>
+            <div><span>Market Fields</span><strong>SE Fair, market price, edge, liquidity and confidence are reserved; values appear only when real prop data is linked.</strong></div>
+            <div><span>Provider</span><strong>{profile?.providerPlayerId || "waiting"} / {statFreshness}</strong></div>
+          </div>
+        </section>
+      </div>
+    </FootballProfileShell>
+  );
 
   return (
     <FootballProfileShell
@@ -8878,19 +9889,22 @@ export default function App() {
   let screen;
   if (hash.startsWith("#player/")) screen = <PlayerProfilePage id={hash.replace("#player/", "")} />;
   else if (hash.startsWith("#team/")) screen = <TeamProfilePage slug={hash.replace("#team/", "") || "chelsea"} />;
+  else if (hash === "#agtest-mockup" || hash === "#bloomberg-demo") screen = <AgtestBloombergMockupPage />;
+  else if (hash === "#news" || hash === "#news-feed-mockup") screen = hasSession || previewDashboard ? <BloombergNewsFeedMockupPage /> : <LoginScreen />;
+  else if (hash === "#profile-mockup") screen = <BloombergProfileMockupPage />;
   else if (hash === "#product-map") screen = <SportsEdgeProductMockupPage />;
   else if (hash === "#football-demo") screen = <FootballIntelligenceDemoPage />;
   else if (hash === "#oddsapi") screen = hasSession || previewDashboard ? <OddsApiDiagnosticsPage /> : <LoginScreen />;
   else if (hash === "#agtest") screen = hasSession || previewDashboard ? <AgTestPage /> : <LoginScreen />;
   else if (previewDashboard && (hash === "#dashboard" || hash === "#testboard" || hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash) || !hash)) screen = <TestboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#login") screen = <LoginScreen />;
-  else if (previewDashboard && (hash === "#old" || hash === "#news" || hash.startsWith("#sport"))) screen = <DashboardPage onLogout={handleLogout} />;
+  else if (previewDashboard && (hash === "#old" || hash.startsWith("#sport"))) screen = <DashboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#social-news") screen = <StandaloneLiveNewsPage />;
   else if (hash === "#testboard") screen = hasSession ? <TestboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash === "#dashboard") screen = hasSession ? <TestboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash)) screen = hasSession ? <TestboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash === "#old") screen = hasSession ? <DashboardPage onLogout={handleLogout} /> : <LoginScreen />;
-  else if (hash === "#news") screen = hasSession ? <DashboardPage onLogout={handleLogout} /> : <LoginScreen />;
+  else if (hash === "#legacy-news") screen = hasSession ? <DashboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash.startsWith("#sport")) screen = hasSession ? <DashboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash === "#social-news") screen = hasSession ? <StandaloneLiveNewsPage /> : <LoginScreen />;
   else if (hash === "#login") screen = <LoginScreen />;
