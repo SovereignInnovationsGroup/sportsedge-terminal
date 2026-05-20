@@ -1600,7 +1600,17 @@ function logoutToLogin() {
   window.location.hash = "#login";
 }
 
-function SportsEdgeTopbar({ active, onLogout = logoutToLogin }: { active?: string; onLogout?: () => void }) {
+function SportsEdgeTopbar({
+  active,
+  onLogout = logoutToLogin,
+  onSearchChange,
+  searchPlaceholder = "Search sport, market, fixture, exchange..."
+}: {
+  active?: string;
+  onLogout?: () => void;
+  onSearchChange?: (query: string) => void;
+  searchPlaceholder?: string;
+}) {
   const [query, setQuery] = useState("");
   const [commandOpen, setCommandOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1659,6 +1669,7 @@ function SportsEdgeTopbar({ active, onLogout = logoutToLogin }: { active?: strin
     if (!option) return;
     window.location.hash = option.route;
     setQuery("");
+    onSearchChange?.("");
     setCommandOpen(false);
     inputRef.current?.blur();
   }
@@ -1687,7 +1698,10 @@ function SportsEdgeTopbar({ active, onLogout = logoutToLogin }: { active?: strin
           value={query}
           onFocus={() => setCommandOpen(true)}
           onBlur={() => window.setTimeout(() => setCommandOpen(false), 160)}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            onSearchChange?.(event.target.value);
+          }}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
@@ -1698,7 +1712,7 @@ function SportsEdgeTopbar({ active, onLogout = logoutToLogin }: { active?: strin
               inputRef.current?.blur();
             }
           }}
-          placeholder="Search sport, market, fixture, exchange..."
+          placeholder={searchPlaceholder}
         />
         <kbd>/</kbd>
         {commandOpen && (
@@ -2730,7 +2744,7 @@ function isPrimaryTradingMarket(payload: unknown, selectedSport: string) {
   return true;
 }
 
-function mergeLivePriceRows(rows: BackendPriceRow[], channel: string, payload: unknown, selectedSport: string, primaryOnly = true) {
+function mergeLivePriceRows(rows: BackendPriceRow[], channel: string, payload: unknown, selectedSport: string, primaryOnly = true, maxRows = 80) {
   const exchangeKey = exchangeFromEvent(channel, payload);
   const exchange = EXCHANGE_COLUMNS.find((item) => item.key === exchangeKey);
   if (!exchange?.supports.includes(selectedSport)) return rows;
@@ -2819,7 +2833,7 @@ function mergeLivePriceRows(rows: BackendPriceRow[], channel: string, payload: u
   row.marketName = row.marketName || marketName;
   row.marketType = row.marketType || marketType;
 
-  return nextRows.slice(0, 80);
+  return nextRows.slice(0, maxRows);
 }
 
 type ImpactAssessment = {
@@ -8199,10 +8213,66 @@ function AgStackCell({ values, className = "" }: { values?: string[]; className?
   );
 }
 
+function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendPriceRow[]) {
+  const displayRows = collapseRowsByFixture(mergeDisplayPriceRows(priceRows));
+  return cleanFootballFixtures(fixtures)
+    .map((fixture) => {
+      const matched = findMarketRowForFootballFixture(fixture, displayRows);
+      const backend = matched?.row;
+      const outcomes = tradeableOutcomeRows(backend).slice(0, 3);
+      const quote = sportsEdgeMarketQuote(backend);
+      return {
+        id: fixture.id,
+        kickoff: formatFootballFixtureTime(fixture),
+        match: footballFixtureName(fixture),
+        competition: footballFixtureCompetition(fixture),
+        coverage: exchangeCoverage(backend).map((exchange) => ({ label: exchange.label, available: exchange.isAvailable })),
+        outcomes: outcomes.length ? outcomes.map((outcome) => outcome.label) : ["Provider fixture"],
+        betfair: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "bf")) : ["-"],
+        matchbook: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "mb")) : ["-"],
+        sx: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "sx")) : ["-"],
+        bias: rowHasMultiBettingExchange(backend) ? biasFromQuote(quote) : rowHasBettingExchange(backend) ? "Single route" : "No route",
+        liquidity: quote.liquidity || matched?.totalValue ? formatExchangeMoney(quote.liquidity || matched?.totalValue || 0, "GBP") : "-",
+        fresh: quote.updatedAt || "watch"
+      };
+    })
+    .filter((row) => row.coverage.some((exchange) => exchange.available));
+}
+
+function filterAgTestRows(rows: AgTestRow[], query: string) {
+  const terms = normalizeFixtureText(query).split(" ").filter(Boolean);
+  if (!terms.length) return rows;
+  return rows.filter((row) => {
+    const haystack = normalizeFixtureText([
+      row.kickoff,
+      row.match,
+      row.competition,
+      row.coverage.filter((exchange) => exchange.available).map((exchange) => exchange.label).join(" "),
+      row.outcomes.join(" "),
+      row.betfair.join(" "),
+      row.matchbook.join(" "),
+      row.sx.join(" "),
+      row.bias,
+      row.liquidity,
+      row.fresh
+    ].join(" "));
+    return terms.every((term) => haystack.includes(term));
+  });
+}
+
 function AgTestPage() {
-  const [rows, setRows] = useState<AgTestRow[]>([]);
+  const [fixtures, setFixtures] = useState<FootballFixture[]>([]);
+  const [backendRows, setBackendRows] = useState<BackendPriceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [socketStatus, setSocketStatus] = useState<"offline" | "connecting" | "live" | "waiting">("offline");
+  const reconnectTimerRef = useRef<number | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
+  const pendingPriceEventsRef = useRef<Array<{ channel: string; payload: unknown }>>([]);
+  const priceFlushTimerRef = useRef<number | null>(null);
+  const allRows = useMemo(() => buildAgTestRows(fixtures, backendRows), [fixtures, backendRows]);
+  const rows = useMemo(() => filterAgTestRows(allRows, searchQuery), [allRows, searchQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -8219,32 +8289,12 @@ function AgTestPage() {
         if (!fixtureResponse.ok || !Array.isArray(fixturePayload.fixtures)) throw new Error(fixturePayload.detail || "fixtures failed");
         if (!oddsResponse.ok || !Array.isArray(oddsPayload.rows)) throw new Error(oddsPayload.detail || "odds failed");
 
-        const displayRows = collapseRowsByFixture(oddsPayload.rows as BackendPriceRow[]);
-        const nextRows = cleanFootballFixtures(fixturePayload.fixtures as FootballFixture[])
-          .map((fixture) => {
-            const matched = findMarketRowForFootballFixture(fixture, displayRows);
-            const backend = matched?.row;
-            const outcomes = tradeableOutcomeRows(backend).slice(0, 3);
-            const quote = sportsEdgeMarketQuote(backend);
-            return {
-              id: fixture.id,
-              kickoff: formatFootballFixtureTime(fixture),
-              match: footballFixtureName(fixture),
-              competition: footballFixtureCompetition(fixture),
-              coverage: exchangeCoverage(backend).map((exchange) => ({ label: exchange.label, available: exchange.isAvailable })),
-              outcomes: outcomes.length ? outcomes.map((outcome) => outcome.label) : ["Provider fixture"],
-              betfair: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "bf")) : ["-"],
-              matchbook: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "mb")) : ["-"],
-              sx: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "sx")) : ["-"],
-              bias: rowHasMultiBettingExchange(backend) ? biasFromQuote(quote) : rowHasBettingExchange(backend) ? "Single route" : "No route",
-              liquidity: quote.liquidity || matched?.totalValue ? formatExchangeMoney(quote.liquidity || matched?.totalValue || 0, "GBP") : "-",
-              fresh: quote.updatedAt || "watch"
-            };
-          })
-          .filter((row) => row.coverage.some((exchange) => exchange.available));
-
         if (!cancelled) {
-          setRows(nextRows);
+          setFixtures(fixturePayload.fixtures as FootballFixture[]);
+          setBackendRows((currentRows) => mergeDisplayPriceRows([
+            ...(oddsPayload.rows as BackendPriceRow[]),
+            ...currentRows
+          ]).slice(0, 700));
           setError("");
         }
       } catch (err) {
@@ -8259,6 +8309,93 @@ function AgTestPage() {
     return () => {
       cancelled = true;
       window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    const token = window.localStorage.getItem("sportsedge.auth.token");
+    let closedByEffect = false;
+
+    function clearReconnect() {
+      if (reconnectTimerRef.current) {
+        window.clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+    }
+
+    function subscribe(socket: WebSocket) {
+      BETTING_EXCHANGE_COLUMNS.forEach((exchange) => {
+        socket.send(JSON.stringify({
+          type: "subscribe",
+          channel: exchangePriceChannel(exchange),
+          filters: { sport: "football" }
+        }));
+      });
+    }
+
+    function flushPriceEvents() {
+      const events = pendingPriceEventsRef.current.splice(0);
+      priceFlushTimerRef.current = null;
+      if (!events.length) return;
+      setBackendRows((currentRows) => mergeDisplayPriceRows(events.reduce(
+        (nextRows, item) => mergeLivePriceRows(nextRows, item.channel, item.payload, "football", true, 700),
+        currentRows
+      )).slice(0, 700));
+    }
+
+    function connect() {
+      clearReconnect();
+      if (!token) {
+        setSocketStatus("waiting");
+        return;
+      }
+      setSocketStatus("connecting");
+      const socket = new WebSocket(sportsEdgeWsUrl(token));
+      socketRef.current = socket;
+
+      socket.addEventListener("open", () => {
+        setSocketStatus("live");
+        subscribe(socket);
+      });
+
+      socket.addEventListener("message", (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message?.type !== "event" || !message.payload) return;
+          if (!isPrimaryTradingMarket(message.payload, "football")) return;
+          pendingPriceEventsRef.current.push({
+            channel: String(message.channel || ""),
+            payload: message.payload
+          });
+          if (!priceFlushTimerRef.current) {
+            priceFlushTimerRef.current = window.setTimeout(flushPriceEvents, 50);
+          }
+        } catch {
+          // Ignore malformed socket payloads.
+        }
+      });
+
+      socket.addEventListener("close", () => {
+        if (closedByEffect) return;
+        setSocketStatus("offline");
+        reconnectTimerRef.current = window.setTimeout(connect, 2500);
+      });
+
+      socket.addEventListener("error", () => setSocketStatus("offline"));
+    }
+
+    connect();
+
+    return () => {
+      closedByEffect = true;
+      clearReconnect();
+      if (priceFlushTimerRef.current) {
+        window.clearTimeout(priceFlushTimerRef.current);
+        priceFlushTimerRef.current = null;
+      }
+      pendingPriceEventsRef.current = [];
+      socketRef.current?.close();
+      socketRef.current = null;
     };
   }, []);
 
@@ -8300,7 +8437,11 @@ function AgTestPage() {
 
   return (
     <>
-      <SportsEdgeTopbar active="football" />
+      <SportsEdgeTopbar
+        active="football"
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Filter table, open team/player, market..."
+      />
       <main className="agtest-page">
         <section className="agtest-subbar" aria-label="AG test market context">
           <nav aria-label="Football matrix sections">
@@ -8310,9 +8451,9 @@ function AgTestPage() {
             <button className="active" type="button">AGTEST</button>
           </nav>
           <div>
-            <span>{rows.length} markets</span>
+            <span>{rows.length}{searchQuery.trim() ? ` / ${allRows.length}` : ""} markets</span>
             <span>BF / MB / SX</span>
-            <span>{loading ? "loading" : "live snapshot"}</span>
+            <span>{socketStatus === "live" ? "wss live" : loading ? "loading" : socketStatus}</span>
           </div>
         </section>
         <section className="agtest-grid-wrap ag-theme-quartz-dark">
