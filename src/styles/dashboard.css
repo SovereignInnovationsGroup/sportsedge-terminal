@@ -5481,6 +5481,123 @@ button {
   color: rgba(203, 213, 225, 0.92);
 }
 
+.agtest-page {
+  min-height: 100vh;
+  background: #05080d;
+  color: var(--text);
+  padding: 14px;
+}
+
+.agtest-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid rgba(36, 50, 65, 0.82);
+  border-radius: 8px;
+  background: rgba(8, 13, 19, 0.96);
+  padding: 12px 14px;
+}
+
+.agtest-head span {
+  color: var(--amber);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.agtest-head h1 {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 22px;
+  letter-spacing: 0;
+}
+
+.agtest-head button {
+  border: 1px solid rgba(96, 165, 250, 0.42);
+  border-radius: 6px;
+  background: rgba(96, 165, 250, 0.12);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 900;
+  padding: 9px 12px;
+}
+
+.agtest-grid-wrap {
+  height: calc(100vh - 92px);
+  margin-top: 12px;
+}
+
+.ag-theme-quartz-dark {
+  --ag-background-color: #05080d;
+  --ag-foreground-color: #e5edf6;
+  --ag-header-background-color: #0a111a;
+  --ag-odd-row-background-color: #090e14;
+  --ag-row-hover-color: rgba(96, 165, 250, 0.11);
+  --ag-border-color: rgba(36, 50, 65, 0.86);
+  --ag-font-family: var(--font);
+  --ag-font-size: 12px;
+  --ag-wrapper-border-radius: 8px;
+}
+
+.ag-fixture-cell {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding-top: 8px;
+}
+
+.ag-fixture-cell strong,
+.ag-fixture-cell span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ag-fixture-cell strong {
+  color: var(--text);
+  font-weight: 950;
+}
+
+.ag-fixture-cell span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ag-stack-cell {
+  display: grid;
+  gap: 4px;
+  padding-top: 8px;
+}
+
+.ag-stack-cell span {
+  overflow: hidden;
+  color: rgba(226, 232, 240, 0.94);
+  font-weight: 850;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ag-price-stack span {
+  color: rgba(203, 213, 225, 0.94);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.ag-coverage {
+  padding-top: 21px;
+}
+
+.agtest-error {
+  margin-top: 10px;
+  color: #fca5a5;
+  font-family: var(--mono);
+  font-weight: 900;
+}
+
 .testboard-matrix thead th {
   position: sticky;
   top: 0;

@@ -1,4 +1,8 @@
 import { Component, Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { AgGridReact } from "ag-grid-react";
+import { AllCommunityModule, ModuleRegistry, type ColDef } from "ag-grid-community";
+import "ag-grid-community/styles/ag-grid.css";
+import "ag-grid-community/styles/ag-theme-quartz.css";
 import {
   Activity,
   AlertTriangle,
@@ -31,6 +35,8 @@ import {
   Zap,
 } from "lucide-react";
 import "./styles/dashboard.css";
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 const loginSportsImage = "/images/login-sports-montage.webp";
 const sportsEdgeMarketsLogo = "/images/sportsedge-markets-logo.png";
@@ -1444,6 +1450,7 @@ const COMMAND_OPTIONS: CommandOption[] = [
   { label: "Chelsea team profile", detail: "Open the detailed SportsEdge profile page", route: "#team/chelsea", keywords: ["chelsea", "team", "profile", "club"] },
   { label: "Upcoming fixtures", detail: "Open today's market dashboard", route: "#dashboard", keywords: ["fixtures", "upcoming", "today", "matches", "games"] },
   { label: "Bias Matrix", detail: "Open the football consensus matrix", route: "#matrix", keywords: ["matrix", "bias", "consensus", "prices"] },
+  { label: "AG test", detail: "Open the AG Grid football test board", route: "#agtest", keywords: ["ag", "agtest", "grid", "test"] },
   { label: "Football markets", detail: "Open the football market board", route: "#football", keywords: ["football", "soccer", "markets"] },
   { label: "News", detail: "Open SportsEdge social news stream", route: "#social-news", keywords: ["news", "twitter", "social", "x"] },
   { label: "Actual exchange feeds", detail: "Open raw venue diagnostics", route: "#actual", keywords: ["actual", "exchange", "betfair", "matchbook", "feeds"] }
@@ -8168,6 +8175,154 @@ function RefreshUpdateNotice() {
   );
 }
 
+type AgTestRow = {
+  id: string;
+  kickoff: string;
+  match: string;
+  competition: string;
+  coverage: Array<{ label: string; available: boolean }>;
+  outcomes: string[];
+  betfair: string[];
+  matchbook: string[];
+  sx: string[];
+  bias: string;
+  liquidity: string;
+  fresh: string;
+};
+
+function AgStackCell({ values, className = "" }: { values?: string[]; className?: string }) {
+  const displayValues = values?.length ? values : ["-"];
+  return (
+    <div className={`ag-stack-cell ${className}`}>
+      {displayValues.map((value, index) => <span key={`${value}-${index}`}>{value}</span>)}
+    </div>
+  );
+}
+
+function AgTestPage() {
+  const [rows, setRows] = useState<AgTestRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRows() {
+      setLoading(true);
+      try {
+        const [fixtureResponse, oddsResponse] = await Promise.all([
+          fetch("/api/football/fixtures?days=4&limit=2000&timezone=Europe/London", { cache: "no-store" }),
+          fetch("/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&limit=500", { cache: "no-store" })
+        ]);
+        const fixturePayload = await fixtureResponse.json();
+        const oddsPayload = await oddsResponse.json();
+        if (!fixtureResponse.ok || !Array.isArray(fixturePayload.fixtures)) throw new Error(fixturePayload.detail || "fixtures failed");
+        if (!oddsResponse.ok || !Array.isArray(oddsPayload.rows)) throw new Error(oddsPayload.detail || "odds failed");
+
+        const displayRows = collapseRowsByFixture(oddsPayload.rows as BackendPriceRow[]);
+        const nextRows = cleanFootballFixtures(fixturePayload.fixtures as FootballFixture[])
+          .map((fixture) => {
+            const matched = findMarketRowForFootballFixture(fixture, displayRows);
+            const backend = matched?.row;
+            const outcomes = tradeableOutcomeRows(backend).slice(0, 3);
+            const quote = sportsEdgeMarketQuote(backend);
+            return {
+              id: fixture.id,
+              kickoff: formatFootballFixtureTime(fixture),
+              match: footballFixtureName(fixture),
+              competition: footballFixtureCompetition(fixture),
+              coverage: exchangeCoverage(backend).map((exchange) => ({ label: exchange.label, available: exchange.isAvailable })),
+              outcomes: outcomes.length ? outcomes.map((outcome) => outcome.label) : ["Provider fixture"],
+              betfair: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "bf")) : ["-"],
+              matchbook: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "mb")) : ["-"],
+              sx: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "sx")) : ["-"],
+              bias: rowHasMultiBettingExchange(backend) ? biasFromQuote(quote) : rowHasBettingExchange(backend) ? "Single route" : "No route",
+              liquidity: quote.liquidity || matched?.totalValue ? formatExchangeMoney(quote.liquidity || matched?.totalValue || 0, "GBP") : "-",
+              fresh: quote.updatedAt || "watch"
+            };
+          });
+
+        if (!cancelled) {
+          setRows(nextRows);
+          setError("");
+        }
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "AG test failed");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadRows();
+    const timer = window.setInterval(loadRows, 30000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const columnDefs = useMemo<ColDef<AgTestRow>[]>(() => [
+    { field: "kickoff", headerName: "Time", width: 116, pinned: "left" },
+    {
+      field: "match",
+      headerName: "Fixture",
+      minWidth: 310,
+      flex: 1.2,
+      pinned: "left",
+      cellRenderer: ({ data }: { data?: AgTestRow }) => (
+        <div className="ag-fixture-cell">
+          <strong>{data?.match}</strong>
+          <span>{data?.competition}</span>
+        </div>
+      )
+    },
+    {
+      field: "coverage",
+      headerName: "Coverage",
+      width: 126,
+      cellRenderer: ({ data }: { data?: AgTestRow }) => (
+        <div className="exchange-coverage ag-coverage">
+          {(data?.coverage || []).map((exchange) => (
+            <span className={exchange.available ? "available" : ""} key={exchange.label}>{exchange.label}</span>
+          ))}
+        </div>
+      )
+    },
+    { field: "outcomes", headerName: "Outcomes", minWidth: 180, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.outcomes} /> },
+    { field: "betfair", headerName: "Betfair", minWidth: 165, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betfair} className="ag-price-stack" /> },
+    { field: "matchbook", headerName: "Matchbook", minWidth: 165, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.matchbook} className="ag-price-stack" /> },
+    { field: "sx", headerName: "SX", minWidth: 165, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.sx} className="ag-price-stack" /> },
+    { field: "bias", headerName: "Bias", width: 126 },
+    { field: "liquidity", headerName: "Liquidity", width: 112 },
+    { field: "fresh", headerName: "Fresh", width: 96 }
+  ], []);
+
+  return (
+    <main className="agtest-page">
+      <header className="agtest-head">
+        <div>
+          <span>SportsEdge / AGTEST</span>
+          <h1>Football Exchange Grid</h1>
+        </div>
+        <button type="button" onClick={() => { window.location.hash = "#football"; }}>Back to terminal</button>
+      </header>
+      <section className="agtest-grid-wrap ag-theme-quartz-dark">
+        <AgGridReact
+          rowData={rows}
+          columnDefs={columnDefs}
+          loading={loading}
+          rowHeight={76}
+          headerHeight={34}
+          animateRows
+          suppressCellFocus
+          defaultColDef={{ sortable: true, resizable: true, filter: true }}
+        />
+      </section>
+      {error && <div className="agtest-error">{error}</div>}
+    </main>
+  );
+}
+
 export default function App() {
   const [hash, setHash] = useState(window.location.hash);
   const previewDashboard = import.meta.env.DEV;
@@ -8191,6 +8346,7 @@ export default function App() {
   else if (hash.startsWith("#team/")) screen = <TeamProfilePage slug={hash.replace("#team/", "") || "chelsea"} />;
   else if (hash === "#product-map") screen = <SportsEdgeProductMockupPage />;
   else if (hash === "#football-demo") screen = <FootballIntelligenceDemoPage />;
+  else if (hash === "#agtest") screen = hasSession || previewDashboard ? <AgTestPage /> : <LoginScreen />;
   else if (previewDashboard && (hash === "#dashboard" || hash === "#testboard" || hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash) || !hash)) screen = <TestboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#login") screen = <LoginScreen />;
   else if (previewDashboard && (hash === "#old" || hash === "#news" || hash.startsWith("#sport"))) screen = <DashboardPage onLogout={handleLogout} />;
