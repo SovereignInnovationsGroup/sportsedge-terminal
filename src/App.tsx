@@ -334,13 +334,15 @@ const EXCHANGE_COLUMNS = [
 ];
 
 type ExchangeColumn = typeof EXCHANGE_COLUMNS[number];
+const BETTING_EXCHANGE_COLUMNS = EXCHANGE_COLUMNS.filter((exchange) => ["bf", "mb", "sx"].includes(exchange.key));
 const MATRIX_VENUES = [
   { key: "betfair", label: "Betfair", short: "BF", matchKeys: ["bf", "betfair"], supports: ["football", "tennis", "golf", "basketball"], weight: 1.15 },
-  { key: "matchbook", label: "Matchbook", short: "MB", matchKeys: ["mb", "matchbook"], supports: ["football", "tennis", "golf", "basketball"], weight: 1.05 }
+  { key: "matchbook", label: "Matchbook", short: "MB", matchKeys: ["mb", "matchbook"], supports: ["football", "tennis", "golf", "basketball"], weight: 1.05 },
+  { key: "sx", label: "SX", short: "SX", matchKeys: ["sx"], supports: ["football", "tennis", "baseball", "basketball"], weight: 0.9 }
 ] as const;
 type MatrixVenue = typeof MATRIX_VENUES[number];
 const MATRIX_ACTIVE_SPORT = "football";
-const MATRIX_EXCHANGE_KEYS = new Set(["bf", "mb"]);
+const MATRIX_EXCHANGE_KEYS = new Set(["bf", "mb", "sx"]);
 const MATRIX_REFERENCE_QUERIES = [
   "Chelsea Manchester City",
   "Arsenal Liverpool",
@@ -2068,6 +2070,97 @@ function exchangeRunnerQuotes(row: BackendPriceRow) {
   });
 }
 
+function rowExchangeKeys(row?: BackendPriceRow | null) {
+  if (!row) return [];
+  return Object.values(row.matches || {})
+    .map((match) => backendExchangeCode(match?.exchange || ""))
+    .filter((value, index, array) => value && array.indexOf(value) === index);
+}
+
+function exchangeCoverage(row?: BackendPriceRow | null) {
+  const keys = rowExchangeKeys(row);
+  return BETTING_EXCHANGE_COLUMNS.map((exchange) => ({
+    ...exchange,
+    isAvailable: keys.includes(exchange.key)
+  }));
+}
+
+function exchangeCoverageLabel(row?: BackendPriceRow | null) {
+  const active = exchangeCoverage(row).filter((exchange) => exchange.isAvailable).map((exchange) => exchange.label);
+  return active.length ? active.join(" + ") : "No exchange";
+}
+
+function rowHasBettingExchange(row?: BackendPriceRow | null) {
+  return rowExchangeKeys(row).some((key) => ["bf", "mb", "sx"].includes(key));
+}
+
+function rowHasMultiBettingExchange(row?: BackendPriceRow | null) {
+  return rowExchangeKeys(row).filter((key) => ["bf", "mb", "sx"].includes(key)).length >= 2;
+}
+
+function runnerOutcomeKey(value?: string | null) {
+  const normalized = normalizeSelectionKey(value);
+  if (!normalized) return "";
+  if (normalized === "draw" || normalized === "the draw" || normalized.endsWith(" draw")) return "draw";
+  return normalized;
+}
+
+function tradeableOutcomeRows(row?: BackendPriceRow | null) {
+  if (!row) return [];
+  const outcomes = new Map<string, {
+    key: string;
+    label: string;
+    exchanges: Record<string, {
+      runner: BackendRunner;
+      match: BackendExchangeMatch;
+      bestBack: BackendRunnerPrice;
+      bestLay: BackendRunnerPrice;
+    }>;
+  }>();
+
+  for (const match of Object.values(row.matches || {})) {
+    if (!match) continue;
+    const exchange = backendExchangeCode(match.exchange);
+    if (!["bf", "mb", "sx"].includes(exchange)) continue;
+    for (const runner of match.runners || []) {
+      if (!runner.back && !runner.lay) continue;
+      const key = runnerOutcomeKey(runner.name);
+      if (!key) continue;
+      const outcome = outcomes.get(key) || {
+        key,
+        label: runner.name,
+        exchanges: {}
+      };
+      outcome.label = outcome.label || runner.name;
+      outcome.exchanges[exchange] = {
+        runner,
+        match,
+        bestBack: runner.back,
+        bestLay: runner.lay
+      };
+      outcomes.set(key, outcome);
+    }
+  }
+
+  return [...outcomes.values()].sort((a, b) => {
+    if (a.key === "draw") return 1;
+    if (b.key === "draw") return -1;
+    return Object.keys(b.exchanges).length - Object.keys(a.exchanges).length || a.label.localeCompare(b.label);
+  });
+}
+
+function formatOutcomeCell(
+  outcome: ReturnType<typeof tradeableOutcomeRows>[number] | undefined,
+  exchangeKey: string
+) {
+  const quote = outcome?.exchanges[exchangeKey];
+  if (!quote) return "-";
+  const parts = [];
+  if (quote.bestBack?.odds) parts.push(`B ${quote.bestBack.odds.toFixed(2)}${quote.bestBack.amount ? ` ${formatExchangeMoney(quote.bestBack.amount, exchangeKey === "sx" ? "USD" : "GBP")}` : ""}`);
+  if (quote.bestLay?.odds) parts.push(`L ${quote.bestLay.odds.toFixed(2)}${quote.bestLay.amount ? ` ${formatExchangeMoney(quote.bestLay.amount, exchangeKey === "sx" ? "USD" : "GBP")}` : ""}`);
+  return parts.length ? parts.join(" / ") : "-";
+}
+
 function sportsEdgeMarketQuote(row?: BackendPriceRow | null) {
   if (!row) {
     return {
@@ -2410,6 +2503,58 @@ function displayFixtureKey(row: Pick<BackendPriceRow, "name" | "startAt">) {
     .trim()
     .replace(/\s+/g, " ");
   return `${date}:${normalized}`;
+}
+
+function fixtureTeamParts(name: string) {
+  return displayEventName(name)
+    .split(/\s+(?:v|vs|versus|at)\s+/i)
+    .map((value) => normalizeSelectionKey(value)
+      .replace(/\b(if|il|bk|sk|fk|kbk|dff|sad|women|woman|w|u21|u23|u19|u18|reserves?|ii|b)\b/g, " ")
+      .trim()
+      .replace(/\s+/g, " "))
+    .filter(Boolean)
+    .slice(0, 2);
+}
+
+function teamTextSimilarity(a: string, b: string) {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const aTokens = new Set(a.split(" ").filter(Boolean));
+  const bTokens = new Set(b.split(" ").filter(Boolean));
+  const shared = [...aTokens].filter((token) => bTokens.has(token)).length;
+  const union = new Set([...aTokens, ...bTokens]).size || 1;
+  const tokenScore = shared / union;
+  const compactA = a.replace(/\s+/g, "");
+  const compactB = b.replace(/\s+/g, "");
+  const compactScore = compactA.includes(compactB) || compactB.includes(compactA)
+    ? Math.min(compactA.length, compactB.length) / Math.max(compactA.length, compactB.length)
+    : 0;
+  return Math.max(tokenScore, compactScore);
+}
+
+function fixtureMatchesBackendRow(fixture: FootballFixture, row: BackendPriceRow) {
+  if (!fixture.kickoffAt || !row.startAt) return false;
+  const fixtureMs = new Date(fixture.kickoffAt).getTime();
+  const rowMs = new Date(String(row.startAt).replace(" ", "T") + "Z").getTime();
+  if (!Number.isFinite(fixtureMs) || !Number.isFinite(rowMs)) return false;
+  if (Math.abs(fixtureMs - rowMs) > 15 * 60 * 1000) return false;
+  const fixtureTeams = fixtureTeamParts(footballFixtureName(fixture));
+  const rowTeams = fixtureTeamParts(displayEventName(row.name));
+  if (fixtureTeams.length < 2 || rowTeams.length < 2) return false;
+  const direct = (teamTextSimilarity(fixtureTeams[0], rowTeams[0]) + teamTextSimilarity(fixtureTeams[1], rowTeams[1])) / 2;
+  const flipped = (teamTextSimilarity(fixtureTeams[0], rowTeams[1]) + teamTextSimilarity(fixtureTeams[1], rowTeams[0])) / 2;
+  return Math.max(direct, flipped) >= 0.72;
+}
+
+function findMarketRowForFootballFixture(
+  fixture: FootballFixture,
+  rows: Array<{ row: BackendPriceRow; totalValue: number; marketCount: number }>
+) {
+  const exact = rows.find((item) => fixtureBackendKey(displayEventName(item.row.name), item.row.startAt) === fixtureBackendKey(footballFixtureName(fixture), fixture.kickoffAt));
+  if (exact) return exact;
+  return rows
+    .filter((item) => fixtureMatchesBackendRow(fixture, item.row))
+    .sort((a, b) => Number(b.totalValue || 0) - Number(a.totalValue || 0))[0];
 }
 
 function displayMarketKey(row: Pick<BackendPriceRow, "marketName" | "marketType">) {
@@ -4399,7 +4544,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
       setFootballFixturesLoading(true);
       try {
         const params = new URLSearchParams({
-          days: "1",
+          days: "4",
           limit: "2000",
           timezone: "Europe/London"
         });
@@ -4685,8 +4830,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
         try {
           const params = new URLSearchParams({
             sport: MATRIX_ACTIVE_SPORT,
-            segment: "today",
-            exchanges: "betfair,matchbook",
+            exchanges: "betfair,matchbook,sx",
             limit: "500"
           });
           const response = await fetch(`/api/exchange-odds?${params.toString()}`, { cache: "no-store" });
@@ -4729,7 +4873,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
           sport: apiSportValue(selectedSport),
           limit: selectedSport === "football" ? "500" : "120"
         });
-        if (selectedSport === "football") params.set("segment", "today");
+        if (selectedSport === "football") params.set("exchanges", "betfair,matchbook,sx");
         const response = await fetch(`/api/exchange-odds?${params.toString()}`, { cache: "no-store" });
         const payload = await response.json();
         if (!response.ok || !Array.isArray(payload.rows)) {
@@ -4981,17 +5125,13 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
     ? collapseRowsByFixture(priceRows)
     : priceRows.map((row) => ({ row, totalValue: rowMatchedValue(row), marketCount: 1 }));
   const hasBackendRows = displayPriceRows.length > 0;
-  const marketRowsByFixture = new Map(displayPriceRows.map((item) => [
-    fixtureBackendKey(displayEventName(item.row.name), item.row.startAt),
-    item
-  ]));
   const providerFootballRows = selectedSport === "football" && !isMatrixPage && footballFixtures.length
     ? footballFixtures
       .filter((fixture) => footballFixtureMatchesMarketGroup(fixture, marketGroup))
       .map((fixture, fixtureIndex) => {
         const name = footballFixtureName(fixture);
         const competition = footballFixtureCompetition(fixture);
-        const matched = marketRowsByFixture.get(fixtureBackendKey(name, fixture.kickoffAt));
+        const matched = findMarketRowForFootballFixture(fixture, displayPriceRows);
         const backend = matched?.row || {
           id: `fixture:${fixture.id}`,
           name,
@@ -5026,7 +5166,8 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
       backend: row
     };
   }) : [];
-  const activeExchangeCount = EXCHANGE_COLUMNS.filter((exchange) => exchange.supports.includes(selectedSport)).length;
+  const activeExchangeCount = (selectedSport === "football" ? BETTING_EXCHANGE_COLUMNS : EXCHANGE_COLUMNS)
+    .filter((exchange) => exchange.supports.includes(selectedSport)).length;
   const totalMatched = matrixRows.reduce((sum, row) => sum + row.totalValue, 0);
   const liveUpdateCount = Object.values(fixtureExchangeUpdates).filter((item) => now.getTime() - item.updatedAt < 30000).length;
   const isFootballDashboard = selectedSport === "football"
@@ -5484,8 +5625,8 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
           </article>
           <article>
             <span>Venue coverage</span>
-            <strong>{activeExchangeCount}/{EXCHANGE_COLUMNS.length}</strong>
-            <p>Backend venues capable of football pricing.</p>
+            <strong>{activeExchangeCount}/{BETTING_EXCHANGE_COLUMNS.length}</strong>
+            <p>Betfair, Matchbook, and SX availability by fixture.</p>
           </article>
           <article>
             <span>Latest price tick</span>
@@ -5542,10 +5683,10 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
                     <th>Date / Time</th>
                     <th>Fixture</th>
                     <th>Competition</th>
-                    <th>Liquidity</th>
-                    <th>Back</th>
-                    <th>Lay</th>
-                    <th>Markets</th>
+                    <th>Exchange Coverage</th>
+                    <th>Bias</th>
+                    <th>Best Back</th>
+                    <th>Best Lay</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -5553,6 +5694,11 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
                     const name = footballFixtureName(fixture);
                     const competition = footballFixtureCompetition(fixture);
                     const quote = matched ? sportsEdgeMarketQuote(matched.backend) : { liquidity: 0, bestBack: null, bestLay: null };
+                    const coverage = exchangeCoverage(matched?.backend);
+                    const tradeableOutcomes = tradeableOutcomeRows(matched?.backend);
+                    const biasLabel = matched?.backend
+                      ? (rowHasMultiBettingExchange(matched.backend) ? biasFromQuote(sportsEdgeMarketQuote(matched.backend)) : "Single route")
+                      : "No route";
                     return (
                       <tr
                         className={matched ? "clickable-row" : ""}
@@ -5570,10 +5716,16 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
                           </div>
                         </td>
                         <td><span>{fixtureGroupLabel(competition)}</span></td>
-                        <td className="mono">{quote.liquidity ? formatExchangeMoney(quote.liquidity, "GBP") : "-"}</td>
+                        <td>
+                          <div className="exchange-coverage" aria-label={`${name} exchange coverage`}>
+                            {coverage.map((exchange) => (
+                              <span className={exchange.isAvailable ? "available" : ""} key={exchange.key}>{exchange.label}</span>
+                            ))}
+                          </div>
+                        </td>
+                        <td><span className={`bias-pill ${rowHasMultiBettingExchange(matched?.backend) ? "active" : ""}`}>{biasLabel}</span></td>
                         <td className="mono positive">{quote.bestBack ? quote.bestBack.toFixed(2) : "-"}</td>
-                        <td className="mono sell">{quote.bestLay ? quote.bestLay.toFixed(2) : "-"}</td>
-                        <td className="mono">{matched?.marketCount || "-"}</td>
+                        <td className="mono sell">{quote.bestLay ? quote.bestLay.toFixed(2) : tradeableOutcomes.length ? "-" : "-"}</td>
                       </tr>
                     );
                   })}
@@ -5600,7 +5752,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
         <section className="matrix-simple-status" aria-label="Matrix status">
           <strong>Football today</strong>
           <span>{biasMatrixRows.length} rows</span>
-          <span>Betfair + Matchbook</span>
+          <span>Betfair + Matchbook + SX</span>
           <span>Updated {latestLabel}</span>
         </section>
         <section className="testboard-matrix matrix-simple" aria-label="Realtime SportsEdge football prices">
@@ -6019,7 +6171,8 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
             );
           }
           const fixture = matrixRow.fixture;
-          const venueRows = EXCHANGE_COLUMNS.map((exchange) => {
+          const routeColumns = selectedSport === "football" ? BETTING_EXCHANGE_COLUMNS : EXCHANGE_COLUMNS;
+          const venueRows = routeColumns.map((exchange) => {
             if (matrixRow.backend) {
               const { backendMatch, summary, live } = backendSummaryWithLive(matrixRow.backend, fixture, exchange);
               if (!backendMatch || !summary) return null;
@@ -6142,74 +6295,80 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
           <colgroup>
             <col className="col-time" />
             <col className="col-market" />
+            <col className="col-coverage" />
             <col className="col-contract" />
+            <col className="col-exchange-price" />
+            <col className="col-exchange-price" />
+            <col className="col-exchange-price" />
+            <col className="col-bias" />
             <col className="col-liquidity" />
-            <col className="col-price" />
-            <col className="col-size" />
-            <col className="col-price" />
-            <col className="col-size" />
-            <col className="col-spread" />
-            <col className="col-arb" />
-            <col className="col-route" />
-            <col className="col-confidence" />
             <col className="col-fresh" />
           </colgroup>
           <thead>
             <tr>
               <th scope="col">Time</th>
               <th scope="col">Market</th>
-              <th scope="col">Contract</th>
-              <th scope="col">Liquidity</th>
-              <th scope="col">Best Back</th>
-              <th scope="col">Back Size</th>
-              <th scope="col">Best Lay</th>
-              <th scope="col">Lay Size</th>
-              <th scope="col">Spread</th>
-              <th scope="col">Arb</th>
-              <th scope="col">Route</th>
-              <th scope="col">Confidence</th>
-              <th scope="col">Fresh</th>
-            </tr>
-          </thead>
-          <tbody>
-            {matrixRows.map(({ fixture, fixtureIndex, totalValue, backend }) => {
+                    <th scope="col">Coverage</th>
+                    <th scope="col">Outcome</th>
+                    <th scope="col">Betfair</th>
+                    <th scope="col">Matchbook</th>
+                    <th scope="col">SX</th>
+                    <th scope="col">Bias</th>
+                    <th scope="col">Liquidity</th>
+                    <th scope="col">Fresh</th>
+                  </tr>
+                </thead>
+                <tbody>
+            {matrixRows.flatMap(({ fixture, fixtureIndex, totalValue, backend }) => {
               const quote = sportsEdgeMarketQuote(backend);
               const rowKey = backend ? stableDisplayRowKey(backend) : `${fixture[0]}-${fixture[1]}-${fixture[3]}-${fixtureIndex}`;
-              return (
+              const outcomes = tradeableOutcomeRows(backend);
+              const visibleOutcomes = outcomes.length ? outcomes : [undefined];
+              const coverage = exchangeCoverage(backend);
+              const coverageText = exchangeCoverageLabel(backend);
+              const biasLabel = rowHasMultiBettingExchange(backend) ? biasFromQuote(quote) : rowHasBettingExchange(backend) ? "Single route" : "No route";
+              return visibleOutcomes.slice(0, 3).map((outcome, outcomeIndex) => (
                 <tr
-                  className="clickable-row"
-                  key={rowKey}
+                  className={`clickable-row${outcomeIndex > 0 ? " repeated-fixture-row" : ""}`}
+                  key={`${rowKey}-${outcome?.key || "fixture"}-${outcomeIndex}`}
                   onClick={() => setSelectedFixtureIndex(fixtureIndex)}
                 >
-                  <td className="mono positive">{fixture[0]}</td>
+                  <td className="mono positive">{outcomeIndex === 0 ? fixture[0] : ""}</td>
                   <td className="testboard-fixture">
-                    <div className="fixture-title-line">
-                      <TeamLogoStack name={fixture[1]} />
-                      <strong>{fixture[1]}</strong>
-                    </div>
-                    <span><em>{countryFlag(competitionCountry(fixture[2]))}</em>{fixtureGroupLabel(fixture[2])}</span>
+                    {outcomeIndex === 0 && (
+                      <>
+                        <div className="fixture-title-line">
+                          <TeamLogoStack name={fixture[1]} />
+                          <strong>{fixture[1]}</strong>
+                        </div>
+                        <span><em>{countryFlag(competitionCountry(fixture[2]))}</em>{fixtureGroupLabel(fixture[2])}</span>
+                      </>
+                    )}
                   </td>
-                  <td className="contract-cell">{fixture[3]}</td>
-                  <td className="mono">{quote.liquidity || totalValue ? formatExchangeMoney(quote.liquidity || totalValue, "GBP") : "-"}</td>
-                  <td className={quote.bestBack ? `price-cell buy ${quote.isFresh ? "live" : ""}` : "empty"}>{quote.bestBack ? quote.bestBack.toFixed(2) : "-"}</td>
-                  <td className="mono muted-cell">{quote.bestBackSize ? formatExchangeMoney(quote.bestBackSize, "GBP") : "-"}</td>
-                  <td className={quote.bestLay ? `price-cell sell ${quote.isFresh ? "live" : ""}` : "empty"}>{quote.bestLay ? quote.bestLay.toFixed(2) : "-"}</td>
-                  <td className="mono muted-cell">{quote.bestLaySize ? formatExchangeMoney(quote.bestLaySize, "GBP") : "-"}</td>
-                  <td className="mono">{quote.spread != null ? quote.spread.toFixed(2) : "-"}</td>
                   <td>
-                    <span className={`arb-pill${quote.isArb ? " active live" : ""}`}>
-                      {quote.isArb ? `+${quote.edgePct?.toFixed(2)}%` : "None"}
-                    </span>
+                    {outcomeIndex === 0 && (
+                      <div className="exchange-coverage" title={coverageText}>
+                        {coverage.map((exchange) => (
+                          <span className={exchange.isAvailable ? "available" : ""} key={exchange.key}>{exchange.label}</span>
+                        ))}
+                      </div>
+                    )}
                   </td>
-                  <td><span className="route-pill">{quote.route}</span></td>
-                  <td className="mono positive">{quote.confidence ? `${quote.confidence}%` : "-"}</td>
-                  <td className="mono">{quote.isFresh ? quote.updatedAt || "Live" : "watch"}</td>
+                  <td className="contract-cell">{outcome?.label || fixture[3]}</td>
+                  <td className="mono exchange-odds-cell">{formatOutcomeCell(outcome, "bf")}</td>
+                  <td className="mono exchange-odds-cell">{formatOutcomeCell(outcome, "mb")}</td>
+                  <td className="mono exchange-odds-cell">{formatOutcomeCell(outcome, "sx")}</td>
+                  <td>
+                    <span className={`bias-pill ${rowHasMultiBettingExchange(backend) ? "active" : ""}`}>{biasLabel}</span>
+                  </td>
+                  <td className="mono">{quote.liquidity || totalValue ? formatExchangeMoney(quote.liquidity || totalValue, "GBP") : "-"}</td>
+                  <td className="mono">{quote.isFresh ? quote.updatedAt || "Live" : quote.updatedAt || "watch"}</td>
                 </tr>
-              );
+              ));
             })}
             {matrixRows.length === 0 && (
               <tr>
-                <td className="empty" colSpan={13}>Waiting for SportsEdge market state.</td>
+                <td className="empty" colSpan={10}>Waiting for SportsEdge market state.</td>
               </tr>
             )}
           </tbody>
