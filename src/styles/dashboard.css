@@ -5552,6 +5552,7 @@ button {
   --ag-wrapper-border-radius: 0;
   --ag-cell-horizontal-border: transparent;
   --ag-row-border-color: rgba(36, 50, 65, 0.38);
+  --ag-modal-overlay-background-color: rgba(5, 8, 13, 0.72);
 }
 
 .agtest-page .ag-root-wrapper,
@@ -5625,6 +5626,27 @@ button {
 .agtest-page .ag-pinned-left-cols-container,
 .agtest-page .ag-pinned-left-header {
   border-right: 0;
+}
+
+.agtest-page .ag-overlay {
+  background: rgba(5, 8, 13, 0.72);
+}
+
+.agtest-page .ag-overlay-loading-wrapper {
+  background: rgba(5, 8, 13, 0.72);
+}
+
+.agtest-page .ag-overlay-loading-center {
+  border: 1px solid rgba(36, 50, 65, 0.78);
+  border-radius: 7px;
+  background: rgba(8, 13, 19, 0.96);
+  box-shadow: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 950;
+  padding: 9px 12px;
+  text-transform: uppercase;
 }
 
 .ag-fixture-cell {

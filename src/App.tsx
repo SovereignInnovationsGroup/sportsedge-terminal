@@ -8319,7 +8319,7 @@ function AgTestPage() {
           <AgGridReact
             rowData={rows}
             columnDefs={columnDefs}
-            loading={loading}
+            loading={loading && rows.length === 0}
             rowHeight={36}
             headerHeight={34}
             animateRows
