@@ -1337,19 +1337,19 @@ function TeamLogoStack({ name }: { name: string }) {
         </span>
       );
     }
-    return <span className={`team-badge${teamFallbackIsFlag(name) ? " flag" : ""}`}>{teamFallbackBadge(name)}</span>;
+    return <span className="team-badge">{teamInitials(name)}</span>;
   }
   return (
     <span className="team-logo-stack" aria-hidden="true">
       {teams.map((team) => {
         const logo = teamLogoAsset(team);
-        return logo ? (
-          <span className={`team-logo-frame${logo.isFlag ? " flag-logo" : ""}`} key={team} title={team}>
+        return logo && !logo.isFlag ? (
+          <span className="team-logo-frame" key={team} title={team}>
             <img src={logo.url} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />
             <span>{teamInitials(team)}</span>
           </span>
         ) : (
-          <span className={`team-badge small${teamFallbackIsFlag(team) ? " flag" : ""}`} key={team}>{teamFallbackBadge(team)}</span>
+          <span className="team-badge small" key={team}>{teamInitials(team)}</span>
         );
       })}
     </span>
@@ -1363,15 +1363,15 @@ function FixtureTeamLogoStack({ fixture }: { fixture: FootballFixture }) {
       {teams.map((team) => {
         const fallbackLogo = teamLogoAsset(team.name);
         const logoUrl = team.logoUrl || fallbackLogo?.url || "";
-        const isFlag = !team.logoUrl && Boolean(fallbackLogo?.isFlag);
-        return logoUrl ? (
-          <span className={`team-logo-frame${isFlag ? " flag-logo" : ""}`} key={`${fixture.id}-${team.providerTeamId || team.name}`} title={team.name}>
+        const useLogo = logoUrl && (team.logoUrl || !fallbackLogo?.isFlag);
+        return useLogo ? (
+          <span className="team-logo-frame" key={`${fixture.id}-${team.providerTeamId || team.name}`} title={team.name}>
             <img src={logoUrl} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />
             <span>{teamInitials(team.name)}</span>
           </span>
         ) : (
-          <span className={`team-badge small${teamFallbackIsFlag(team.name) ? " flag" : ""}`} key={`${fixture.id}-${team.name}`}>
-            {teamFallbackBadge(team.name)}
+          <span className="team-badge small" key={`${fixture.id}-${team.name}`}>
+            {teamInitials(team.name)}
           </span>
         );
       })}
@@ -2447,7 +2447,15 @@ function footballFixtureName(fixture: FootballFixture) {
 }
 
 function footballFixtureCompetition(fixture: FootballFixture) {
-  return [fixture.country, fixture.leagueName].filter(Boolean).join(" / ") || "Football";
+  const country = String(fixture.country || "").trim();
+  const league = String(fixture.leagueName || "").trim();
+  if (!country && !league) return "Football";
+  if (!league) return country;
+  const genericLeagueMap: Record<string, Record<string, string>> = {
+    norway: { "premier league": "Eliteserien", "1. division": "First Division" }
+  };
+  const mappedLeague = genericLeagueMap[normalizeSelectionKey(country)]?.[normalizeSelectionKey(league)] || league;
+  return country ? `${country} / ${mappedLeague}` : mappedLeague;
 }
 
 function formatFootballFixtureTime(fixture: FootballFixture) {
