@@ -9781,7 +9781,7 @@ type BetfairArbRow = {
   startAt: string | null;
   observedAt: string | null;
   type: "back_book" | "lay_book" | "crossed_runner" | "watch";
-  status: "executable" | "anomaly" | "watch";
+  status: "EXECUTABLE_ARB" | "ANOMALY" | "WATCH";
   edgePct: number;
   roiPct: number;
   backBookPct: number | null;
@@ -9789,15 +9789,22 @@ type BetfairArbRow = {
   usableLiquidity: number;
   validRunners: number;
   expectedRunners: number | null;
+  missingRunners: number | null;
   marketComplete: boolean;
   staleMs: number | null;
   executable: boolean;
+  executableStake: number;
+  maxProfit: number;
+  maxLoss: number;
   reason: string;
   bestBack: string;
   bestLay: string;
   outcomes: string;
   liquidity: number;
 };
+
+const ARB_FRESH_MS = 2000;
+const MIN_EXECUTABLE_STAKE = 10;
 
 function runnerPriceText(runner: BackendRunner) {
   const back = runner.back ? `B ${runner.back.odds.toFixed(2)} ${formatExchangeMoney(runner.back.amount, "GBP")}` : "B -";
@@ -9862,9 +9869,54 @@ function usableBookLiquidity(runners: BackendRunner[], side: "back" | "lay") {
   return weights.reduce((sum, weight) => sum + weight * scale, 0);
 }
 
+function backBookExecution(runners: BackendRunner[], bookPct: number | null) {
+  if (bookPct == null || bookPct <= 0 || bookPct >= 100) return { executableStake: 0, maxProfit: 0, maxLoss: 0 };
+  const prices = runners.map((runner) => runner.back).filter(Boolean) as BackendRunnerLevel[];
+  if (prices.length !== runners.length) return { executableStake: 0, maxProfit: 0, maxLoss: 0 };
+  const book = bookPct / 100;
+  const weights = prices.map((price) => 1 / price.odds);
+  const maxReturn = Math.min(...prices.map((price, index) => price.amount / weights[index]));
+  if (!Number.isFinite(maxReturn) || maxReturn <= 0) return { executableStake: 0, maxProfit: 0, maxLoss: 0 };
+  const executableStake = maxReturn * book;
+  const maxProfit = maxReturn - executableStake;
+  return { executableStake, maxProfit, maxLoss: 0 };
+}
+
+function layBookExecution(runners: BackendRunner[], bookPct: number | null) {
+  if (bookPct == null || bookPct <= 100) return { executableStake: 0, maxProfit: 0, maxLoss: 0 };
+  const prices = runners.map((runner) => runner.lay).filter(Boolean) as BackendRunnerLevel[];
+  if (prices.length !== runners.length) return { executableStake: 0, maxProfit: 0, maxLoss: 0 };
+  const book = bookPct / 100;
+  const maxStake = Math.min(...prices.map((price) => price.amount * book * price.odds));
+  if (!Number.isFinite(maxStake) || maxStake <= 0) return { executableStake: 0, maxProfit: 0, maxLoss: 0 };
+  const maxProfit = maxStake * (1 - 1 / book);
+  return { executableStake: maxStake, maxProfit, maxLoss: 0 };
+}
+
+function crossedRunnerExecution(runner: BackendRunner) {
+  const backOdds = Number(runner.back?.odds || 0);
+  const layOdds = Number(runner.lay?.odds || 0);
+  const backAmount = Number(runner.back?.amount || 0);
+  const layAmount = Number(runner.lay?.amount || 0);
+  if (backOdds <= 1 || layOdds <= 1 || backOdds <= layOdds || backAmount <= 0 || layAmount <= 0) {
+    return { executableStake: 0, maxProfit: 0, maxLoss: 0 };
+  }
+  const backStake = Math.min(backAmount, layAmount * layOdds / backOdds);
+  const layStake = backStake * backOdds / layOdds;
+  const maxProfit = layStake - backStake;
+  return { executableStake: backStake + layStake, maxProfit, maxLoss: 0 };
+}
+
+function executionStatus(execution: { executableStake: number; maxProfit: number; maxLoss: number }, isFresh: boolean, marketComplete: boolean) {
+  return isFresh
+    && marketComplete
+    && execution.executableStake >= MIN_EXECUTABLE_STAKE
+    && execution.maxProfit > 0
+    && execution.maxLoss <= 0;
+}
+
 function buildBetfairArbRows(rows: BackendPriceRow[]) {
   const output: BetfairArbRow[] = [];
-  const seen = new Set<string>();
 
   for (const row of rows) {
     const match = row.matches?.betfair;
@@ -9874,13 +9926,15 @@ function buildBetfairArbRows(rows: BackendPriceRow[]) {
     if (runners.length < 2 || runners.length > 30) continue;
     const expectedRunners = expectedRunnerCount(match);
     const validRunners = runners.filter(runnerHasBothSides).length;
-    const marketComplete = expectedRunners != null && runners.length === expectedRunners && validRunners === expectedRunners;
+    const missingRunners = expectedRunners == null ? null : Math.max(0, expectedRunners - validRunners);
+    const marketComplete = expectedRunners != null && runners.length === expectedRunners && validRunners === expectedRunners && missingRunners === 0;
     const staleMs = staleMsFromObservedAt(match.observedAt);
-    const isFresh = staleMs != null && staleMs <= 5000;
+    const isFresh = staleMs != null && staleMs <= ARB_FRESH_MS;
     const isSafeMarket = safeArbMarket(match, runners);
 
     const backBookPct = isSafeMarket && marketComplete ? marketBookPct(runners, "back") : null;
     const layBookPct = isSafeMarket && marketComplete ? marketBookPct(runners, "lay") : null;
+    let hasSignal = false;
     const outcomes = runners.map(runnerPriceText).join(" | ");
     const liquidity = runners.reduce((sum, runner) => (
       sum
@@ -9897,9 +9951,13 @@ function buildBetfairArbRows(rows: BackendPriceRow[]) {
       layBookPct,
       validRunners,
       expectedRunners,
+      missingRunners,
       marketComplete,
       staleMs,
       executable: false,
+      executableStake: 0,
+      maxProfit: 0,
+      maxLoss: 0,
       reason: !isSafeMarket ? "unsupported market"
         : !marketComplete ? `incomplete ${validRunners}/${expectedRunners || runners.length}`
           : !isFresh ? `stale ${arbFreshnessLabel(staleMs)}`
@@ -9914,36 +9972,44 @@ function buildBetfairArbRows(rows: BackendPriceRow[]) {
     if (backBookPct != null && backBookPct < 99.95) {
       const id = `${match.marketId}:back`;
       const roiPct = (100 / backBookPct - 1) * 100;
-      const executable = marketComplete && isFresh;
-      seen.add(id);
+      const execution = backBookExecution(runners, backBookPct);
+      const executable = executionStatus(execution, isFresh, marketComplete);
+      hasSignal = true;
       output.push({
         id,
         ...base,
         type: "back_book",
-        status: executable ? "executable" : "anomaly",
+        status: executable ? "EXECUTABLE_ARB" : "ANOMALY",
         edgePct: 100 - backBookPct,
         roiPct,
-        usableLiquidity: usableBookLiquidity(runners, "back"),
+        usableLiquidity: execution.executableStake || usableBookLiquidity(runners, "back"),
         executable,
-        reason: executable ? "complete + fresh" : base.reason
+        executableStake: execution.executableStake,
+        maxProfit: execution.maxProfit,
+        maxLoss: execution.maxLoss,
+        reason: executable ? "complete + fresh + sized" : execution.executableStake < MIN_EXECUTABLE_STAKE ? "below min executable stake" : base.reason
       });
     }
 
     if (layBookPct != null && layBookPct > 100.05) {
       const id = `${match.marketId}:lay`;
       const roiPct = (1 - 100 / layBookPct) * 100;
-      const executable = marketComplete && isFresh;
-      seen.add(id);
+      const execution = layBookExecution(runners, layBookPct);
+      const executable = executionStatus(execution, isFresh, marketComplete);
+      hasSignal = true;
       output.push({
         id,
         ...base,
         type: "lay_book",
-        status: executable ? "executable" : "anomaly",
+        status: executable ? "EXECUTABLE_ARB" : "ANOMALY",
         edgePct: layBookPct - 100,
         roiPct,
-        usableLiquidity: usableBookLiquidity(runners, "lay"),
+        usableLiquidity: execution.executableStake || usableBookLiquidity(runners, "lay"),
         executable,
-        reason: executable ? "complete + fresh" : base.reason
+        executableStake: execution.executableStake,
+        maxProfit: execution.maxProfit,
+        maxLoss: execution.maxLoss,
+        reason: executable ? "complete + fresh + sized" : execution.executableStake < MIN_EXECUTABLE_STAKE ? "below min executable stake" : base.reason
       });
     }
 
@@ -9953,27 +10019,31 @@ function buildBetfairArbRows(rows: BackendPriceRow[]) {
       if (backOdds > 1 && layOdds > 1 && backOdds > layOdds) {
         const id = `${match.marketId}:${runner.id}:crossed`;
         const roiPct = ((backOdds / layOdds) - 1) * 100;
+        const execution = crossedRunnerExecution(runner);
         const executable = isFresh
-          && Number(runner.back?.amount || 0) > 0
-          && Number(runner.lay?.amount || 0) > 0;
-        seen.add(id);
+          && execution.executableStake >= MIN_EXECUTABLE_STAKE
+          && execution.maxProfit > 0;
+        hasSignal = true;
         output.push({
           id,
           ...base,
           type: "crossed_runner",
-          status: executable ? "executable" : "anomaly",
+          status: executable ? "EXECUTABLE_ARB" : "ANOMALY",
           edgePct: roiPct,
           roiPct,
-          usableLiquidity: Math.min(Number(runner.back?.amount || 0), Number(runner.lay?.amount || 0)),
+          usableLiquidity: execution.executableStake,
           executable,
-          reason: executable ? "crossed + fresh" : base.reason,
+          executableStake: execution.executableStake,
+          maxProfit: execution.maxProfit,
+          maxLoss: execution.maxLoss,
+          reason: executable ? "crossed + fresh + sized" : execution.executableStake < MIN_EXECUTABLE_STAKE ? "below min executable stake" : base.reason,
           outcomes: runnerPriceText(runner)
         });
       }
     }
 
     const watchId = `${match.marketId}:watch`;
-    if (!seen.has(`${match.marketId}:back`) && !seen.has(`${match.marketId}:lay`) && output.length < 120) {
+    if (!hasSignal && output.length < 120) {
       const backMiss = backBookPct == null ? Number.POSITIVE_INFINITY : Math.abs(100 - backBookPct);
       const layMiss = layBookPct == null ? Number.POSITIVE_INFINITY : Math.abs(100 - layBookPct);
       const edgePct = -Math.min(backMiss, layMiss);
@@ -9981,17 +10051,20 @@ function buildBetfairArbRows(rows: BackendPriceRow[]) {
         id: watchId,
         ...base,
         type: "watch",
-        status: "watch",
+        status: "WATCH",
         edgePct,
         roiPct: 0,
         usableLiquidity: 0,
+        executableStake: 0,
+        maxProfit: 0,
+        maxLoss: 0,
         reason: base.reason
       });
     }
   }
 
   return output.sort((a, b) => {
-    const statusRank = { executable: 0, anomaly: 1, watch: 2 };
+    const statusRank = { EXECUTABLE_ARB: 0, ANOMALY: 1, WATCH: 2 };
     if (a.status !== b.status) return statusRank[a.status] - statusRank[b.status];
     return b.edgePct - a.edgePct || b.liquidity - a.liquidity;
   });
@@ -10002,6 +10075,10 @@ function betfairArbTypeLabel(type: BetfairArbRow["type"]) {
   if (type === "lay_book") return "Lay book";
   if (type === "crossed_runner") return "Crossed runner";
   return "Watch";
+}
+
+function arbStatusClass(status: BetfairArbRow["status"]) {
+  return status.toLowerCase().replace("_", "-");
 }
 
 function BetfairArbsPage() {
@@ -10054,8 +10131,8 @@ function BetfairArbsPage() {
     });
   }, [query, rows]);
 
-  const executableRows = filteredRows.filter((row) => row.status === "executable");
-  const anomalyRows = filteredRows.filter((row) => row.status === "anomaly");
+  const executableRows = filteredRows.filter((row) => row.status === "EXECUTABLE_ARB");
+  const anomalyRows = filteredRows.filter((row) => row.status === "ANOMALY");
   const watchedMarkets = rows.length;
   const freshest = lastRefresh ? new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
@@ -10099,43 +10176,50 @@ function BetfairArbsPage() {
                 <th>Fixture</th>
                 <th>Market</th>
                 <th>Signal</th>
+                <th>Status</th>
                 <th>Arb %</th>
                 <th>ROI</th>
                 <th>Back total</th>
                 <th>Lay total</th>
-                <th>Usable</th>
-                <th>Validation</th>
+                <th>expected_runners</th>
+                <th>valid_runners</th>
+                <th>missing_runners</th>
+                <th>stale_ms</th>
+                <th>executable_stake</th>
+                <th>max_profit</th>
+                <th>max_loss</th>
                 <th>Both sides</th>
                 <th>Fresh</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.map((row) => (
-                <tr className={row.status === "executable" ? "is-executable" : row.status === "anomaly" ? "is-anomaly" : ""} key={row.id}>
+                <tr className={row.status === "EXECUTABLE_ARB" ? "is-executable" : row.status === "ANOMALY" ? "is-anomaly" : ""} key={row.id}>
                   <td className="mono">{row.startAt ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid", hour12: false }).format(new Date(row.startAt)) : "-"}</td>
                   <td><strong>{row.fixture}</strong><span>{row.competition}</span></td>
                   <td>{row.market}</td>
-                  <td><span className={`arb-type ${row.status}`}>{betfairArbTypeLabel(row.type)}</span></td>
-                  <td className={row.status === "executable" ? "mono positive" : "mono"}>{row.edgePct > 0 ? `+${row.edgePct.toFixed(2)}%` : `${row.edgePct.toFixed(2)}%`}</td>
-                  <td className={row.status === "executable" ? "mono positive" : "mono"}>{row.roiPct ? `${row.roiPct.toFixed(2)}%` : "-"}</td>
+                  <td><span className={`arb-type ${arbStatusClass(row.status)}`}>{betfairArbTypeLabel(row.type)}</span></td>
+                  <td><strong>{row.status}</strong><span>{row.reason}</span></td>
+                  <td className={row.status === "EXECUTABLE_ARB" ? "mono positive" : "mono"}>{row.edgePct > 0 ? `+${row.edgePct.toFixed(2)}%` : `${row.edgePct.toFixed(2)}%`}</td>
+                  <td className={row.status === "EXECUTABLE_ARB" ? "mono positive" : "mono"}>{row.roiPct ? `${row.roiPct.toFixed(2)}%` : "-"}</td>
                   <td className="mono">{row.bestBack}</td>
                   <td className="mono">{row.bestLay}</td>
-                  <td className="mono">{row.usableLiquidity ? formatExchangeMoney(row.usableLiquidity, "GBP") : row.liquidity ? formatExchangeMoney(row.liquidity, "GBP") : "-"}</td>
-                  <td className="arbs-validation">
-                    <strong>{row.executable ? "EXECUTABLE" : row.status === "anomaly" ? "ANOMALY" : "WATCH"}</strong>
-                    <span>{row.validRunners}/{row.expectedRunners || "?"} runners</span>
-                    <span>{row.marketComplete ? "complete" : "incomplete"} / {arbFreshnessLabel(row.staleMs)}</span>
-                    <em>{row.reason}</em>
-                  </td>
+                  <td className="mono">{row.expectedRunners ?? "-"}</td>
+                  <td className="mono">{row.validRunners}</td>
+                  <td className="mono">{row.missingRunners ?? "-"}</td>
+                  <td className="mono">{row.staleMs == null ? "-" : Math.max(0, Math.round(row.staleMs))}</td>
+                  <td className="mono">{row.executableStake ? formatExchangeMoney(row.executableStake, "GBP") : "-"}</td>
+                  <td className={row.maxProfit > 0 ? "mono positive" : "mono"}>{row.maxProfit ? formatExchangeMoney(row.maxProfit, "GBP") : "-"}</td>
+                  <td className="mono">{row.maxLoss ? formatExchangeMoney(row.maxLoss, "GBP") : "£0"}</td>
                   <td className="arbs-outcomes">{row.outcomes}</td>
-                  <td className="mono">{row.observedAt ? new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Madrid", hour12: false }).format(new Date(row.observedAt)) : "-"}</td>
+                  <td className="mono">{arbFreshnessLabel(row.staleMs)}</td>
                 </tr>
               ))}
               {!loading && filteredRows.length === 0 && (
-                <tr><td className="empty" colSpan={12}>No Betfair markets matched the current arb scan.</td></tr>
+                <tr><td className="empty" colSpan={18}>No Betfair markets matched the current arb scan.</td></tr>
               )}
               {loading && filteredRows.length === 0 && (
-                <tr><td className="empty" colSpan={12}>Scanning Betfair back and lay books.</td></tr>
+                <tr><td className="empty" colSpan={18}>Scanning Betfair back and lay books.</td></tr>
               )}
             </tbody>
           </table>

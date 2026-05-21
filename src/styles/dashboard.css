@@ -5799,7 +5799,7 @@ button {
   text-transform: uppercase;
 }
 
-.arb-type.executable {
+.arb-type.executable-arb {
   border-color: rgba(74, 222, 128, 0.72);
   background: rgba(22, 101, 52, 0.28);
   color: var(--green) !important;
