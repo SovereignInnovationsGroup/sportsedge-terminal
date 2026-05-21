@@ -1696,7 +1696,7 @@ type StoredAuthUser = {
   email?: string;
   login_id?: string;
   roles?: string[];
-  subscription?: { level?: string; status?: string; plan_name?: string };
+  subscription?: { level?: string; status?: string; plan_name?: string; includes_admin_tools?: boolean };
 };
 
 function readStoredAuthUser(): StoredAuthUser | null {
@@ -1708,6 +1708,7 @@ function readStoredAuthUser(): StoredAuthUser | null {
 }
 
 function storedUserIsAdmin(user: StoredAuthUser | null) {
+  if (user?.subscription?.includes_admin_tools === true) return true;
   return (user?.roles || []).some((role) => ["admin", "superadmin", "owner"].includes(String(role).toLowerCase()));
 }
 
