@@ -134,6 +134,7 @@ const SPORT_MARKET_GROUPS: Record<string, Array<{ label: string; value: string }
 const AGTEST_FOOTBALL_FILTERS: Array<{ label: string; value: string }> = [
   { label: "All", value: "all" },
   { label: "Today", value: "today" },
+  { label: "Tomorrow", value: "tomorrow" },
   { label: "English", value: "english" },
   { label: "Premier League", value: "premier-league" },
   { label: "Championship", value: "championship" },
@@ -1892,12 +1893,18 @@ function rowMatchesMarketGroup(row: BackendPriceRow, group: string) {
   const isToday = start && !Number.isNaN(start.getTime())
     ? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(start) === new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date())
     : false;
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const isTomorrow = start && !Number.isNaN(start.getTime())
+    ? new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(start) === new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(tomorrow)
+    : false;
   const footballTerms = FOOTBALL_GROUP_TERMS[group];
   if (footballTerms) {
     if (["premier-league", "championship", "league-one", "league-two", "fa-cup", "efl-cup"].includes(group) && !isEnglishFootball) return false;
     return footballTerms.some((term) => ` ${haystack} `.includes(term));
   }
   if (group === "today") return Boolean(isToday);
+  if (group === "tomorrow") return Boolean(isTomorrow);
   if (group === "live") return haystack.includes("live") || Boolean(isToday);
   if (group === "england") return isEnglishFootball;
   if (group === "english") return isEnglishFootball;
@@ -3308,6 +3315,27 @@ function isTodayInMadrid(value: string | null | undefined) {
     day: "2-digit"
   });
   return formatter.format(date) === formatter.format(new Date());
+}
+
+function exchangeOddsRowToEntryEvent(row: BackendPriceRow, fallbackSport: string): EntryEventRow {
+  const matches = Object.entries(row.matches || {}).filter(([, match]) => Boolean(match)) as Array<[string, BackendExchangeMatch]>;
+  const firstMatch = matches[0]?.[1];
+  const exchangeLabels = matches.map(([key, match]) => {
+    const exchangeKey = String(match.exchange || key).toLowerCase();
+    return ENTRY_DASHBOARD_EXCHANGES.find((exchange) => exchange.key === exchangeKey)?.label || displayLabel(exchangeKey, exchangeKey);
+  });
+  const latestSeenAtMs = rowLatestObservedMs(row);
+  return {
+    id: stableDisplayRowKey(row) || row.id,
+    name: displayEventName(row.name || firstMatch?.name || "Market"),
+    sport: normalizeSport(row.sportName || firstMatch?.sportName || fallbackSport),
+    competition: row.competitionName || firstMatch?.competitionName || null,
+    startAt: row.startAt || firstMatch?.startAt || null,
+    status: null,
+    liquidity: rowMatchedValue(row),
+    latestSeenAt: latestSeenAtMs ? new Date(latestSeenAtMs).toISOString() : firstMatch?.observedAt || null,
+    exchanges: Array.from(new Set(exchangeLabels))
+  };
 }
 
 function entryEventKey(event: Pick<EntryEventRow, "name" | "sport" | "startAt">) {
@@ -4779,6 +4807,75 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
       window.clearInterval(timer);
     };
   }, [selectedSport, diagnosticExchange]);
+
+  useEffect(() => {
+    if (!isEntryDashboard || diagnosticExchange) return;
+    let cancelled = false;
+
+    async function loadEntryEvents() {
+      setEntryEventsLoading(true);
+      try {
+        const requests = ENTRY_DASHBOARD_SPORTS.map((sport) => {
+          const params = new URLSearchParams({
+            sport: apiSportValue(sport.value),
+            exchanges: ENTRY_DASHBOARD_EXCHANGES.map((exchange) => exchange.key).join(","),
+            segment: "today",
+            limit: "200"
+          });
+          return fetch(`/api/exchange-odds?${params.toString()}`, { cache: "no-store" })
+            .then((response) => response.ok ? response.json() : Promise.resolve({ rows: [] }))
+            .then((payload) => ({
+              sport: sport.value,
+              rows: Array.isArray(payload.rows) ? payload.rows as BackendPriceRow[] : []
+            }))
+            .catch(() => ({ sport: sport.value, rows: [] as BackendPriceRow[] }));
+        });
+        const payloads = await Promise.all(requests);
+        const merged = new Map<string, EntryEventRow>();
+
+        for (const payload of payloads) {
+          for (const row of payload.rows) {
+            const entry = exchangeOddsRowToEntryEvent(row, payload.sport);
+            if (!entry.startAt || !isTodayInMadrid(entry.startAt) || !entry.exchanges.length) continue;
+            const key = entryEventKey(entry);
+            const existing = merged.get(key);
+            if (!existing) {
+              merged.set(key, entry);
+              continue;
+            }
+            existing.liquidity += entry.liquidity;
+            existing.exchanges = Array.from(new Set([...existing.exchanges, ...entry.exchanges]));
+            if (eventStartSortValue(entry.latestSeenAt) > eventStartSortValue(existing.latestSeenAt)) existing.latestSeenAt = entry.latestSeenAt;
+          }
+        }
+
+        const rows = Array.from(merged.values())
+          .sort((a, b) => {
+            const startDiff = eventStartSortValue(a.startAt) - eventStartSortValue(b.startAt);
+            if (startDiff !== 0) return startDiff;
+            return b.liquidity - a.liquidity;
+          })
+          .slice(0, 120);
+
+        if (!cancelled) {
+          setEntryEvents(rows);
+          setEntryEventsError("");
+        }
+      } catch (error) {
+        if (!cancelled) setEntryEventsError(error instanceof Error ? error.message : "today events failed");
+      } finally {
+        if (!cancelled) setEntryEventsLoading(false);
+      }
+    }
+
+    loadEntryEvents();
+    const timer = window.setInterval(loadEntryEvents, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [isEntryDashboard, diagnosticExchange]);
+
   const selectedSportLabel = SPORT_LABELS.get(selectedSport) || "Football";
   const marketGroups = SPORT_MARKET_GROUPS[selectedSport] || SPORT_MARKET_GROUPS.football;
   const selectedFootballLeague = selectedSport === "football" ? footballLeagueByValue(marketGroup) : null;
