@@ -9783,8 +9783,10 @@ type BetfairArbRow = {
   type: "back_book" | "lay_book" | "crossed_runner" | "watch";
   status: "arb" | "watch";
   edgePct: number;
+  roiPct: number;
   backBookPct: number | null;
   layBookPct: number | null;
+  usableLiquidity: number;
   bestBack: string;
   bestLay: string;
   outcomes: string;
@@ -9805,6 +9807,24 @@ function marketBookPct(runners: BackendRunner[], side: "back" | "lay") {
   return prices.reduce((sum, odds) => sum + 1 / odds, 0) * 100;
 }
 
+function safeArbMarket(match: BackendExchangeMatch, runners: BackendRunner[]) {
+  const marketType = String(match.marketType || "").toUpperCase();
+  const marketName = String(match.marketName || "").toLowerCase();
+  if (marketType === "MATCH_ODDS" && runners.length === 3) return true;
+  if ((marketType.startsWith("OVER_UNDER") || marketName.startsWith("over/under")) && runners.length === 2) return true;
+  if ((marketType === "BOTH_TEAMS_TO_SCORE" || marketName.includes("both teams to score")) && runners.length === 2) return true;
+  return false;
+}
+
+function usableBookLiquidity(runners: BackendRunner[], side: "back" | "lay") {
+  const prices = runners.map((runner) => runner[side]).filter(Boolean) as BackendRunnerLevel[];
+  if (prices.length !== runners.length || !prices.length) return 0;
+  const weights = prices.map((price) => 1 / price.odds);
+  const scale = Math.min(...prices.map((price, index) => price.amount / weights[index]));
+  if (!Number.isFinite(scale) || scale <= 0) return 0;
+  return weights.reduce((sum, weight) => sum + weight * scale, 0);
+}
+
 function buildBetfairArbRows(rows: BackendPriceRow[]) {
   const output: BetfairArbRow[] = [];
   const seen = new Set<string>();
@@ -9815,9 +9835,10 @@ function buildBetfairArbRows(rows: BackendPriceRow[]) {
     const marketName = match.marketName || row.marketName || "Market";
     const runners = [...match.runners].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
     if (runners.length < 2 || runners.length > 30) continue;
+    const isSafeMarket = safeArbMarket(match, runners);
 
-    const backBookPct = marketBookPct(runners, "back");
-    const layBookPct = marketBookPct(runners, "lay");
+    const backBookPct = isSafeMarket ? marketBookPct(runners, "back") : null;
+    const layBookPct = isSafeMarket ? marketBookPct(runners, "lay") : null;
     const outcomes = runners.map(runnerPriceText).join(" | ");
     const liquidity = runners.reduce((sum, runner) => (
       sum
@@ -9835,30 +9856,37 @@ function buildBetfairArbRows(rows: BackendPriceRow[]) {
       bestBack: backBookPct == null ? "-" : `${backBookPct.toFixed(2)}%`,
       bestLay: layBookPct == null ? "-" : `${layBookPct.toFixed(2)}%`,
       outcomes,
+      usableLiquidity: 0,
       liquidity
     };
 
     if (backBookPct != null && backBookPct < 99.95) {
       const id = `${match.marketId}:back`;
+      const roiPct = (100 / backBookPct - 1) * 100;
       seen.add(id);
       output.push({
         id,
         ...base,
         type: "back_book",
         status: "arb",
-        edgePct: 100 - backBookPct
+        edgePct: 100 - backBookPct,
+        roiPct,
+        usableLiquidity: usableBookLiquidity(runners, "back")
       });
     }
 
     if (layBookPct != null && layBookPct > 100.05) {
       const id = `${match.marketId}:lay`;
+      const roiPct = (1 - 100 / layBookPct) * 100;
       seen.add(id);
       output.push({
         id,
         ...base,
         type: "lay_book",
         status: "arb",
-        edgePct: layBookPct - 100
+        edgePct: layBookPct - 100,
+        roiPct,
+        usableLiquidity: usableBookLiquidity(runners, "lay")
       });
     }
 
@@ -9867,13 +9895,16 @@ function buildBetfairArbRows(rows: BackendPriceRow[]) {
       const layOdds = Number(runner.lay?.odds || 0);
       if (backOdds > 1 && layOdds > 1 && backOdds > layOdds) {
         const id = `${match.marketId}:${runner.id}:crossed`;
+        const roiPct = ((backOdds / layOdds) - 1) * 100;
         seen.add(id);
         output.push({
           id,
           ...base,
           type: "crossed_runner",
           status: "arb",
-          edgePct: ((backOdds / layOdds) - 1) * 100,
+          edgePct: roiPct,
+          roiPct,
+          usableLiquidity: Math.min(Number(runner.back?.amount || 0), Number(runner.lay?.amount || 0)),
           outcomes: runnerPriceText(runner)
         });
       }
@@ -9889,7 +9920,9 @@ function buildBetfairArbRows(rows: BackendPriceRow[]) {
         ...base,
         type: "watch",
         status: "watch",
-        edgePct
+        edgePct,
+        roiPct: 0,
+        usableLiquidity: 0
       });
     }
   }
@@ -9987,8 +10020,8 @@ function BetfairArbsPage() {
         <section className="arbs-summary">
           <article><span>Live arbs</span><strong>{arbRows.length}</strong></article>
           <article><span>Best edge</span><strong>{arbRows[0] ? `${arbRows[0].edgePct.toFixed(2)}%` : "-"}</strong></article>
+          <article><span>Best ROI</span><strong>{arbRows[0] ? `${arbRows[0].roiPct.toFixed(2)}%` : "-"}</strong></article>
           <article><span>Markets watched</span><strong>{watchedMarkets}</strong></article>
-          <article><span>Venue</span><strong>Betfair exchange</strong></article>
         </section>
 
         <section className="arbs-table-wrap">
@@ -10000,10 +10033,11 @@ function BetfairArbsPage() {
                 <th>Fixture</th>
                 <th>Market</th>
                 <th>Signal</th>
-                <th>Edge</th>
-                <th>Back book</th>
-                <th>Lay book</th>
-                <th>Liquidity</th>
+                <th>Arb %</th>
+                <th>ROI</th>
+                <th>Back total</th>
+                <th>Lay total</th>
+                <th>Usable</th>
                 <th>Both sides</th>
                 <th>Fresh</th>
               </tr>
@@ -10016,18 +10050,19 @@ function BetfairArbsPage() {
                   <td>{row.market}</td>
                   <td><span className={`arb-type ${row.status}`}>{betfairArbTypeLabel(row.type)}</span></td>
                   <td className={row.status === "arb" ? "mono positive" : "mono"}>{row.edgePct > 0 ? `+${row.edgePct.toFixed(2)}%` : `${row.edgePct.toFixed(2)}%`}</td>
+                  <td className={row.status === "arb" ? "mono positive" : "mono"}>{row.roiPct ? `${row.roiPct.toFixed(2)}%` : "-"}</td>
                   <td className="mono">{row.bestBack}</td>
                   <td className="mono">{row.bestLay}</td>
-                  <td className="mono">{row.liquidity ? formatExchangeMoney(row.liquidity, "GBP") : "-"}</td>
+                  <td className="mono">{row.usableLiquidity ? formatExchangeMoney(row.usableLiquidity, "GBP") : row.liquidity ? formatExchangeMoney(row.liquidity, "GBP") : "-"}</td>
                   <td className="arbs-outcomes">{row.outcomes}</td>
                   <td className="mono">{row.observedAt ? new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Madrid", hour12: false }).format(new Date(row.observedAt)) : "-"}</td>
                 </tr>
               ))}
               {!loading && filteredRows.length === 0 && (
-                <tr><td className="empty" colSpan={10}>No Betfair markets matched the current arb scan.</td></tr>
+                <tr><td className="empty" colSpan={11}>No Betfair markets matched the current arb scan.</td></tr>
               )}
               {loading && filteredRows.length === 0 && (
-                <tr><td className="empty" colSpan={10}>Scanning Betfair back and lay books.</td></tr>
+                <tr><td className="empty" colSpan={11}>Scanning Betfair back and lay books.</td></tr>
               )}
             </tbody>
           </table>
