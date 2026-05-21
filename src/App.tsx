@@ -82,7 +82,6 @@ const TERMINAL_TOP_SPORTS = [
   { label: "Golf", value: "golf", route: "#golf" },
   { label: "News", value: "news", route: "#news" },
   { label: "Arbs", value: "arbs", route: "#arbs" },
-  { label: "Today", value: "dashboard", route: "#dashboard" },
   { label: "AGTEST", value: "agtest", route: "#agtest-mockup" },
   { label: "Profiles", value: "profile-mockup", route: "#profile-mockup" }
 ] as const;
@@ -6150,19 +6149,10 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
         <nav className="testboard-nav" aria-label="Sports">
           {TERMINAL_TOP_SPORTS.map((sport) => (
             <button
-              className={(isEntryDashboard && sport.route === "#dashboard") || (!isEntryDashboard && !diagnosticExchange && !isMatrixPage && selectedSport === sport.value) ? "active" : ""}
+              className={!isEntryDashboard && !diagnosticExchange && !isMatrixPage && selectedSport === sport.value ? "active" : ""}
               type="button"
               key={sport.value}
               onClick={() => {
-                if (sport.route === "#dashboard") {
-                  setIsMatrixPage(false);
-                  setIsEntryDashboard(true);
-                  setDiagnosticExchange(null);
-                  setSelectedFixtureIndex(null);
-                  setMarketSearch("");
-                  window.location.hash = "#dashboard";
-                  return;
-                }
                 if (!TERMINAL_SPORT_VALUES.has(sport.value)) {
                   window.location.hash = sport.route;
                   return;
@@ -10826,19 +10816,18 @@ export default function App() {
   else if (hash.startsWith("#team/")) screen = <TeamProfilePage slug={hash.replace("#team/", "") || "chelsea"} />;
   else if (hash === "#agtest-mockup" || hash === "#bloomberg-demo") screen = <AgtestBloombergMockupPage />;
   else if (hash === "#news" || hash === "#news-feed-mockup") screen = hasSession || previewDashboard ? <BloombergNewsFeedMockupPage /> : <LoginScreen />;
-  else if (hash === "#today-dashboard-mockup") screen = <TodayDashboardMockupPage />;
+  else if (hash === "#dashboard" || hash === "#today-dashboard-mockup" || !hash) screen = hasSession || previewDashboard ? <TodayDashboardMockupPage /> : <LoginScreen />;
   else if (hash === "#profile-mockup") screen = <BloombergProfileMockupPage />;
   else if (hash === "#product-map") screen = <SportsEdgeProductMockupPage />;
   else if (hash === "#football-demo") screen = <FootballIntelligenceDemoPage />;
   else if (hash === "#oddsapi") screen = hasSession || previewDashboard ? <OddsApiDiagnosticsPage /> : <LoginScreen />;
   else if (hash === "#arbs") screen = hasSession || previewDashboard ? <BetfairArbsPage /> : <LoginScreen />;
   else if (hash === "#agtest" || hash === "#football") screen = hasSession || previewDashboard ? <AgTestPage /> : <LoginScreen />;
-  else if (previewDashboard && (hash === "#dashboard" || hash === "#testboard" || hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash) || !hash)) screen = <TestboardPage onLogout={handleLogout} />;
+  else if (previewDashboard && (hash === "#testboard" || hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash))) screen = <TestboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#login") screen = <LoginScreen />;
   else if (previewDashboard && (hash === "#old" || hash.startsWith("#sport"))) screen = <DashboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#social-news") screen = <StandaloneLiveNewsPage />;
   else if (hash === "#testboard") screen = hasSession ? <TestboardPage onLogout={handleLogout} /> : <LoginScreen />;
-  else if (hash === "#dashboard") screen = hasSession ? <TestboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash)) screen = hasSession ? <TestboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash === "#old") screen = hasSession ? <DashboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash === "#legacy-news") screen = hasSession ? <DashboardPage onLogout={handleLogout} /> : <LoginScreen />;
@@ -10848,7 +10837,7 @@ export default function App() {
   else if (hash === "#simple-news") screen = <SimpleNewsPage />;
   else if (hash === "#news-console") screen = <NewsPage />;
   else if (hash === "#admin-news-sources") screen = hasSession ? <AdminNewsSourcesPage /> : <LoginScreen />;
-  else screen = previewDashboard ? <TestboardPage onLogout={handleLogout} /> : <LoginScreen />;
+  else screen = previewDashboard || hasSession ? <TodayDashboardMockupPage /> : <LoginScreen />;
 
   return (
     <>
