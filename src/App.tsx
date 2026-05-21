@@ -7201,7 +7201,7 @@ const NEWS_FEED_SPORT_FILTERS = [
   ["ice_hockey", "Hockey"]
 ] as const;
 
-const NEWS_DISPLAY_TIME_ZONE = "Europe/London";
+const NEWS_DISPLAY_TIME_ZONE = "Europe/Madrid";
 
 function parseSportsEdgeUtcTimestamp(value: string | null | undefined) {
   if (!value) return null;
@@ -7215,6 +7215,16 @@ function parseSportsEdgeUtcTimestamp(value: string | null | undefined) {
 
 function newsTimestamp(item: Pick<NewsItem, "published_at" | "discovered_at"> | Pick<TwitterNewsRow, "published_at" | "discovered_at">) {
   return parseSportsEdgeUtcTimestamp(item.published_at) || parseSportsEdgeUtcTimestamp(item.discovered_at);
+}
+
+function newsDisplayTimestamp(item: Pick<NewsItem, "published_at" | "discovered_at"> | Pick<TwitterNewsRow, "published_at" | "discovered_at">) {
+  const publishedAt = parseSportsEdgeUtcTimestamp(item.published_at);
+  const discoveredAt = parseSportsEdgeUtcTimestamp(item.discovered_at);
+  const now = Date.now();
+  if (publishedAt && publishedAt.getTime() <= now + 30000) return { date: publishedAt, source: "published" as const };
+  if (discoveredAt) return { date: discoveredAt, source: "discovered" as const };
+  if (publishedAt) return { date: publishedAt, source: "scheduled" as const };
+  return { date: null, source: "missing" as const };
 }
 
 function BloombergNewsFeedMockupPage() {
@@ -7237,15 +7247,11 @@ function BloombergNewsFeedMockupPage() {
   }, [sport]);
 
   function storyTime(item: NewsItem) {
-    return compactPublishedLabel(newsTimestamp(item), Boolean(item.published_at));
+    return compactPublishedLabel(newsDisplayTimestamp(item));
   }
 
-  function exactPublishedLabel(date: Date | null, isPublishedTime: boolean) {
-    if (!date) return "Undated";
-    const timeZoneName = new Intl.DateTimeFormat("en-GB", {
-      timeZone: NEWS_DISPLAY_TIME_ZONE,
-      timeZoneName: "short"
-    }).formatToParts(date).find((part) => part.type === "timeZoneName")?.value || "UK";
+  function formatNewsClock(date: Date | null, options: Intl.DateTimeFormatOptions = {}) {
+    if (!date) return "";
     return new Intl.DateTimeFormat("en-GB", {
       day: "2-digit",
       month: "short",
@@ -7253,20 +7259,37 @@ function BloombergNewsFeedMockupPage() {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
-      timeZone: NEWS_DISPLAY_TIME_ZONE
-    }).format(date) + ` ${timeZoneName}${isPublishedTime ? "" : " discovered"}`;
+      timeZone: NEWS_DISPLAY_TIME_ZONE,
+      ...options
+    }).format(date);
   }
 
-  function compactPublishedLabel(date: Date | null, isPublishedTime: boolean) {
+  function exactPublishedLabel(item: Pick<NewsItem, "published_at" | "discovered_at"> | Pick<TwitterNewsRow, "published_at" | "discovered_at">) {
+    const publishedAt = parseSportsEdgeUtcTimestamp(item.published_at);
+    const discoveredAt = parseSportsEdgeUtcTimestamp(item.discovered_at);
+    if (!publishedAt && !discoveredAt) return "Undated";
+    const timeZoneName = new Intl.DateTimeFormat("en-GB", {
+      timeZone: NEWS_DISPLAY_TIME_ZONE,
+      timeZoneName: "short"
+    }).formatToParts(publishedAt || discoveredAt || new Date()).find((part) => part.type === "timeZoneName")?.value || "ES";
+    const parts = [];
+    if (publishedAt) parts.push(`published ${formatNewsClock(publishedAt)} ${timeZoneName}`);
+    if (discoveredAt) parts.push(`discovered ${formatNewsClock(discoveredAt)} ${timeZoneName}`);
+    return parts.join(" / ");
+  }
+
+  function compactPublishedLabel(timestamp: ReturnType<typeof newsDisplayTimestamp>) {
+    const { date, source } = timestamp;
     if (!date) return "--";
-    const deltaSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+    const rawDeltaSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    const deltaSeconds = Math.max(0, rawDeltaSeconds);
     const clock = new Intl.DateTimeFormat("en-GB", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
       timeZone: NEWS_DISPLAY_TIME_ZONE
     }).format(date);
-    if (!isPublishedTime) return `disc / ${clock}`;
+    if (source === "scheduled" || rawDeltaSeconds < -30) return `sch / ${clock}`;
     if (deltaSeconds < 60) return `${deltaSeconds}s / ${clock}`;
     const deltaMinutes = Math.floor(deltaSeconds / 60);
     if (deltaMinutes < 60) return `${deltaMinutes}m / ${clock}`;
@@ -7311,7 +7334,7 @@ function BloombergNewsFeedMockupPage() {
   }
 
   function rowTime(row: Pick<TwitterNewsRow, "published_at" | "discovered_at">) {
-    return compactPublishedLabel(newsTimestamp(row), Boolean(row.published_at));
+    return compactPublishedLabel(newsDisplayTimestamp(row));
   }
 
   function twitterUrgency(row: TwitterNewsRow) {
@@ -7491,8 +7514,8 @@ function BloombergNewsFeedMockupPage() {
           kind: "social",
           twitter: row,
           time: rowTime(row),
-          exactTime: exactPublishedLabel(newsTimestamp(row), Boolean(row.published_at)),
-          sortTime: newsTimestamp(row)?.getTime() || 0,
+          exactTime: exactPublishedLabel(row),
+          sortTime: newsDisplayTimestamp(row).date?.getTime() || 0,
           tag: (row.account_handle || row.sport || "X").replace(/^@/, "").slice(0, 8).toUpperCase(),
           urgency: twitterUrgency(row),
           source: "SOCIAL",
@@ -7510,8 +7533,8 @@ function BloombergNewsFeedMockupPage() {
           kind: "media",
           item,
           time: storyTime(item),
-          exactTime: exactPublishedLabel(newsTimestamp(item), Boolean(item.published_at)),
-          sortTime: newsTimestamp(item)?.getTime() || 0,
+          exactTime: exactPublishedLabel(item),
+          sortTime: newsDisplayTimestamp(item).date?.getTime() || 0,
           tag: storyTag(item),
           urgency: storyUrgency(item),
           source: displayLabel(item.source_name || item.source_type, "SE NEWS").toUpperCase().slice(0, 18),
@@ -7592,7 +7615,7 @@ function BloombergNewsFeedMockupPage() {
 
           <section className="bb-news-tape" aria-label="Bloomberg style news headline tape">
             <div className="bb-news-tape-head">
-              <span>Age / UK Time</span>
+              <span>Age / ES Time</span>
               <span>Tag</span>
               <span>U</span>
               <span>Source</span>
