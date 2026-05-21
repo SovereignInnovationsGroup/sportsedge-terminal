@@ -5738,7 +5738,37 @@ button {
 .agtest-grid-wrap {
   height: calc(100vh - 82px);
   overflow: hidden;
+  position: relative;
   width: 100%;
+}
+
+.agtest-empty-state {
+  align-items: center;
+  background: rgba(5, 8, 13, 0.92);
+  border: 1px solid rgba(36, 50, 65, 0.86);
+  border-radius: 6px;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  left: 50%;
+  padding: 14px 18px;
+  pointer-events: none;
+  position: absolute;
+  top: 48%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+}
+
+.agtest-empty-state strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.agtest-empty-state span {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
 }
 
 .ag-theme-quartz-dark {

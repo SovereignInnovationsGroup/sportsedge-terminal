@@ -9916,6 +9916,7 @@ function RefreshUpdateNotice() {
 
 type AgTestRow = {
   id: string;
+  startAt: string | null;
   kickoff: string;
   match: string;
   competition: string;
@@ -9981,6 +9982,7 @@ function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendPriceRow
       const quote = sportsEdgeMarketQuote(backend);
       return {
         id: fixture.id,
+        startAt: fixture.kickoffAt,
         kickoff: formatFootballFixtureTime(fixture),
         match: footballFixtureName(fixture),
         competition: footballFixtureCompetition(fixture),
@@ -10027,7 +10029,7 @@ function agTestRowMatchesGroup(row: AgTestRow, group: string) {
     competitionName: row.competition,
     marketName: "Match Odds",
     marketType: "MATCH_ODDS",
-    startAt: null,
+    startAt: row.startAt,
     matches: {}
   }, group);
 }
@@ -10878,6 +10880,12 @@ function AgTestPage() {
             suppressCellFocus
             defaultColDef={{ sortable: true, resizable: true, filter: false, suppressHeaderMenuButton: true }}
           />
+          {!loading && rows.length === 0 && (
+            <div className="agtest-empty-state">
+              <strong>No fixtures for this filter</strong>
+              <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
+            </div>
+          )}
         </section>
         {error && <div className="agtest-error">{error}</div>}
       </main>
