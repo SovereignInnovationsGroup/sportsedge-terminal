@@ -3194,6 +3194,78 @@ function terminalNewsSubscribeFilters(selectedSport: string, marketGroup: string
   return filters;
 }
 
+function terminalNewsTimeLabel(item: Pick<NewsItem, "published_at" | "discovered_at">) {
+  const { date, source } = newsDisplayTimestamp(item);
+  if (!date) return "--";
+  const rawDeltaSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  const deltaSeconds = Math.max(0, rawDeltaSeconds);
+  const clock = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: NEWS_DISPLAY_TIME_ZONE
+  }).format(date);
+  if (source === "scheduled" || rawDeltaSeconds < -30) return `sch / ${clock}`;
+  if (deltaSeconds < 60) return `${deltaSeconds}s / ${clock}`;
+  const deltaMinutes = Math.floor(deltaSeconds / 60);
+  if (deltaMinutes < 60) return `${deltaMinutes}m / ${clock}`;
+  const deltaHours = Math.floor(deltaMinutes / 60);
+  if (deltaHours < 24) return `${deltaHours}h / ${clock}`;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: NEWS_DISPLAY_TIME_ZONE
+  }).format(date);
+}
+
+function terminalNewsExactTimeLabel(item: Pick<NewsItem, "published_at" | "discovered_at">) {
+  const publishedAt = parseSportsEdgeUtcTimestamp(item.published_at);
+  const discoveredAt = parseSportsEdgeUtcTimestamp(item.discovered_at);
+  if (!publishedAt && !discoveredAt) return "Undated";
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: NEWS_DISPLAY_TIME_ZONE
+  });
+  return [
+    publishedAt ? `published ${formatter.format(publishedAt)}` : "",
+    discoveredAt ? `discovered ${formatter.format(discoveredAt)}` : ""
+  ].filter(Boolean).join(" / ");
+}
+
+function terminalNewsTag(item: NewsItem) {
+  const base = item.entity_name || item.competition || item.sport || item.source_name || "NEWS";
+  const words = cleanText(base).split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return words.map((word) => word[0]).join("").slice(0, 5).toUpperCase();
+  return cleanText(base).replace(/[^a-z0-9]/gi, "").slice(0, 5).toUpperCase() || "NEWS";
+}
+
+function terminalNewsUrgency(item: NewsItem) {
+  const score = Number(item.impact_assessment?.impact_score || 0);
+  const urgency = String(item.impact_assessment?.urgency || "").toLowerCase();
+  if (urgency === "immediate" || score >= 75) return "1";
+  if (urgency === "high" || score >= 50) return "2";
+  if (score >= 25 || item.impact_assessment) return "3";
+  return "4";
+}
+
+function terminalNewsImpactText(item: NewsItem) {
+  const impact = newsImpactLabel(item.impact_assessment);
+  if (impact) return [impact.eventType, impact.score ? `${impact.score}` : "", impact.direction].filter(Boolean).join(" / ");
+  return displayLabel(item.competition || item.entity_name || item.sport, "Monitor");
+}
+
+function terminalNewsHeadline(item: NewsItem) {
+  return cleanText(item.impact_assessment?.trading_note || item.analysis_text || item.display_summary || item.summary || item.title);
+}
+
 function isTodayInMadrid(value: string | null | undefined) {
   if (!value) return false;
   const date = new Date(value);
@@ -5475,33 +5547,33 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
             <h2>News</h2>
             <span>{terminalNewsLabel}</span>
           </div>
+          <strong>{terminalNewsItems.length} live</strong>
         </div>
-        <div className="sport-news-list">
+        <div className="terminal-news-tape">
+          <div className="terminal-news-tape-head">
+            <span>Age / ES</span>
+            <span>Tag</span>
+            <span>U</span>
+            <span>Headline</span>
+          </div>
           {terminalNewsItems.slice(0, 40).map((item) => (
-            <article className={`sport-news-card${item.isNew ? " is-new" : ""}`} key={`news-${item.id}`} title={newsContextText(item)}>
-              <div className={`sport-news-thumb${newsImageUrl(item) ? "" : " empty"}`}>
-                {newsImageUrl(item) ? <img src={newsImageUrl(item)} alt="" loading="lazy" /> : <span>{teamInitials(item.source_name || item.sport || "SE")}</span>}
-              </div>
+            <article className={`terminal-news-row${item.isNew ? " is-new" : ""}`} key={`news-${item.id}`} title={terminalNewsExactTimeLabel(item)}>
+              <time>{terminalNewsTimeLabel(item)}</time>
+              <b>{terminalNewsTag(item)}</b>
+              <i className={`urgency u${terminalNewsUrgency(item)}`}>{terminalNewsUrgency(item)}</i>
               <div>
                 <strong>{cleanText(item.title)}</strong>
-                <p>{newsContextText(item) || displayLabel(item.source_name, "Source update")}</p>
-                {newsImpactLabel(item.impact_assessment) && (
-                  <div className={`news-impact-strip ${impactClass(item.impact_assessment)}`}>
-                    <span>{newsImpactLabel(item.impact_assessment)?.eventType}</span>
-                    <b>{newsImpactLabel(item.impact_assessment)?.score}</b>
-                    {newsImpactLabel(item.impact_assessment)?.direction && <em>{newsImpactLabel(item.impact_assessment)?.direction}</em>}
-                  </div>
-                )}
+                <p>{terminalNewsHeadline(item)}</p>
+                <footer>
+                  <span>{displayLabel(item.source_name || item.source_type, "SE NEWS").toUpperCase().slice(0, 18)}</span>
+                  <em>{terminalNewsImpactText(item)}</em>
+                  {newsOpenUrl(item) && <a href={newsOpenUrl(item)} target="_blank" rel="noreferrer">Open</a>}
+                </footer>
               </div>
-              <footer>
-                <span>{displayLabel(item.sport, "news")}</span>
-                {newsOpenUrl(item) && <a href={newsOpenUrl(item)} target="_blank" rel="noreferrer">Open</a>}
-                <time>{formatDate(item.published_at || item.discovered_at)}</time>
-              </footer>
             </article>
           ))}
           {terminalNewsItems.length === 0 && (
-            <div className="sport-news-empty">
+            <div className="sport-news-empty terminal-news-empty">
               <Newspaper size={18} />
               <strong>No News yet</strong>
               <span>Waiting for {terminalNewsLabel.toLowerCase()} from the SportsEdge WSS stream.</span>
