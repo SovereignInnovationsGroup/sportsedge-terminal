@@ -2461,7 +2461,7 @@ button {
   top: 0;
   z-index: 240;
   display: grid;
-  grid-template-columns: auto minmax(580px, 1fr) minmax(260px, 390px) auto auto;
+  grid-template-columns: auto minmax(580px, 1fr) minmax(260px, 390px) auto auto auto;
   align-items: center;
   min-height: 52px;
   border-bottom: 0;
@@ -2472,7 +2472,7 @@ button {
 }
 
 .global-terminal-topbar {
-  grid-template-columns: auto minmax(360px, 1fr) minmax(260px, 390px) auto auto;
+  grid-template-columns: auto minmax(360px, 1fr) minmax(260px, 390px) auto auto auto;
 }
 
 .testboard-brand,
@@ -2632,6 +2632,38 @@ button {
   font-size: 11px;
   font-style: normal;
   font-weight: 800;
+}
+
+.testboard-local-clock {
+  display: grid;
+  align-content: center;
+  justify-items: end;
+  gap: 3px;
+  min-width: 150px;
+  height: 38px;
+  border-left: 1px solid rgba(36, 50, 65, 0.82);
+  border-right: 1px solid rgba(36, 50, 65, 0.82);
+  margin-left: 12px;
+  padding: 0 16px;
+  color: var(--text);
+  font-family: var(--mono);
+}
+
+.testboard-local-clock span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.testboard-local-clock strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .testboard-route-link,

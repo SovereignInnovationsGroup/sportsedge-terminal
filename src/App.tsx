@@ -443,7 +443,7 @@ function formatExchangeMoney(value: number, currency: string) {
   const symbol = currency === "GBP" ? "£" : "$";
   if (value >= 1_000_000) return `${symbol}${(value / 1_000_000).toFixed(2)}m`;
   if (value >= 1_000) return `${symbol}${Math.round(value / 1_000)}k`;
-  return `${symbol}${value.toLocaleString()}`;
+  return `${symbol}${Math.round(value).toLocaleString("en-GB")}`;
 }
 
 function fixtureExchangeUpdateKey(sport: string, fixture: FixtureRow, exchangeKey: string) {
@@ -1616,6 +1616,7 @@ function SportsEdgeTopbar({
   searchPlaceholder?: string;
 }) {
   const [query, setQuery] = useState("");
+  const [clockNow, setClockNow] = useState(() => new Date());
   const [commandOpen, setCommandOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [teamSearchResults, setTeamSearchResults] = useState<FootballTeamAsset[]>([]);
@@ -1656,6 +1657,11 @@ function SportsEdgeTopbar({
   }, [query]);
 
   useEffect(() => {
+    const timer = window.setInterval(() => setClockNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     function handleSlash(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable;
@@ -1677,6 +1683,16 @@ function SportsEdgeTopbar({
     setCommandOpen(false);
     inputRef.current?.blur();
   }
+
+  const localClock = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  }).format(clockNow).replace(",", "");
 
   return (
     <header className="testboard-topbar global-terminal-topbar">
@@ -1731,6 +1747,10 @@ function SportsEdgeTopbar({
           </div>
         )}
       </label>
+      <div className="testboard-local-clock" aria-label={`Local time ${localClock}`}>
+        <span>Local</span>
+        <strong>{localClock}</strong>
+      </div>
       <div className="testboard-settings">
         <button
           className="testboard-icon-button"
