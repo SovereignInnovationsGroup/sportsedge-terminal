@@ -3451,6 +3451,7 @@ function newsImpactLabel(assessment: ImpactAssessment | null) {
 }
 
 function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup" | "blog" | "about" | "terms" | "privacy" }) {
+  const [accessOpen, setAccessOpen] = useState(section === "signup");
   const articles = [
     ["Market structure", "Why exchange liquidity, bookmaker anchors and news timing need one screen."],
     ["Football coverage", "How SportsEdge separates fixture truth from venue-specific market availability."],
@@ -3470,7 +3471,7 @@ function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup
           <a className={section === "about" ? "active" : ""} href="#about">About</a>
           <a className={section === "blog" ? "active" : ""} href="#blog">Blog</a>
           <a href="#login">Login</a>
-          <a className="primary" href="#signup">Sign up</a>
+          <button className="primary" type="button" onClick={() => setAccessOpen(true)}>Sign up</button>
         </nav>
       </header>
 
@@ -3483,7 +3484,7 @@ function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup
           <p>Exchange-backed fixtures, liquidity, news context and bias signals in a professional terminal built for fast scanning.</p>
           <div className="landing-actions">
             <a href="#login">Login</a>
-            <a href="#signup">Request access</a>
+            <button type="button" onClick={() => setAccessOpen(true)}>Request access</button>
           </div>
         </div>
       </section>
@@ -3508,24 +3509,6 @@ function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup
           <h2>Built for the moment before a price becomes obvious.</h2>
         </div>
         <p>SportsEdge combines fixture truth, venue coverage, live prices and news into a single operating surface. The goal is not another odds table; it is a clean read on where attention, liquidity and risk are moving.</p>
-      </section>
-
-      <section className="landing-content landing-signup" id="signup">
-        <div>
-          <span>Sign up</span>
-          <h2>Request terminal access.</h2>
-        </div>
-        <form>
-          <label>
-            <span>Email</span>
-            <input type="email" placeholder="you@example.com" />
-          </label>
-          <label>
-            <span>Use case</span>
-            <input type="text" placeholder="Trading, research, operations..." />
-          </label>
-          <button type="button">Request invite</button>
-        </form>
       </section>
 
       <section className="landing-content" id="blog">
@@ -3570,6 +3553,34 @@ function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup
           <span>YouTube</span>
         </div>
       </footer>
+
+      {accessOpen && (
+        <div className="landing-modal-backdrop" role="presentation" onMouseDown={() => setAccessOpen(false)}>
+          <section className="landing-modal" role="dialog" aria-modal="true" aria-labelledby="access-title" onMouseDown={(event) => event.stopPropagation()}>
+            <button className="landing-modal-close" type="button" aria-label="Close request access" onClick={() => setAccessOpen(false)}>×</button>
+            <div>
+              <span>Sign up</span>
+              <h2 id="access-title">Request terminal access.</h2>
+              <p>Tell us who you are and what you want to use SportsEdge for. New accounts are reviewed before terminal access is enabled.</p>
+            </div>
+            <form>
+              <label>
+                <span>Email</span>
+                <input type="email" placeholder="you@example.com" />
+              </label>
+              <label>
+                <span>Use case</span>
+                <input type="text" placeholder="Trading, research, operations..." />
+              </label>
+              <label>
+                <span>Organisation</span>
+                <input type="text" placeholder="Company or desk name" />
+              </label>
+              <button type="button">Request invite</button>
+            </form>
+          </section>
+        </div>
+      )}
     </main>
   );
 }
