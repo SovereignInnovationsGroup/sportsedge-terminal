@@ -80,7 +80,9 @@ const TERMINAL_TOP_SPORTS = [
   { label: "Horse Racing", value: "horseracing", route: "#horseracing" },
   { label: "Tennis", value: "tennis", route: "#tennis" },
   { label: "Golf", value: "golf", route: "#golf" },
-  { label: "News", value: "news", route: "#news" }
+  { label: "News", value: "news", route: "#news" },
+  { label: "AGTEST", value: "agtest", route: "#agtest-mockup" },
+  { label: "Profiles", value: "profile-mockup", route: "#profile-mockup" }
 ] as const;
 
 const SPORT_MARKET_GROUPS: Record<string, Array<{ label: string; value: string }>> = {
@@ -3002,7 +3004,25 @@ function displayLabel(value: string | null | undefined, fallback = "Unclassified
 }
 
 function isSocialNewsItem(item: NewsItem) {
-  return item.feed === "social" || item.source_type === "twitter" || item.feed_type === "twitter";
+  const sourceType = String(item.source_type || "").toLowerCase();
+  const feedType = String(item.feed_type || "").toLowerCase();
+  const feed = String(item.feed || "").toLowerCase();
+  const sourceName = String(item.source_name || "").toLowerCase();
+  const urls = [item.external_url, item.canonical_url, item.source_url].join(" ").toLowerCase();
+  const headline = String(item.title || "").toLowerCase();
+  return (
+    feed === "social" ||
+    sourceType.includes("twitter") ||
+    sourceType === "x" ||
+    sourceType.includes("social") ||
+    feedType.includes("twitter") ||
+    feedType === "x" ||
+    urls.includes("twitter.com/") ||
+    urls.includes("x.com/") ||
+    headline.includes("https://t.co/") ||
+    headline.includes("http://t.co/") ||
+    /\b(fabrizioromano|plettigoal|talksport|eyefootball)\b/.test(sourceName) && headline.includes("t.co/")
+  );
 }
 
 function newsImageUrl(item: NewsItem) {
@@ -7058,7 +7078,7 @@ function AgtestBloombergMockupPage() {
 
   return (
     <>
-      <SportsEdgeTopbar active="football" searchPlaceholder="ARSENAL, EPL, PLAYER: SAKA, MATCH: ARS-TOT, NEWS, MATRIX..." />
+      <SportsEdgeTopbar active="agtest" searchPlaceholder="ARSENAL, EPL, PLAYER: SAKA, MATCH: ARS-TOT, NEWS, MATRIX..." />
       <main className="agtest-page bb-demo-shell">
         <section className="agtest-subbar bb-demo-subbar" aria-label="AGTEST mockup controls">
           <nav aria-label="Mockup screens">
@@ -7462,6 +7482,7 @@ function BloombergNewsFeedMockupPage() {
         }));
     const mediaStories = uniqueNewsItems(items)
         .filter((item) => sport === "all" || sportMatchesNewsFilter(item.sport, sport))
+        .filter((item) => !isSocialNewsItem(item))
         .map((item) => ({
           id: item.id || newsFingerprint(item),
           kind: "media",
@@ -7670,7 +7691,7 @@ function BloombergProfileMockupPage() {
 
   return (
     <>
-      <SportsEdgeTopbar active="football" searchPlaceholder="TEAM: ARSENAL, PLAYER: SAKA, NEWS, PROPS, DIAGNOSTICS..." />
+      <SportsEdgeTopbar active="profile-mockup" searchPlaceholder="TEAM: ARSENAL, PLAYER: SAKA, NEWS, PROPS, DIAGNOSTICS..." />
       <main className="agtest-page bb-profile-page">
         <section className="agtest-subbar bb-demo-subbar" aria-label="Profile mockup controls">
           <nav aria-label="Profile type">
