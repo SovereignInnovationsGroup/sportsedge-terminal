@@ -1717,6 +1717,10 @@ function storedUserIsAdmin(user: StoredAuthUser | null) {
   return (user?.roles || []).some((role) => ["admin", "superadmin", "owner"].includes(String(role).toLowerCase()));
 }
 
+function defaultRouteForUser(user: StoredAuthUser | null) {
+  return storedUserIsAdmin(user) ? "#admin" : "#dashboard";
+}
+
 function SportsEdgeTopbar({
   active,
   onLogout = logoutToLogin,
@@ -3598,38 +3602,96 @@ function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup
           </div>
         </div>
         <div className="landing-terminal-stage" aria-hidden="true">
-          <div className="landing-terminal-mockup">
-            <div className="landing-terminal-top">
-              <span>Football</span>
-              <span>BF / MB / SX</span>
-              <strong>Live</strong>
-            </div>
-            <div className="landing-terminal-tabs">
-              {["Today", "UK", "UEFA", "Bias Matrix"].map((item) => <span key={item}>{item}</span>)}
-            </div>
-            <div className="landing-terminal-grid">
-              <div className="landing-terminal-head">
-                <span>Time</span><span>Fixture</span><span>Coverage</span><span>Bias</span><span>Liquidity</span>
+          <div className="landing-terminal-duo">
+            <div className="landing-terminal-mockup primary-screen">
+              <div className="landing-terminal-top">
+                <span>SportsEdge Football</span>
+                <span>BF / MB / SX</span>
+                <strong>Live</strong>
               </div>
-              {[
-                ["15:00", "Brighton vs Manchester United", "BF MB", "Consensus", "£470k"],
-                ["15:00", "Crystal Palace vs Arsenal", "BF MB", "Home lean", "£318k"],
-                ["17:30", "Hull City vs Southampton", "MB", "Single route", "£113k"],
-                ["20:00", "SC Freiburg vs Aston Villa", "BF MB", "Watch", "£82k"]
-              ].map((row) => (
-                <div className="landing-terminal-row" key={row.join("-")}>
-                  <span>{row[0]}</span>
-                  <strong>{row[1]}</strong>
-                  <em>{row[2]}</em>
-                  <span>{row[3]}</span>
-                  <b>{row[4]}</b>
+              <div className="landing-terminal-tabs">
+                {["Today", "UK", "UEFA", "Bias Matrix", "Arbs"].map((item) => <span key={item}>{item}</span>)}
+              </div>
+              <div className="landing-terminal-kpis">
+                {[
+                  ["Markets", "1974"],
+                  ["Live", "312"],
+                  ["Liquidity", "£4.8m"],
+                  ["Fresh", "1.2s"]
+                ].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}
+              </div>
+              <div className="landing-terminal-grid">
+                <div className="landing-terminal-head">
+                  <span>Time</span><span>Fixture</span><span>Coverage</span><span>Bias</span><span>Liquidity</span>
                 </div>
-              ))}
+                {[
+                  ["15:00", "Brighton vs Manchester United", "BF MB SX", "Consensus +0.8", "£470k"],
+                  ["15:00", "Crystal Palace vs Arsenal", "BF MB", "Away pressure", "£318k"],
+                  ["17:30", "Hull City vs Southampton", "MB", "Single route", "£113k"],
+                  ["20:00", "SC Freiburg vs Aston Villa", "BF MB", "Watch spread", "£82k"],
+                  ["20:30", "Palermo vs Catanzaro", "MB", "Book drift", "£44k"]
+                ].map((row) => (
+                  <div className="landing-terminal-row" key={row.join("-")}>
+                    <span>{row[0]}</span>
+                    <strong>{row[1]}</strong>
+                    <em>{row[2]}</em>
+                    <span>{row[3]}</span>
+                    <b>{row[4]}</b>
+                  </div>
+                ))}
+              </div>
+              <div className="landing-terminal-panel-row">
+                <div>
+                  <span>Bias Matrix</span>
+                  <strong>ARS 1.84 / 1.87</strong>
+                  <small>Spread 0.03 • £142k usable</small>
+                </div>
+                <div>
+                  <span>Route Quality</span>
+                  <strong>2/3 venues</strong>
+                  <small>BF fresh • MB fresh • SX watch</small>
+                </div>
+              </div>
             </div>
-            <div className="landing-terminal-news">
-              <span>News Rail</span>
-              <strong>ARS injury watch</strong>
-              <small>Market relevance 72</small>
+            <div className="landing-terminal-mockup secondary-screen">
+              <div className="landing-terminal-top">
+                <span>Intelligence Rail</span>
+                <span>News / Profiles / Risk</span>
+                <strong>WSS</strong>
+              </div>
+              <div className="landing-terminal-profile">
+                <div>
+                  <span>Team Profile</span>
+                  <strong>Arsenal</strong>
+                  <small>Venue, squad, staff, form, injuries</small>
+                </div>
+                <div>
+                  <span>Market Signal</span>
+                  <strong>Home price firming</strong>
+                  <small>News sensitivity high</small>
+                </div>
+              </div>
+              <div className="landing-terminal-news-list">
+                {[
+                  ["1m", "INJURY", "Saka returns to full training", "impact 68"],
+                  ["3m", "LINEUP", "United rotate midfield", "impact 51"],
+                  ["7m", "TRANSFER", "Villa striker bid rejected", "watch"],
+                  ["12m", "VENUE", "Weather risk easing", "low"]
+                ].map((item) => (
+                  <div key={item.join("-")}>
+                    <span>{item[0]}</span>
+                    <em>{item[1]}</em>
+                    <strong>{item[2]}</strong>
+                    <small>{item[3]}</small>
+                  </div>
+                ))}
+              </div>
+              <div className="landing-terminal-depth">
+                <span>Exchange Depth</span>
+                <div><b>Back</b><i style={{ width: "72%" }} /><strong>£84k</strong></div>
+                <div><b>Lay</b><i style={{ width: "58%" }} /><strong>£61k</strong></div>
+                <div><b>News</b><i style={{ width: "86%" }} /><strong>High</strong></div>
+              </div>
             </div>
           </div>
         </div>
@@ -3831,7 +3893,7 @@ function LoginScreen() {
   const [authUser, setAuthUser] = useState<{
     email: string;
     roles?: string[];
-    subscription?: { level?: string; status?: string; plan_name?: string };
+    subscription?: { level?: string; status?: string; plan_name?: string; includes_admin_tools?: boolean };
   } | null>(null);
 
   useEffect(() => {
@@ -3859,7 +3921,7 @@ function LoginScreen() {
       window.localStorage.setItem("sportsedge.auth.user", JSON.stringify(user));
       setAuthUser(user);
       setAuthError("");
-      window.location.hash = "#dashboard";
+      window.location.hash = defaultRouteForUser(user);
     } catch {
       setAuthError("OAuth sign in completed, but the session could not be read.");
       window.history.replaceState(null, "", "#login");
@@ -3893,7 +3955,7 @@ function LoginScreen() {
       window.localStorage.setItem("sportsedge.auth.user", JSON.stringify(payload.user));
       setAuthUser(payload.user);
       setPassword("");
-      window.location.hash = "#dashboard";
+      window.location.hash = defaultRouteForUser(payload.user);
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : "Sign in failed");
     } finally {
@@ -10099,7 +10161,7 @@ function AdminConsolePage() {
     <main className="admin-news-shell admin-console-shell">
       <aside className="news-rail">
         <a href="#dashboard" aria-label="SportsEdge dashboard">
-          <img className="news-logo" src={sportsEdgeMarketsLogo} alt="SportsEdge Markets logo" />
+          <img className="news-logo mark-only" src={sportsEdgeMark} alt="SportsEdge Markets logo" />
         </a>
         <nav>
           <button className={panel === "overview" ? "active" : ""} type="button" onClick={() => setPanel("overview")}><Activity size={16} /> Overview</button>
@@ -10142,7 +10204,36 @@ function AdminConsolePage() {
           <article><span>Blog Posts</span><strong>{posts.length}</strong><p>{errors.blog || "Draft, publish, and edit public posts."}</p></article>
         </section>
 
-        {(panel === "overview" || panel === "users") && (
+        {panel === "overview" && (
+          <section className="news-panel admin-console-panel">
+            <div className="news-panel-head"><span><Activity size={15} /> Data Matrix</span><strong>Admin overview</strong></div>
+            <div className="admin-console-grid compact">
+              <article><span>Unique Visitors</span><strong>{Number(summary.unique_visitors || 0).toLocaleString("en-GB")}</strong><p>SportsEdge tracked visitors.</p></article>
+              <article><span>Traffic Sessions</span><strong>{Number(summary.sessions || 0).toLocaleString("en-GB")}</strong><p>Website sessions in tracker.</p></article>
+              <article><span>Events</span><strong>{Number(summary.events || 0).toLocaleString("en-GB")}</strong><p>Tracked interaction events.</p></article>
+              <article><span>Avg Load</span><strong>{summary.avg_page_load_ms ? `${summary.avg_page_load_ms}ms` : "-"}</strong><p>Measured page load timing.</p></article>
+            </div>
+            <div className="admin-overview-matrix">
+              <div>
+                <span>Account Base</span>
+                <strong>{users.length}</strong>
+                <small>{errors.users || `${activeSessions.length} active terminal sessions`}</small>
+              </div>
+              <div>
+                <span>Published Content</span>
+                <strong>{publishedPosts.length}</strong>
+                <small>{errors.blog || `${posts.length} total blog entries`}</small>
+              </div>
+              <div>
+                <span>Top Page</span>
+                <strong>{analytics?.topPages?.[0]?.path || "-"}</strong>
+                <small>{analytics?.topPages?.[0] ? `${analytics.topPages[0].pageviews} pageviews` : errors.analytics || "Waiting for traffic data"}</small>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {panel === "users" && (
           <section className="news-panel admin-console-panel">
             <div className="news-panel-head"><span><ShieldCheck size={15} /> Users</span><strong>{users.length} accounts</strong></div>
             {errors.users && <div className="news-state error">{errors.users}</div>}
@@ -10165,7 +10256,7 @@ function AdminConsolePage() {
           </section>
         )}
 
-        {(panel === "overview" || panel === "sessions") && (
+        {panel === "sessions" && (
           <section className="news-panel admin-console-panel">
             <div className="news-panel-head">
               <span><Lock size={15} /> Active Sessions</span>
@@ -10175,7 +10266,7 @@ function AdminConsolePage() {
             <table className="admin-source-table admin-console-table">
               <thead><tr><th>User</th><th>IP</th><th>Agent</th><th>Last seen</th><th>Expires</th><th>Action</th></tr></thead>
               <tbody>
-                {sessions.slice(0, panel === "overview" ? 12 : 500).map((session) => (
+                {sessions.slice(0, 500).map((session) => (
                   <tr key={session.id}>
                     <td><strong>{session.email}</strong><span>{session.active ? "active" : session.revoked_at ? "revoked" : "expired"}</span></td>
                     <td>{session.ip_address || "-"}</td>
@@ -10191,7 +10282,7 @@ function AdminConsolePage() {
           </section>
         )}
 
-        {(panel === "overview" || panel === "analytics") && (
+        {panel === "analytics" && (
           <section className="news-panel admin-console-panel">
             <div className="news-panel-head"><span><Target size={15} /> Site Analytics</span><strong>30 days</strong></div>
             {errors.analytics && <div className="news-state error">{errors.analytics}</div>}
@@ -10220,7 +10311,7 @@ function AdminConsolePage() {
           </section>
         )}
 
-        {(panel === "overview" || panel === "blog") && (
+        {panel === "blog" && (
           <section className="news-panel admin-console-panel">
             <div className="news-panel-head"><span><Newspaper size={15} /> Blog</span><strong>{posts.length} posts</strong></div>
             {errors.blog && <div className="news-state error">{errors.blog}</div>}

@@ -149,17 +149,23 @@ body {
 
 .landing-terminal-stage {
   position: absolute;
-  right: clamp(32px, 5vw, 96px);
-  top: 20%;
+  right: clamp(18px, 4vw, 74px);
+  top: 13%;
   z-index: 2;
-  width: min(46vw, 760px);
-  perspective: 1600px;
+  width: min(54vw, 980px);
+  perspective: 1800px;
   pointer-events: none;
 }
 
-.landing-terminal-mockup {
+.landing-terminal-duo {
   position: relative;
-  min-height: 330px;
+  min-height: 520px;
+  transform: rotateY(-16deg) rotateX(4deg) rotateZ(-1deg);
+  transform-origin: left center;
+}
+
+.landing-terminal-mockup {
+  position: absolute;
   overflow: hidden;
   border: 1px solid rgba(96, 165, 250, 0.28);
   border-radius: 10px;
@@ -171,8 +177,26 @@ body {
     0 0 0 1px rgba(255, 255, 255, 0.035) inset;
   color: var(--text);
   font-family: var(--mono);
-  transform: rotateY(-18deg) rotateX(3deg) rotateZ(-1deg);
-  transform-origin: left center;
+}
+
+.landing-terminal-mockup.primary-screen {
+  left: 0;
+  top: 0;
+  width: 68%;
+  min-height: 410px;
+}
+
+.landing-terminal-mockup.secondary-screen {
+  right: 0;
+  top: 86px;
+  width: 43%;
+  min-height: 390px;
+  background:
+    linear-gradient(90deg, rgba(9, 14, 21, 0.98), rgba(7, 12, 19, 0.92)),
+    #05080d;
+  box-shadow:
+    -28px 24px 68px rgba(0, 0, 0, 0.62),
+    0 0 0 1px rgba(255, 255, 255, 0.035) inset;
 }
 
 .landing-terminal-mockup::before {
@@ -187,9 +211,13 @@ body {
 
 .landing-terminal-top,
 .landing-terminal-tabs,
+.landing-terminal-kpis,
 .landing-terminal-head,
 .landing-terminal-row,
-.landing-terminal-news {
+.landing-terminal-panel-row,
+.landing-terminal-profile,
+.landing-terminal-news-list,
+.landing-terminal-depth {
   position: relative;
   z-index: 1;
 }
@@ -205,7 +233,10 @@ body {
 .landing-terminal-top span,
 .landing-terminal-tabs span,
 .landing-terminal-head span,
-.landing-terminal-news span {
+.landing-terminal-panel-row span,
+.landing-terminal-profile span,
+.landing-terminal-depth span,
+.landing-terminal-news-list span {
   color: var(--muted);
   font-size: 10px;
   font-weight: 950;
@@ -236,8 +267,44 @@ body {
   color: var(--blue);
 }
 
+.landing-terminal-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.landing-terminal-kpis div,
+.landing-terminal-panel-row div,
+.landing-terminal-profile div {
+  border: 1px solid rgba(45, 65, 84, 0.72);
+  border-radius: 7px;
+  background: rgba(12, 19, 29, 0.76);
+  padding: 9px;
+}
+
+.landing-terminal-kpis span,
+.landing-terminal-panel-row span,
+.landing-terminal-profile span {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.landing-terminal-kpis strong,
+.landing-terminal-panel-row strong,
+.landing-terminal-profile strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 950;
+}
+
 .landing-terminal-grid {
-  padding: 10px 12px 0;
+  padding: 0 12px;
 }
 
 .landing-terminal-head,
@@ -255,9 +322,9 @@ body {
 
 .landing-terminal-row {
   border-bottom: 1px solid rgba(45, 65, 84, 0.46);
-  min-height: 42px;
+  min-height: 35px;
   color: rgba(226, 234, 242, 0.86);
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .landing-terminal-row strong,
@@ -284,28 +351,90 @@ body {
   font-weight: 950;
 }
 
-.landing-terminal-news {
+.landing-terminal-panel-row {
   display: grid;
-  grid-template-columns: 0.9fr 1.6fr 1fr;
-  gap: 10px;
-  align-items: center;
-  margin: 12px;
-  border: 1px solid rgba(191, 161, 74, 0.28);
-  border-radius: 7px;
-  background: rgba(191, 161, 74, 0.08);
-  padding: 10px;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 12px;
 }
 
-.landing-terminal-news strong {
-  color: var(--text);
-  font-size: 12px;
-}
-
-.landing-terminal-news small {
+.landing-terminal-panel-row small,
+.landing-terminal-profile small,
+.landing-terminal-news-list small {
   color: var(--amber);
   font-size: 10px;
   font-weight: 950;
   text-transform: uppercase;
+}
+
+.landing-terminal-profile {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.landing-terminal-news-list {
+  display: grid;
+  padding: 0 12px;
+}
+
+.landing-terminal-news-list div {
+  display: grid;
+  grid-template-columns: 34px 58px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid rgba(45, 65, 84, 0.52);
+  min-height: 44px;
+}
+
+.landing-terminal-news-list em {
+  color: var(--amber);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.landing-terminal-news-list strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.landing-terminal-news-list small {
+  grid-column: 3;
+  margin-top: -8px;
+}
+
+.landing-terminal-depth {
+  display: grid;
+  gap: 8px;
+  margin: 12px;
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  border-radius: 7px;
+  background: rgba(30, 64, 103, 0.12);
+  padding: 10px;
+}
+
+.landing-terminal-depth div {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 46px;
+  gap: 8px;
+  align-items: center;
+}
+
+.landing-terminal-depth b,
+.landing-terminal-depth strong {
+  color: var(--text);
+  font-size: 10px;
+}
+
+.landing-terminal-depth i {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--blue), var(--green));
 }
 
 .landing-hero-content span,
@@ -687,9 +816,19 @@ body {
     margin: -54px auto 44px;
   }
 
-  .landing-terminal-mockup {
-    min-height: 280px;
+  .landing-terminal-duo {
+    display: grid;
+    gap: 12px;
+    min-height: auto;
     transform: rotateY(-8deg) rotateX(2deg);
+  }
+
+  .landing-terminal-mockup.primary-screen,
+  .landing-terminal-mockup.secondary-screen {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    min-height: 280px;
   }
 
   .landing-terminal-head,
@@ -1138,6 +1277,10 @@ body {
   height: auto;
   display: block;
   margin: 0 0 28px;
+}
+
+.news-logo.mark-only {
+  width: 74px;
 }
 
 .news-rail nav {
@@ -10180,6 +10323,41 @@ button {
   font-size: 18px;
 }
 
+.admin-overview-matrix {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.admin-overview-matrix > div {
+  border: 1px solid rgba(45, 65, 84, 0.72);
+  border-radius: 8px;
+  background: rgba(12, 19, 29, 0.62);
+  padding: 14px;
+}
+
+.admin-overview-matrix span,
+.admin-overview-matrix small {
+  display: block;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.admin-overview-matrix strong {
+  display: block;
+  overflow: hidden;
+  margin: 8px 0;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .admin-console-panel {
   overflow: hidden;
 }
@@ -10455,6 +10633,7 @@ button {
 
   .admin-console-grid,
   .admin-console-grid.compact,
+  .admin-overview-matrix,
   .admin-blog-form {
     grid-template-columns: 1fr;
   }
