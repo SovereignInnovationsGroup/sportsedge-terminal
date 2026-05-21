@@ -34,6 +34,7 @@ import {
   WalletCards,
   Zap,
 } from "lucide-react";
+import { APP_VERSION } from "./generated/version";
 import "./styles/dashboard.css";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -1844,6 +1845,10 @@ function SportsEdgeTopbar({
             <button type="button" role="menuitem" onClick={() => { window.location.hash = "#actual"; setSettingsOpen(false); }}>Actual feeds</button>
             <button type="button" role="menuitem">Routing Rules</button>
             <button type="button" role="menuitem">Display Density</button>
+            <div className="testboard-settings-version" role="presentation">
+              <span>Version</span>
+              <strong>{APP_VERSION}</strong>
+            </div>
           </div>
         )}
       </div>
@@ -6306,6 +6311,10 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
               </button>
               <button type="button" role="menuitem">Routing Rules</button>
               <button type="button" role="menuitem">Display Density</button>
+              <div className="testboard-settings-version" role="presentation">
+                <span>Version</span>
+                <strong>{APP_VERSION}</strong>
+              </div>
             </div>
           )}
         </div>

@@ -2748,6 +2748,26 @@ button {
   background: rgba(96, 165, 250, 0.14);
 }
 
+.testboard-settings-version {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-top: 1px solid rgba(35, 50, 66, 0.82);
+  background: rgba(3, 6, 10, 0.8);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 900;
+  padding: 10px 13px;
+  text-transform: uppercase;
+}
+
+.testboard-settings-version strong {
+  color: var(--blue);
+  font-size: 11px;
+}
+
 .football-region-strip {
   position: sticky;
   top: 52px;
