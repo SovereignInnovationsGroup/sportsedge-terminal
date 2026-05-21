@@ -5759,8 +5759,12 @@ button {
   background: rgba(27, 43, 61, 0.58);
 }
 
-.arbs-table tbody tr.is-arb {
+.arbs-table tbody tr.is-executable {
   box-shadow: inset 3px 0 0 var(--green);
+}
+
+.arbs-table tbody tr.is-anomaly {
+  box-shadow: inset 3px 0 0 var(--amber);
 }
 
 .arbs-table td strong,
@@ -5795,10 +5799,37 @@ button {
   text-transform: uppercase;
 }
 
-.arb-type.arb {
+.arb-type.executable {
   border-color: rgba(74, 222, 128, 0.72);
   background: rgba(22, 101, 52, 0.28);
   color: var(--green) !important;
+}
+
+.arb-type.anomaly {
+  border-color: rgba(251, 191, 36, 0.72);
+  background: rgba(120, 82, 8, 0.28);
+  color: var(--amber) !important;
+}
+
+.arbs-validation {
+  min-width: 142px;
+}
+
+.arbs-validation strong {
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.arbs-validation span,
+.arbs-validation em {
+  display: block;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 850;
+  margin-top: 3px;
 }
 
 .arbs-outcomes {
