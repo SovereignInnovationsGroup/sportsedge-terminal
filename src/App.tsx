@@ -3534,18 +3534,19 @@ function newsImpactLabel(assessment: ImpactAssessment | null) {
   };
 }
 
-function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup" | "blog" | "about" | "terms" | "privacy" }) {
+const FALLBACK_BLOG_ARTICLES = [
+  { title: "Market structure", excerpt: "Why exchange liquidity, bookmaker anchors and news timing need one screen." },
+  { title: "Football coverage", excerpt: "How SportsEdge separates fixture truth from venue-specific market availability." },
+  { title: "Bias signals", excerpt: "Turning fragmented prices into a readable institutional market picture." }
+];
+
+function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup" | "about" | "terms" | "privacy" }) {
   const [accessOpen, setAccessOpen] = useState(section === "signup");
   const [blogPosts, setBlogPosts] = useState<AdminBlogPost[]>([]);
-  const fallbackArticles = [
-    { title: "Market structure", excerpt: "Why exchange liquidity, bookmaker anchors and news timing need one screen." },
-    { title: "Football coverage", excerpt: "How SportsEdge separates fixture truth from venue-specific market availability." },
-    { title: "Bias signals", excerpt: "Turning fragmented prices into a readable institutional market picture." }
-  ];
   const policyCopy = section === "terms"
     ? "Terminal access is permissioned, data is source-attributed, and production trading features are subject to venue terms, account approval and risk controls."
     : "SportsEdge collects only the account, session and operational data required to run the terminal, secure access, and improve market intelligence workflows.";
-  const articles = blogPosts.length ? blogPosts : fallbackArticles;
+  const articles = blogPosts.length ? blogPosts.slice(0, 3) : FALLBACK_BLOG_ARTICLES;
 
   useEffect(() => {
     let cancelled = false;
@@ -3573,7 +3574,7 @@ function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup
         </a>
         <nav aria-label="SportsEdge site navigation">
           <a className={section === "about" ? "active" : ""} href="#about">About</a>
-          <a className={section === "blog" ? "active" : ""} href="#blog">Blog</a>
+          <a href="#blog">Blog</a>
           <a href="#login">Login</a>
           <button className="primary" type="button" onClick={() => setAccessOpen(true)}>Sign up</button>
         </nav>
@@ -3617,7 +3618,7 @@ function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup
 
       <section className="landing-content" id="blog">
         <div>
-          <span>Blog</span>
+          <span>Latest</span>
           <h2>Research notes and product thinking.</h2>
         </div>
         <div className="landing-articles">
@@ -3628,6 +3629,7 @@ function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup
             </article>
           ))}
         </div>
+        <a className="landing-text-link" href="#blog">Open the blog</a>
       </section>
 
       {(section === "terms" || section === "privacy") && (
@@ -3685,6 +3687,96 @@ function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup
           </section>
         </div>
       )}
+    </main>
+  );
+}
+
+function BlogPage() {
+  const [posts, setPosts] = useState<AdminBlogPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPosts() {
+      setLoading(true);
+      try {
+        const response = await fetch("/blog-posts", { cache: "no-store" });
+        const payload = await response.json();
+        if (!response.ok || !Array.isArray(payload.posts)) throw new Error(payload.detail || "Blog posts unavailable");
+        if (!cancelled) {
+          setPosts(payload.posts);
+          setError("");
+        }
+      } catch (loadError) {
+        if (!cancelled) setError(loadError instanceof Error ? loadError.message : "Blog posts unavailable");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    loadPosts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const articles = posts.length ? posts : FALLBACK_BLOG_ARTICLES;
+
+  return (
+    <main className="landing-page blog-page">
+      <header className="landing-topbar">
+        <a className="landing-brand" href="/" aria-label="SportsEdge landing">
+          <img src={sportsEdgeMarketsLogo} alt="SportsEdge" />
+        </a>
+        <nav aria-label="SportsEdge site navigation">
+          <a href="#about">About</a>
+          <a className="active" href="#blog">Blog</a>
+          <a href="#login">Login</a>
+          <a className="primary" href="#signup">Sign up</a>
+        </nav>
+      </header>
+
+      <section className="blog-hero">
+        <span>SportsEdge Blog</span>
+        <h1>Market structure, product notes, and trading intelligence.</h1>
+        <p>Longer-form notes on fixture truth, exchange liquidity, news timing, and the SportsEdge terminal build-out.</p>
+      </section>
+
+      <section className="blog-list" aria-label="SportsEdge blog posts">
+        {loading && <div className="blog-state">Loading blog posts.</div>}
+        {error && <div className="blog-state error">{error}</div>}
+        {!loading && articles.map((post) => (
+          <article className="blog-card" key={post.title}>
+            <div>
+              <span>{("status" in post && post.status) || "research"}</span>
+              {"published_at" in post && post.published_at ? <time>{formatDate(post.published_at)}</time> : null}
+            </div>
+            <h2>{post.title}</h2>
+            <p>{post.excerpt}</p>
+            {"tags" in post && post.tags?.length ? (
+              <footer>{post.tags.map((tag) => <span key={tag}>{tag}</span>)}</footer>
+            ) : null}
+          </article>
+        ))}
+      </section>
+
+      <footer className="landing-footer">
+        <div>
+          <img src={sportsEdgeMark} alt="" />
+          <span>SportsEdge Markets</span>
+        </div>
+        <nav>
+          <a href="#about">About</a>
+          <a href="#blog">Blog</a>
+          <a href="#terms">T&amp;C</a>
+          <a href="#privacy">Privacy Policy</a>
+        </nav>
+        <div className="landing-socials" aria-label="Social channels inactive">
+          <span>X</span>
+          <span>LinkedIn</span>
+          <span>YouTube</span>
+        </div>
+      </footer>
     </main>
   );
 }
@@ -11480,7 +11572,7 @@ export default function App() {
   if (!hash) screen = <MarketingLandingPage />;
   else if (hash === "#signup") screen = <MarketingLandingPage section="signup" />;
   else if (hash === "#about") screen = <MarketingLandingPage section="about" />;
-  else if (hash === "#blog") screen = <MarketingLandingPage section="blog" />;
+  else if (hash === "#blog") screen = <BlogPage />;
   else if (hash === "#terms") screen = <MarketingLandingPage section="terms" />;
   else if (hash === "#privacy") screen = <MarketingLandingPage section="privacy" />;
   else if (hash.startsWith("#player/")) screen = <PlayerProfilePage id={hash.replace("#player/", "")} />;

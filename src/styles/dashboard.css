@@ -346,6 +346,123 @@ body {
   font-size: 13px;
 }
 
+.landing-text-link {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 18px;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 950;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.blog-page {
+  min-height: 100vh;
+}
+
+.blog-hero,
+.blog-list {
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+}
+
+.blog-hero {
+  padding: 78px 0 42px;
+}
+
+.blog-hero span,
+.blog-card > div span,
+.blog-card footer span {
+  color: var(--amber);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.blog-hero h1 {
+  max-width: 900px;
+  margin: 14px 0 0;
+  color: var(--text);
+  font-size: clamp(40px, 5vw, 72px);
+  line-height: 0.96;
+}
+
+.blog-hero p {
+  max-width: 680px;
+  margin: 18px 0 0;
+  color: rgba(213, 222, 232, 0.78);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.blog-list {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 70px;
+}
+
+.blog-card {
+  display: grid;
+  grid-template-columns: minmax(0, 0.22fr) minmax(0, 1fr);
+  gap: 22px;
+  border-top: 1px solid rgba(45, 65, 84, 0.86);
+  padding: 22px 0;
+}
+
+.blog-card > div {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.blog-card time {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.blog-card h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 28px;
+  line-height: 1.08;
+}
+
+.blog-card p {
+  grid-column: 2;
+  max-width: 820px;
+  margin: -8px 0 0;
+  color: rgba(213, 222, 232, 0.78);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.blog-card footer {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.blog-card footer span {
+  border: 1px solid rgba(191, 161, 74, 0.42);
+  border-radius: 999px;
+  padding: 5px 8px;
+}
+
+.blog-state {
+  border-top: 1px solid rgba(45, 65, 84, 0.86);
+  color: var(--muted);
+  padding: 24px 0;
+}
+
+.blog-state.error {
+  color: var(--red);
+}
+
 .landing-footer {
   display: flex;
   align-items: center;
@@ -399,6 +516,26 @@ body {
   .landing-content,
   .landing-articles {
     grid-template-columns: 1fr;
+  }
+
+  .blog-hero,
+  .blog-list {
+    width: min(100% - 28px, 1180px);
+  }
+
+  .blog-hero {
+    padding: 52px 0 28px;
+  }
+
+  .blog-card {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .blog-card p,
+  .blog-card footer {
+    grid-column: auto;
+    margin-top: 0;
   }
 }
 
