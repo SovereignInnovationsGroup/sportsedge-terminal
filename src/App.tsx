@@ -517,6 +517,11 @@ function sportsEdgeWsUrl(token: string) {
   return `wss://terminal.sportsedge.markets/ws?token=${encoded}`;
 }
 
+function sportsEdgeApiUrl(path: string) {
+  if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") return path;
+  return `https://api.sportsedge.markets${path}`;
+}
+
 function fixtureSeed(text: string) {
   return text.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
 }
@@ -3552,7 +3557,7 @@ function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup
     let cancelled = false;
     async function loadBlogPosts() {
       try {
-        const response = await fetch("/blog-posts", { cache: "no-store" });
+        const response = await fetch(sportsEdgeApiUrl("/blog-posts"), { cache: "no-store" });
         const payload = await response.json();
         if (!response.ok || !Array.isArray(payload.posts)) return;
         if (!cancelled) setBlogPosts(payload.posts);
@@ -3590,6 +3595,42 @@ function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup
           <div className="landing-actions">
             <a href="#login">Login</a>
             <button type="button" onClick={() => setAccessOpen(true)}>Request access</button>
+          </div>
+        </div>
+        <div className="landing-terminal-stage" aria-hidden="true">
+          <div className="landing-terminal-mockup">
+            <div className="landing-terminal-top">
+              <span>Football</span>
+              <span>BF / MB / SX</span>
+              <strong>Live</strong>
+            </div>
+            <div className="landing-terminal-tabs">
+              {["Today", "UK", "UEFA", "Bias Matrix"].map((item) => <span key={item}>{item}</span>)}
+            </div>
+            <div className="landing-terminal-grid">
+              <div className="landing-terminal-head">
+                <span>Time</span><span>Fixture</span><span>Coverage</span><span>Bias</span><span>Liquidity</span>
+              </div>
+              {[
+                ["15:00", "Brighton vs Manchester United", "BF MB", "Consensus", "£470k"],
+                ["15:00", "Crystal Palace vs Arsenal", "BF MB", "Home lean", "£318k"],
+                ["17:30", "Hull City vs Southampton", "MB", "Single route", "£113k"],
+                ["20:00", "SC Freiburg vs Aston Villa", "BF MB", "Watch", "£82k"]
+              ].map((row) => (
+                <div className="landing-terminal-row" key={row.join("-")}>
+                  <span>{row[0]}</span>
+                  <strong>{row[1]}</strong>
+                  <em>{row[2]}</em>
+                  <span>{row[3]}</span>
+                  <b>{row[4]}</b>
+                </div>
+              ))}
+            </div>
+            <div className="landing-terminal-news">
+              <span>News Rail</span>
+              <strong>ARS injury watch</strong>
+              <small>Market relevance 72</small>
+            </div>
           </div>
         </div>
       </section>
@@ -3701,7 +3742,7 @@ function BlogPage() {
     async function loadPosts() {
       setLoading(true);
       try {
-        const response = await fetch("/blog-posts", { cache: "no-store" });
+        const response = await fetch(sportsEdgeApiUrl("/blog-posts"), { cache: "no-store" });
         const payload = await response.json();
         if (!response.ok || !Array.isArray(payload.posts)) throw new Error(payload.detail || "Blog posts unavailable");
         if (!cancelled) {
