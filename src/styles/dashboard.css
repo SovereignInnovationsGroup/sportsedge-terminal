@@ -5679,7 +5679,23 @@ button {
   min-width: 0;
 }
 
+.agtest-subbar nav {
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+
+.agtest-subbar nav::-webkit-scrollbar {
+  display: none;
+}
+
+.agtest-subbar div {
+  flex: 0 0 auto;
+}
+
 .agtest-subbar button {
+  flex: 0 0 auto;
   height: 30px;
   border: 0;
   border-bottom: 2px solid transparent;

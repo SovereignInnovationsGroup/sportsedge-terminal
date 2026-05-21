@@ -131,6 +131,27 @@ const SPORT_MARKET_GROUPS: Record<string, Array<{ label: string; value: string }
   ]
 };
 
+const AGTEST_FOOTBALL_FILTERS: Array<{ label: string; value: string }> = [
+  { label: "All", value: "all" },
+  { label: "Today", value: "today" },
+  { label: "English", value: "english" },
+  { label: "Premier League", value: "premier-league" },
+  { label: "Championship", value: "championship" },
+  { label: "League One", value: "league-one" },
+  { label: "League Two", value: "league-two" },
+  { label: "FA Cup", value: "fa-cup" },
+  { label: "EFL Cup", value: "efl-cup" },
+  { label: "Scottish", value: "scottish" },
+  { label: "UEFA", value: "uefa" },
+  { label: "Europe", value: "european" },
+  { label: "International", value: "international" },
+  { label: "World", value: "world" }
+];
+
+const AGTEST_FOOTBALL_FILTER_LABELS = new Map(
+  AGTEST_FOOTBALL_FILTERS.map((filter) => [filter.value, filter.label])
+);
+
 const FOOTBALL_LEAGUE_GROUPS: Record<string, Array<{ label: string; value: string }>> = {
   english: [
     { label: "Premier League", value: "premier-league" },
@@ -10647,13 +10668,21 @@ function AgTestPage() {
       />
       <main className="agtest-page">
         <section className="agtest-subbar" aria-label="AG test market context">
-          <nav aria-label="Football matrix sections">
-            <button className={marketGroup === "all" ? "active" : ""} type="button" onClick={() => setMarketGroup("all")}>All</button>
-            <button className={marketGroup === "english" ? "active" : ""} type="button" onClick={() => setMarketGroup("english")}>English</button>
+          <nav aria-label="Football filters">
+            {AGTEST_FOOTBALL_FILTERS.map((filter) => (
+              <button
+                className={marketGroup === filter.value ? "active" : ""}
+                key={filter.value}
+                type="button"
+                onClick={() => setMarketGroup(filter.value)}
+              >
+                {filter.label}
+              </button>
+            ))}
             <button type="button" onClick={() => { window.location.hash = "#matrix"; }}>Bias matrix</button>
-            <button className="active scope" type="button">AGTEST</button>
           </nav>
           <div>
+            <span>{AGTEST_FOOTBALL_FILTER_LABELS.get(marketGroup) || "Football"}</span>
             <span>{rows.length}{searchQuery.trim() || marketGroup !== "all" ? ` / ${allRows.length}` : ""} markets</span>
             <span>BF / MB / SX</span>
             <span>{socketStatus === "live" ? "wss live" : loading ? "loading" : socketStatus}</span>
