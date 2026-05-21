@@ -5689,6 +5689,127 @@ button {
   text-transform: uppercase;
 }
 
+.arbs-page {
+  overflow: hidden;
+}
+
+.arbs-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid rgba(36, 50, 65, 0.62);
+  background: #05080d;
+}
+
+.arbs-summary article {
+  display: grid;
+  gap: 4px;
+  min-height: 58px;
+  border-right: 1px solid rgba(36, 50, 65, 0.48);
+  padding: 10px 14px;
+}
+
+.arbs-summary span,
+.arbs-table th {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.arbs-summary strong {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.arbs-table-wrap {
+  height: calc(100vh - 170px);
+  overflow: auto;
+  background: #05080d;
+}
+
+.arbs-table {
+  width: 100%;
+  min-width: 1380px;
+  border-collapse: collapse;
+}
+
+.arbs-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: #071019;
+}
+
+.arbs-table th,
+.arbs-table td {
+  border-bottom: 1px solid rgba(36, 50, 65, 0.48);
+  color: rgba(226, 232, 240, 0.94);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.arbs-table tbody tr:nth-child(even) {
+  background: #080d13;
+}
+
+.arbs-table tbody tr:hover {
+  background: rgba(27, 43, 61, 0.58);
+}
+
+.arbs-table tbody tr.is-arb {
+  box-shadow: inset 3px 0 0 var(--green);
+}
+
+.arbs-table td strong,
+.arbs-table td span {
+  display: block;
+}
+
+.arbs-table td strong {
+  color: var(--text);
+  font-weight: 950;
+}
+
+.arbs-table td span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  margin-top: 3px;
+}
+
+.arb-type {
+  display: inline-flex !important;
+  width: fit-content;
+  border: 1px solid rgba(71, 85, 105, 0.82);
+  border-radius: 5px;
+  background: rgba(15, 23, 42, 0.76);
+  color: var(--muted) !important;
+  font-family: var(--mono);
+  font-size: 10px !important;
+  font-weight: 950 !important;
+  margin: 0 !important;
+  padding: 4px 7px;
+  text-transform: uppercase;
+}
+
+.arb-type.arb {
+  border-color: rgba(74, 222, 128, 0.72);
+  background: rgba(22, 101, 52, 0.28);
+  color: var(--green) !important;
+}
+
+.arbs-outcomes {
+  max-width: 520px;
+  color: rgba(203, 213, 225, 0.94) !important;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
 .bb-demo-shell { overflow: hidden; }
 .bb-demo-subbar { border-top: 1px solid rgba(251, 191, 36, 0.18); }
 .bb-demo-subbar button.active { border-bottom-color: var(--amber); }

@@ -81,6 +81,7 @@ const TERMINAL_TOP_SPORTS = [
   { label: "Tennis", value: "tennis", route: "#tennis" },
   { label: "Golf", value: "golf", route: "#golf" },
   { label: "News", value: "news", route: "#news" },
+  { label: "Arbs", value: "arbs", route: "#arbs" },
   { label: "AGTEST", value: "agtest", route: "#agtest-mockup" },
   { label: "Profiles", value: "profile-mockup", route: "#profile-mockup" }
 ] as const;
@@ -1453,6 +1454,7 @@ const COMMAND_OPTIONS: CommandOption[] = [
   { label: "Chelsea team profile", detail: "Open the detailed SportsEdge profile page", route: "#team/chelsea", keywords: ["chelsea", "team", "profile", "club"] },
   { label: "Upcoming fixtures", detail: "Open today's market dashboard", route: "#dashboard", keywords: ["fixtures", "upcoming", "today", "matches", "games"] },
   { label: "Bias Matrix", detail: "Open the football consensus matrix", route: "#matrix", keywords: ["matrix", "bias", "consensus", "prices"] },
+  { label: "Arbs", detail: "Monitor Betfair exchange back and lay books", route: "#arbs", keywords: ["arb", "arbs", "arbitrage", "betfair", "back", "lay"] },
   { label: "AG test", detail: "Open the AG Grid football test board", route: "#agtest", keywords: ["ag", "agtest", "grid", "test"] },
   { label: "Odds API diagnostics", detail: "Check provider fields and exchange classification", route: "#oddsapi", keywords: ["odds", "api", "diagnostics", "betfair", "matchbook", "smarkets", "betdaq", "bet365"] },
   { label: "Football markets", detail: "Open the football market board", route: "#football", keywords: ["football", "soccer", "markets"] },
@@ -1940,6 +1942,7 @@ type BackendRunnerPrice = BackendRunnerLevel | null;
 type BackendRunner = {
   id: string;
   name: string;
+  sortOrder?: number;
   back: BackendRunnerPrice;
   lay: BackendRunnerPrice;
   backLevels?: BackendRunnerLevel[];
@@ -9770,6 +9773,270 @@ function OddsApiDiagnosticsPage() {
   );
 }
 
+type BetfairArbRow = {
+  id: string;
+  fixture: string;
+  competition: string;
+  market: string;
+  startAt: string | null;
+  observedAt: string | null;
+  type: "back_book" | "lay_book" | "crossed_runner" | "watch";
+  status: "arb" | "watch";
+  edgePct: number;
+  backBookPct: number | null;
+  layBookPct: number | null;
+  bestBack: string;
+  bestLay: string;
+  outcomes: string;
+  liquidity: number;
+};
+
+function runnerPriceText(runner: BackendRunner) {
+  const back = runner.back ? `B ${runner.back.odds.toFixed(2)} ${formatExchangeMoney(runner.back.amount, "GBP")}` : "B -";
+  const lay = runner.lay ? `L ${runner.lay.odds.toFixed(2)} ${formatExchangeMoney(runner.lay.amount, "GBP")}` : "L -";
+  return `${runner.name}: ${back} / ${lay}`;
+}
+
+function marketBookPct(runners: BackendRunner[], side: "back" | "lay") {
+  const prices = runners
+    .map((runner) => runner[side]?.odds)
+    .filter((odds): odds is number => Number.isFinite(Number(odds)) && Number(odds) > 1);
+  if (prices.length !== runners.length || prices.length < 2) return null;
+  return prices.reduce((sum, odds) => sum + 1 / odds, 0) * 100;
+}
+
+function buildBetfairArbRows(rows: BackendPriceRow[]) {
+  const output: BetfairArbRow[] = [];
+  const seen = new Set<string>();
+
+  for (const row of rows) {
+    const match = row.matches?.betfair;
+    if (!match || !match.runners?.length) continue;
+    const marketName = match.marketName || row.marketName || "Market";
+    const runners = [...match.runners].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+    if (runners.length < 2 || runners.length > 30) continue;
+
+    const backBookPct = marketBookPct(runners, "back");
+    const layBookPct = marketBookPct(runners, "lay");
+    const outcomes = runners.map(runnerPriceText).join(" | ");
+    const liquidity = runners.reduce((sum, runner) => (
+      sum
+      + Number(runner.back?.amount || 0)
+      + Number(runner.lay?.amount || 0)
+    ), 0);
+    const base = {
+      fixture: match.name || row.name,
+      competition: match.competitionName || row.competitionName || "",
+      market: marketName,
+      startAt: match.startAt || row.startAt,
+      observedAt: match.observedAt,
+      backBookPct,
+      layBookPct,
+      bestBack: backBookPct == null ? "-" : `${backBookPct.toFixed(2)}%`,
+      bestLay: layBookPct == null ? "-" : `${layBookPct.toFixed(2)}%`,
+      outcomes,
+      liquidity
+    };
+
+    if (backBookPct != null && backBookPct < 99.95) {
+      const id = `${match.marketId}:back`;
+      seen.add(id);
+      output.push({
+        id,
+        ...base,
+        type: "back_book",
+        status: "arb",
+        edgePct: 100 - backBookPct
+      });
+    }
+
+    if (layBookPct != null && layBookPct > 100.05) {
+      const id = `${match.marketId}:lay`;
+      seen.add(id);
+      output.push({
+        id,
+        ...base,
+        type: "lay_book",
+        status: "arb",
+        edgePct: layBookPct - 100
+      });
+    }
+
+    for (const runner of runners) {
+      const backOdds = Number(runner.back?.odds || 0);
+      const layOdds = Number(runner.lay?.odds || 0);
+      if (backOdds > 1 && layOdds > 1 && backOdds > layOdds) {
+        const id = `${match.marketId}:${runner.id}:crossed`;
+        seen.add(id);
+        output.push({
+          id,
+          ...base,
+          type: "crossed_runner",
+          status: "arb",
+          edgePct: ((backOdds / layOdds) - 1) * 100,
+          outcomes: runnerPriceText(runner)
+        });
+      }
+    }
+
+    const watchId = `${match.marketId}:watch`;
+    if (!seen.has(`${match.marketId}:back`) && !seen.has(`${match.marketId}:lay`) && output.length < 120) {
+      const backMiss = backBookPct == null ? Number.POSITIVE_INFINITY : Math.abs(100 - backBookPct);
+      const layMiss = layBookPct == null ? Number.POSITIVE_INFINITY : Math.abs(100 - layBookPct);
+      const edgePct = -Math.min(backMiss, layMiss);
+      output.push({
+        id: watchId,
+        ...base,
+        type: "watch",
+        status: "watch",
+        edgePct
+      });
+    }
+  }
+
+  return output.sort((a, b) => {
+    if (a.status !== b.status) return a.status === "arb" ? -1 : 1;
+    return b.edgePct - a.edgePct || b.liquidity - a.liquidity;
+  });
+}
+
+function betfairArbTypeLabel(type: BetfairArbRow["type"]) {
+  if (type === "back_book") return "Back book";
+  if (type === "lay_book") return "Lay book";
+  if (type === "crossed_runner") return "Crossed runner";
+  return "Watch";
+}
+
+function BetfairArbsPage() {
+  const [rows, setRows] = useState<BetfairArbRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [lastRefresh, setLastRefresh] = useState<string | null>(null);
+
+  async function loadArbs() {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        sport: "football",
+        exchanges: "betfair",
+        segment: "all",
+        limit: "1000"
+      });
+      const response = await fetch(`/api/exchange-odds?${params.toString()}`, { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok || !Array.isArray(payload.rows)) throw new Error(payload.detail || "Betfair arb scan failed");
+      setRows(buildBetfairArbRows(payload.rows as BackendPriceRow[]));
+      setLastRefresh(payload.generatedAt || new Date().toISOString());
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Betfair arb scan failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadArbs();
+    const timer = window.setInterval(loadArbs, 15000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const filteredRows = useMemo(() => {
+    const terms = normalizeFixtureText(query).split(" ").filter(Boolean);
+    if (!terms.length) return rows;
+    return rows.filter((row) => {
+      const haystack = normalizeFixtureText([
+        row.fixture,
+        row.competition,
+        row.market,
+        row.type,
+        row.outcomes
+      ].join(" "));
+      return terms.every((term) => haystack.includes(term));
+    });
+  }, [query, rows]);
+
+  const arbRows = filteredRows.filter((row) => row.status === "arb");
+  const watchedMarkets = rows.length;
+  const freshest = lastRefresh ? new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZone: "Europe/Madrid",
+    hour12: false
+  }).format(new Date(lastRefresh)) : "-";
+
+  return (
+    <>
+      <SportsEdgeTopbar active="arbs" onSearchChange={setQuery} searchPlaceholder="Filter arbs, fixture, market, runner..." />
+      <main className="agtest-page arbs-page">
+        <section className="agtest-subbar" aria-label="Betfair arb monitor context">
+          <nav aria-label="Arbitrage sections">
+            <button className="active" type="button">Betfair</button>
+            <button type="button" onClick={() => { window.location.hash = "#agtest"; }}>AGTEST</button>
+            <button type="button" onClick={() => { window.location.hash = "#oddsapi"; }}>Odds API</button>
+          </nav>
+          <div>
+            <span>{arbRows.length} live arbs</span>
+            <span>{watchedMarkets} watched</span>
+            <span>{loading ? "scanning" : `fresh ${freshest}`}</span>
+          </div>
+        </section>
+
+        <section className="arbs-summary">
+          <article><span>Live arbs</span><strong>{arbRows.length}</strong></article>
+          <article><span>Best edge</span><strong>{arbRows[0] ? `${arbRows[0].edgePct.toFixed(2)}%` : "-"}</strong></article>
+          <article><span>Markets watched</span><strong>{watchedMarkets}</strong></article>
+          <article><span>Venue</span><strong>Betfair exchange</strong></article>
+        </section>
+
+        <section className="arbs-table-wrap">
+          {error && <div className="agtest-error">{error}</div>}
+          <table className="arbs-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Fixture</th>
+                <th>Market</th>
+                <th>Signal</th>
+                <th>Edge</th>
+                <th>Back book</th>
+                <th>Lay book</th>
+                <th>Liquidity</th>
+                <th>Both sides</th>
+                <th>Fresh</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRows.map((row) => (
+                <tr className={row.status === "arb" ? "is-arb" : ""} key={row.id}>
+                  <td className="mono">{row.startAt ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid", hour12: false }).format(new Date(row.startAt)) : "-"}</td>
+                  <td><strong>{row.fixture}</strong><span>{row.competition}</span></td>
+                  <td>{row.market}</td>
+                  <td><span className={`arb-type ${row.status}`}>{betfairArbTypeLabel(row.type)}</span></td>
+                  <td className={row.status === "arb" ? "mono positive" : "mono"}>{row.edgePct > 0 ? `+${row.edgePct.toFixed(2)}%` : `${row.edgePct.toFixed(2)}%`}</td>
+                  <td className="mono">{row.bestBack}</td>
+                  <td className="mono">{row.bestLay}</td>
+                  <td className="mono">{row.liquidity ? formatExchangeMoney(row.liquidity, "GBP") : "-"}</td>
+                  <td className="arbs-outcomes">{row.outcomes}</td>
+                  <td className="mono">{row.observedAt ? new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Madrid", hour12: false }).format(new Date(row.observedAt)) : "-"}</td>
+                </tr>
+              ))}
+              {!loading && filteredRows.length === 0 && (
+                <tr><td className="empty" colSpan={10}>No Betfair markets matched the current arb scan.</td></tr>
+              )}
+              {loading && filteredRows.length === 0 && (
+                <tr><td className="empty" colSpan={10}>Scanning Betfair back and lay books.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </>
+  );
+}
+
 function AgTestPage() {
   const [fixtures, setFixtures] = useState<FootballFixture[]>([]);
   const [backendRows, setBackendRows] = useState<BackendPriceRow[]>([]);
@@ -10011,6 +10278,7 @@ export default function App() {
   else if (hash === "#product-map") screen = <SportsEdgeProductMockupPage />;
   else if (hash === "#football-demo") screen = <FootballIntelligenceDemoPage />;
   else if (hash === "#oddsapi") screen = hasSession || previewDashboard ? <OddsApiDiagnosticsPage /> : <LoginScreen />;
+  else if (hash === "#arbs") screen = hasSession || previewDashboard ? <BetfairArbsPage /> : <LoginScreen />;
   else if (hash === "#agtest") screen = hasSession || previewDashboard ? <AgTestPage /> : <LoginScreen />;
   else if (previewDashboard && (hash === "#dashboard" || hash === "#testboard" || hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash) || !hash)) screen = <TestboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#login") screen = <LoginScreen />;
