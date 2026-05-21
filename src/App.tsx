@@ -77,10 +77,10 @@ const PRIORITY_SPORTS = [
 
 const TERMINAL_TOP_SPORTS = [
   { label: "Football", value: "football", route: "#football" },
-  { label: "News", value: "news", route: "#news" },
   { label: "Horse Racing", value: "horseracing", route: "#horseracing" },
   { label: "Tennis", value: "tennis", route: "#tennis" },
-  { label: "Golf", value: "golf", route: "#golf" }
+  { label: "Golf", value: "golf", route: "#golf" },
+  { label: "News", value: "news", route: "#news" }
 ] as const;
 
 const SPORT_MARKET_GROUPS: Record<string, Array<{ label: string; value: string }>> = {
