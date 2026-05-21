@@ -130,26 +130,78 @@ const SPORT_MARKET_GROUPS: Record<string, Array<{ label: string; value: string }
   ]
 };
 
-const AGTEST_FOOTBALL_FILTERS: Array<{ label: string; value: string }> = [
+type FootballGridFilter = { label: string; value: string };
+
+const AGTEST_FOOTBALL_PRIMARY_FILTERS: FootballGridFilter[] = [
   { label: "All", value: "all" },
   { label: "Today", value: "today" },
   { label: "Tomorrow", value: "tomorrow" },
-  { label: "English", value: "english" },
-  { label: "Premier League", value: "premier-league" },
-  { label: "Championship", value: "championship" },
-  { label: "League One", value: "league-one" },
-  { label: "League Two", value: "league-two" },
-  { label: "FA Cup", value: "fa-cup" },
-  { label: "EFL Cup", value: "efl-cup" },
-  { label: "Scottish", value: "scottish" },
-  { label: "UEFA", value: "uefa" },
+  { label: "UK", value: "uk" },
   { label: "Europe", value: "european" },
+  { label: "UEFA", value: "uefa" },
   { label: "International", value: "international" },
   { label: "World", value: "world" }
 ];
 
+const AGTEST_FOOTBALL_SECONDARY_FILTERS: Record<string, FootballGridFilter[]> = {
+  uk: [
+    { label: "All UK", value: "uk" },
+    { label: "England", value: "english" },
+    { label: "Premier League", value: "premier-league" },
+    { label: "Championship", value: "championship" },
+    { label: "League One", value: "league-one" },
+    { label: "League Two", value: "league-two" },
+    { label: "FA Cup", value: "fa-cup" },
+    { label: "EFL Cup", value: "efl-cup" },
+    { label: "Scotland", value: "scottish" },
+    { label: "Wales", value: "wales" },
+    { label: "N. Ireland", value: "northern-ireland" }
+  ],
+  european: [
+    { label: "All Europe", value: "european" },
+    { label: "Germany", value: "germany" },
+    { label: "Bundesliga", value: "bundesliga" },
+    { label: "2. Bundesliga", value: "2-bundesliga" },
+    { label: "Spain", value: "spain" },
+    { label: "La Liga", value: "la-liga" },
+    { label: "Italy", value: "italy" },
+    { label: "Serie A", value: "serie-a" },
+    { label: "France", value: "france" },
+    { label: "Ligue 1", value: "ligue-1" },
+    { label: "Netherlands", value: "netherlands" },
+    { label: "Eredivisie", value: "eredivisie" },
+    { label: "Portugal", value: "portugal" },
+    { label: "Primeira Liga", value: "primeira-liga" },
+    { label: "Turkey", value: "turkey" }
+  ],
+  uefa: [
+    { label: "All UEFA", value: "uefa" },
+    { label: "Champions League", value: "champions-league" },
+    { label: "Europa League", value: "europa-league" },
+    { label: "Conference League", value: "conference-league" },
+    { label: "Nations League", value: "nations-league" }
+  ],
+  international: [
+    { label: "All International", value: "international" },
+    { label: "World Cup", value: "world-cup" },
+    { label: "Euro", value: "euro" },
+    { label: "Copa America", value: "copa-america" },
+    { label: "AFCON", value: "afcon" },
+    { label: "Friendlies", value: "friendlies" }
+  ],
+  world: [
+    { label: "All World", value: "world" },
+    { label: "Club World Cup", value: "club-world-cup" },
+    { label: "World Cup", value: "world-cup" },
+    { label: "International", value: "international" }
+  ]
+};
+
 const AGTEST_FOOTBALL_FILTER_LABELS = new Map(
-  AGTEST_FOOTBALL_FILTERS.map((filter) => [filter.value, filter.label])
+  [
+    ...AGTEST_FOOTBALL_PRIMARY_FILTERS,
+    ...Object.values(AGTEST_FOOTBALL_SECONDARY_FILTERS).flat()
+  ].map((filter) => [filter.value, filter.label])
 );
 
 const FOOTBALL_LEAGUE_GROUPS: Record<string, Array<{ label: string; value: string }>> = {
@@ -213,6 +265,7 @@ const FOOTBALL_GROUP_TERMS: Record<string, string[]> = {
   "la-liga": ["la liga"],
   "serie-a": ["serie a"],
   bundesliga: ["bundesliga"],
+  "2-bundesliga": ["2. bundesliga", "2 bundesliga", "bundesliga 2"],
   "ligue-1": ["ligue 1"],
   eredivisie: ["eredivisie"],
   "primeira-liga": ["primeira liga"],
@@ -1905,12 +1958,22 @@ function rowMatchesMarketGroup(row: BackendPriceRow, group: string) {
   if (group === "today") return Boolean(isToday);
   if (group === "tomorrow") return Boolean(isTomorrow);
   if (group === "live") return haystack.includes("live") || Boolean(isToday);
+  if (group === "uk") return isEnglishFootball || ["scotland", "scottish", "wales", "welsh", "cymru", "northern ireland", "irish premiership", "nifl"].some((term) => haystack.includes(term));
   if (group === "england") return isEnglishFootball;
   if (group === "english") return isEnglishFootball;
   if (group === "scottish") return ["scotland", "scottish", "scottish premiership", "scottish championship"].some((term) => haystack.includes(term));
+  if (group === "wales") return ["wales", "welsh", "cymru"].some((term) => haystack.includes(term));
+  if (group === "northern-ireland") return ["northern ireland", "irish premiership", "nifl"].some((term) => haystack.includes(term));
   if (group === "uefa") return ["uefa", "champions league", "europa league", "conference league", "nations league"].some((term) => haystack.includes(term));
   if (group === "europe") return ["champions league", "europa", "euro", "spain", "la liga", "italy", "serie", "germany", "bundesliga", "france", "ligue"].some((term) => haystack.includes(term));
   if (group === "european") return ["europe", "european", "spain", "la liga", "italy", "serie", "germany", "bundesliga", "france", "ligue", "eredivisie", "primeira", "super lig"].some((term) => haystack.includes(term));
+  if (group === "germany") return ["germany", "bundesliga", "dfb"].some((term) => haystack.includes(term));
+  if (group === "spain") return ["spain", "spanish", "la liga", "segunda"].some((term) => haystack.includes(term));
+  if (group === "italy") return ["italy", "italian", "serie a", "serie b", "coppa"].some((term) => haystack.includes(term));
+  if (group === "france") return ["france", "french", "ligue 1", "ligue 2", "coupe"].some((term) => haystack.includes(term));
+  if (group === "netherlands") return ["netherlands", "dutch", "eredivisie", "eerste divisie"].some((term) => haystack.includes(term));
+  if (group === "portugal") return ["portugal", "portuguese", "primeira liga", "liga portugal"].some((term) => haystack.includes(term));
+  if (group === "turkey") return ["turkey", "turkish", "super lig", "süper lig"].some((term) => haystack.includes(term));
   if (group === "international") return ["international", "national", "world cup", "euro", "copa", "afcon", "concacaf", "friendly"].some((term) => haystack.includes(term));
   if (group === "world") return ["world", "global", "fifa", "club world cup", "world cup", "international"].some((term) => haystack.includes(term));
   if (group === "usa") return ["usa", "mls", "mlb", "nba", "wnba", "pga"].some((term) => haystack.includes(term));
@@ -9969,6 +10032,14 @@ function agTestRowMatchesGroup(row: AgTestRow, group: string) {
   }, group);
 }
 
+function footballFilterBreadcrumb(bucket: string, group: string) {
+  const bucketLabel = AGTEST_FOOTBALL_FILTER_LABELS.get(bucket);
+  const groupLabel = AGTEST_FOOTBALL_FILTER_LABELS.get(group);
+  return ["All", "Football", bucketLabel, group !== bucket ? groupLabel : ""]
+    .filter(Boolean)
+    .join(" / ");
+}
+
 function oddsDiagnosticTime(value: number | null | undefined) {
   if (!value) return "-";
   return new Intl.DateTimeFormat("en-GB", {
@@ -10575,6 +10646,7 @@ function AgTestPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterBucket, setFilterBucket] = useState("all");
   const [marketGroup, setMarketGroup] = useState("all");
   const [socketStatus, setSocketStatus] = useState<"offline" | "connecting" | "live" | "waiting">("offline");
   const reconnectTimerRef = useRef<number | null>(null);
@@ -10584,6 +10656,7 @@ function AgTestPage() {
   const allRows = useMemo(() => buildAgTestRows(fixtures, backendRows), [fixtures, backendRows]);
   const groupedRows = useMemo(() => allRows.filter((row) => agTestRowMatchesGroup(row, marketGroup)), [allRows, marketGroup]);
   const rows = useMemo(() => filterAgTestRows(groupedRows, searchQuery), [groupedRows, searchQuery]);
+  const secondaryFilters = AGTEST_FOOTBALL_SECONDARY_FILTERS[filterBucket] || [];
 
   useEffect(() => {
     let cancelled = false;
@@ -10755,21 +10828,40 @@ function AgTestPage() {
       />
       <main className="agtest-page">
         <section className="agtest-subbar" aria-label="AG test market context">
-          <nav aria-label="Football filters">
-            {AGTEST_FOOTBALL_FILTERS.map((filter) => (
-              <button
-                className={marketGroup === filter.value ? "active" : ""}
-                key={filter.value}
-                type="button"
-                onClick={() => setMarketGroup(filter.value)}
-              >
-                {filter.label}
-              </button>
-            ))}
-            <button type="button" onClick={() => { window.location.hash = "#matrix"; }}>Bias matrix</button>
-          </nav>
+          <div className="agtest-filter-stack">
+            <nav aria-label="Football region filters">
+              {AGTEST_FOOTBALL_PRIMARY_FILTERS.map((filter) => (
+                <button
+                  className={filterBucket === filter.value ? "active" : ""}
+                  key={filter.value}
+                  type="button"
+                  onClick={() => {
+                    setFilterBucket(filter.value);
+                    setMarketGroup(filter.value);
+                  }}
+                >
+                  {filter.label}
+                </button>
+              ))}
+              <button type="button" onClick={() => { window.location.hash = "#matrix"; }}>Bias Matrix</button>
+            </nav>
+            {secondaryFilters.length > 0 && (
+              <nav className="agtest-filter-secondary" aria-label="Football league filters">
+                {secondaryFilters.map((filter) => (
+                  <button
+                    className={marketGroup === filter.value ? "active" : ""}
+                    key={filter.value}
+                    type="button"
+                    onClick={() => setMarketGroup(filter.value)}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </nav>
+            )}
+          </div>
           <div>
-            <span>{AGTEST_FOOTBALL_FILTER_LABELS.get(marketGroup) || "Football"}</span>
+            <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
             <span>{rows.length}{searchQuery.trim() || marketGroup !== "all" ? ` / ${allRows.length}` : ""} markets</span>
             <span>BF / MB / SX</span>
             <span>{socketStatus === "live" ? "wss live" : loading ? "loading" : socketStatus}</span>

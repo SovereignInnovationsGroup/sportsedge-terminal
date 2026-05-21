@@ -5662,13 +5662,21 @@ button {
 
 .agtest-subbar {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
   gap: 12px;
   min-height: 30px;
   border-bottom: 1px solid rgba(36, 50, 65, 0.62);
   background: #03060a;
   padding: 0 14px;
+}
+
+.agtest-filter-stack {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
 }
 
 .agtest-subbar nav,
@@ -5680,17 +5688,21 @@ button {
 }
 
 .agtest-subbar nav {
-  flex: 1;
   overflow-x: auto;
   scrollbar-width: none;
   white-space: nowrap;
+}
+
+.agtest-filter-secondary {
+  border-top: 1px solid rgba(36, 50, 65, 0.42);
 }
 
 .agtest-subbar nav::-webkit-scrollbar {
   display: none;
 }
 
-.agtest-subbar div {
+.agtest-subbar > div:last-child {
+  align-self: center;
   flex: 0 0 auto;
 }
 
