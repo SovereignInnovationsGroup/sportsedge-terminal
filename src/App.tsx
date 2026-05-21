@@ -1707,6 +1707,17 @@ function SportsEdgeTopbar({
   const [commandOpen, setCommandOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [teamSearchResults, setTeamSearchResults] = useState<FootballTeamAsset[]>([]);
+  const [sessionUser] = useState(() => {
+    try {
+      return JSON.parse(window.localStorage.getItem("sportsedge.auth.user") || "null") as {
+        email?: string;
+        login_id?: string;
+        subscription?: { level?: string; status?: string; plan_name?: string };
+      } | null;
+    } catch {
+      return null;
+    }
+  });
   const inputRef = useRef<HTMLInputElement | null>(null);
   const options = useMemo(() => {
     const teamOptions = query.trim().replace(/^\//, "").length >= 2
@@ -1772,6 +1783,8 @@ function SportsEdgeTopbar({
   }
 
   const localClock = formatLocalTopbarClock(clockNow);
+  const loginId = sessionUser?.login_id || sessionUser?.email || "public";
+  const membershipLevel = sessionUser?.subscription?.plan_name || sessionUser?.subscription?.level || sessionUser?.subscription?.status || "guest";
 
   return (
     <header className="testboard-topbar global-terminal-topbar">
@@ -1829,6 +1842,10 @@ function SportsEdgeTopbar({
       <div className="testboard-local-clock" aria-label={`Local time ${localClock}`}>
         <span>Local</span>
         <strong>{localClock}</strong>
+      </div>
+      <div className="testboard-account-chip" aria-label={`Logged in as ${loginId}, ${membershipLevel}`}>
+        <span>{loginId}</span>
+        <strong>{membershipLevel}</strong>
       </div>
       <div className="testboard-settings">
         <button
@@ -3431,6 +3448,130 @@ function newsImpactLabel(assessment: ImpactAssessment | null) {
     score: Number(assessment.impact_score) || 0,
     direction: direction && direction !== "NONE" ? direction : ""
   };
+}
+
+function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup" | "blog" | "about" | "terms" | "privacy" }) {
+  const articles = [
+    ["Market structure", "Why exchange liquidity, bookmaker anchors and news timing need one screen."],
+    ["Football coverage", "How SportsEdge separates fixture truth from venue-specific market availability."],
+    ["Bias signals", "Turning fragmented prices into a readable institutional market picture."]
+  ];
+  const policyCopy = section === "terms"
+    ? "Terminal access is permissioned, data is source-attributed, and production trading features are subject to venue terms, account approval and risk controls."
+    : "SportsEdge collects only the account, session and operational data required to run the terminal, secure access, and improve market intelligence workflows.";
+
+  return (
+    <main className="landing-page">
+      <header className="landing-topbar">
+        <a className="landing-brand" href="/" aria-label="SportsEdge landing">
+          <img src={sportsEdgeMarketsLogo} alt="SportsEdge" />
+        </a>
+        <nav aria-label="SportsEdge site navigation">
+          <a className={section === "about" ? "active" : ""} href="#about">About</a>
+          <a className={section === "blog" ? "active" : ""} href="#blog">Blog</a>
+          <a href="#login">Login</a>
+          <a className="primary" href="#signup">Sign up</a>
+        </nav>
+      </header>
+
+      <section className="landing-hero" aria-label="SportsEdge terminal overview">
+        <img src={loginSportsImage} alt="" />
+        <div className="landing-hero-overlay" />
+        <div className="landing-hero-content">
+          <span>SportsEdge Terminal</span>
+          <h1>One market picture for sports trading intelligence.</h1>
+          <p>Exchange-backed fixtures, liquidity, news context and bias signals in a professional terminal built for fast scanning.</p>
+          <div className="landing-actions">
+            <a href="#login">Login</a>
+            <a href="#signup">Request access</a>
+          </div>
+        </div>
+      </section>
+
+      <section className="landing-band landing-metrics" aria-label="Platform highlights">
+        {[
+          ["Exchange feeds", "Betfair, Matchbook and extensible venue coverage"],
+          ["Market spine", "Football-first fixture identity and liquidity ranking"],
+          ["News rail", "Team, player and sport-aware intelligence stream"],
+          ["Bias matrix", "Consensus, freshness and routing context"]
+        ].map(([label, value]) => (
+          <article key={label}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <section className="landing-content" id="about">
+        <div>
+          <span>About</span>
+          <h2>Built for the moment before a price becomes obvious.</h2>
+        </div>
+        <p>SportsEdge combines fixture truth, venue coverage, live prices and news into a single operating surface. The goal is not another odds table; it is a clean read on where attention, liquidity and risk are moving.</p>
+      </section>
+
+      <section className="landing-content landing-signup" id="signup">
+        <div>
+          <span>Sign up</span>
+          <h2>Request terminal access.</h2>
+        </div>
+        <form>
+          <label>
+            <span>Email</span>
+            <input type="email" placeholder="you@example.com" />
+          </label>
+          <label>
+            <span>Use case</span>
+            <input type="text" placeholder="Trading, research, operations..." />
+          </label>
+          <button type="button">Request invite</button>
+        </form>
+      </section>
+
+      <section className="landing-content" id="blog">
+        <div>
+          <span>Blog</span>
+          <h2>Research notes and product thinking.</h2>
+        </div>
+        <div className="landing-articles">
+          {articles.map(([title, text]) => (
+            <article key={title}>
+              <strong>{title}</strong>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {(section === "terms" || section === "privacy") && (
+        <section className="landing-content landing-policy">
+          <div>
+            <span>{section === "terms" ? "Terms & Conditions" : "Privacy Policy"}</span>
+            <h2>{section === "terms" ? "Access and usage terms." : "Privacy and data handling."}</h2>
+          </div>
+          <p>{policyCopy}</p>
+        </section>
+      )}
+
+      <footer className="landing-footer">
+        <div>
+          <img src={sportsEdgeMark} alt="" />
+          <span>SportsEdge Markets</span>
+        </div>
+        <nav aria-label="Legal links">
+          <a href="#terms">T&C</a>
+          <a href="#privacy">Privacy Policy</a>
+          <a href="#about">About</a>
+          <a href="#blog">Blog</a>
+        </nav>
+        <div className="landing-socials" aria-label="Social channels inactive">
+          <span>X</span>
+          <span>LinkedIn</span>
+          <span>YouTube</span>
+        </div>
+      </footer>
+    </main>
+  );
 }
 
 function LoginScreen() {
@@ -10921,11 +11062,17 @@ export default function App() {
   }
 
   let screen;
-  if (hash.startsWith("#player/")) screen = <PlayerProfilePage id={hash.replace("#player/", "")} />;
+  if (!hash) screen = <MarketingLandingPage />;
+  else if (hash === "#signup") screen = <MarketingLandingPage section="signup" />;
+  else if (hash === "#about") screen = <MarketingLandingPage section="about" />;
+  else if (hash === "#blog") screen = <MarketingLandingPage section="blog" />;
+  else if (hash === "#terms") screen = <MarketingLandingPage section="terms" />;
+  else if (hash === "#privacy") screen = <MarketingLandingPage section="privacy" />;
+  else if (hash.startsWith("#player/")) screen = <PlayerProfilePage id={hash.replace("#player/", "")} />;
   else if (hash.startsWith("#team/")) screen = <TeamProfilePage slug={hash.replace("#team/", "") || "chelsea"} />;
   else if (hash === "#agtest-mockup" || hash === "#bloomberg-demo") screen = <AgtestBloombergMockupPage />;
   else if (hash === "#news" || hash === "#news-feed-mockup") screen = hasSession || previewDashboard ? <BloombergNewsFeedMockupPage /> : <LoginScreen />;
-  else if (hash === "#dashboard" || hash === "#today-dashboard-mockup" || !hash) screen = hasSession || previewDashboard ? <TodayDashboardMockupPage /> : <LoginScreen />;
+  else if (hash === "#dashboard" || hash === "#today-dashboard-mockup") screen = hasSession || previewDashboard ? <TodayDashboardMockupPage /> : <LoginScreen />;
   else if (hash === "#profile-mockup") screen = <BloombergProfileMockupPage />;
   else if (hash === "#product-map") screen = <SportsEdgeProductMockupPage />;
   else if (hash === "#football-demo") screen = <FootballIntelligenceDemoPage />;
