@@ -7201,6 +7201,22 @@ const NEWS_FEED_SPORT_FILTERS = [
   ["ice_hockey", "Hockey"]
 ] as const;
 
+const NEWS_DISPLAY_TIME_ZONE = "Europe/London";
+
+function parseSportsEdgeUtcTimestamp(value: string | null | undefined) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const hasExplicitZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw);
+  const normalized = hasExplicitZone ? raw.replace(" ", "T") : `${raw.replace(" ", "T")}Z`;
+  const date = new Date(normalized);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function newsTimestamp(item: Pick<NewsItem, "published_at" | "discovered_at"> | Pick<TwitterNewsRow, "published_at" | "discovered_at">) {
+  return parseSportsEdgeUtcTimestamp(item.published_at) || parseSportsEdgeUtcTimestamp(item.discovered_at);
+}
+
 function BloombergNewsFeedMockupPage() {
   const [selectedId, setSelectedId] = useState("");
   const [items, setItems] = useState<NewsItem[]>([]);
@@ -7221,31 +7237,36 @@ function BloombergNewsFeedMockupPage() {
   }, [sport]);
 
   function storyTime(item: NewsItem) {
-    const value = item.published_at || item.discovered_at;
-    return compactPublishedLabel(value);
+    return compactPublishedLabel(newsTimestamp(item), Boolean(item.published_at));
   }
 
-  function exactPublishedLabel(value: string | null | undefined) {
-    if (!value) return "Undated";
+  function exactPublishedLabel(date: Date | null, isPublishedTime: boolean) {
+    if (!date) return "Undated";
+    const timeZoneName = new Intl.DateTimeFormat("en-GB", {
+      timeZone: NEWS_DISPLAY_TIME_ZONE,
+      timeZoneName: "short"
+    }).formatToParts(date).find((part) => part.type === "timeZoneName")?.value || "UK";
     return new Intl.DateTimeFormat("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-      hour12: false
-    }).format(new Date(value));
+      hour12: false,
+      timeZone: NEWS_DISPLAY_TIME_ZONE
+    }).format(date) + ` ${timeZoneName}${isPublishedTime ? "" : " discovered"}`;
   }
 
-  function compactPublishedLabel(value: string | null | undefined) {
-    if (!value) return "--";
-    const date = new Date(value);
+  function compactPublishedLabel(date: Date | null, isPublishedTime: boolean) {
+    if (!date) return "--";
     const deltaSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
     const clock = new Intl.DateTimeFormat("en-GB", {
       hour: "2-digit",
       minute: "2-digit",
-      hour12: false
+      hour12: false,
+      timeZone: NEWS_DISPLAY_TIME_ZONE
     }).format(date);
+    if (!isPublishedTime) return `disc / ${clock}`;
     if (deltaSeconds < 60) return `${deltaSeconds}s / ${clock}`;
     const deltaMinutes = Math.floor(deltaSeconds / 60);
     if (deltaMinutes < 60) return `${deltaMinutes}m / ${clock}`;
@@ -7256,7 +7277,8 @@ function BloombergNewsFeedMockupPage() {
       month: "short",
       hour: "2-digit",
       minute: "2-digit",
-      hour12: false
+      hour12: false,
+      timeZone: NEWS_DISPLAY_TIME_ZONE
     }).format(date);
   }
 
@@ -7288,8 +7310,8 @@ function BloombergNewsFeedMockupPage() {
     return cleanText(item.impact_assessment?.trading_note || item.analysis_text || item.display_summary || item.summary || item.title);
   }
 
-  function rowTime(value: string | null | undefined) {
-    return compactPublishedLabel(value);
+  function rowTime(row: Pick<TwitterNewsRow, "published_at" | "discovered_at">) {
+    return compactPublishedLabel(newsTimestamp(row), Boolean(row.published_at));
   }
 
   function twitterUrgency(row: TwitterNewsRow) {
@@ -7468,9 +7490,9 @@ function BloombergNewsFeedMockupPage() {
           id: `twitter:${row.tweet_id}`,
           kind: "social",
           twitter: row,
-          time: rowTime(row.published_at || row.discovered_at),
-          exactTime: exactPublishedLabel(row.published_at || row.discovered_at),
-          sortTime: new Date(row.published_at || row.discovered_at).getTime() || 0,
+          time: rowTime(row),
+          exactTime: exactPublishedLabel(newsTimestamp(row), Boolean(row.published_at)),
+          sortTime: newsTimestamp(row)?.getTime() || 0,
           tag: (row.account_handle || row.sport || "X").replace(/^@/, "").slice(0, 8).toUpperCase(),
           urgency: twitterUrgency(row),
           source: "SOCIAL",
@@ -7488,8 +7510,8 @@ function BloombergNewsFeedMockupPage() {
           kind: "media",
           item,
           time: storyTime(item),
-          exactTime: exactPublishedLabel(item.published_at || item.discovered_at),
-          sortTime: new Date(item.published_at || item.discovered_at).getTime() || 0,
+          exactTime: exactPublishedLabel(newsTimestamp(item), Boolean(item.published_at)),
+          sortTime: newsTimestamp(item)?.getTime() || 0,
           tag: storyTag(item),
           urgency: storyUrgency(item),
           source: displayLabel(item.source_name || item.source_type, "SE NEWS").toUpperCase().slice(0, 18),
@@ -7570,7 +7592,7 @@ function BloombergNewsFeedMockupPage() {
 
           <section className="bb-news-tape" aria-label="Bloomberg style news headline tape">
             <div className="bb-news-tape-head">
-              <span>Age / Time</span>
+              <span>Age / UK Time</span>
               <span>Tag</span>
               <span>U</span>
               <span>Source</span>
