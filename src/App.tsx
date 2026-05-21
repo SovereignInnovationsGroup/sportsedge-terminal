@@ -7202,13 +7202,42 @@ function BloombergNewsFeedMockupPage() {
 
   function storyTime(item: NewsItem) {
     const value = item.published_at || item.discovered_at;
-    if (!value) return "--:--:--";
+    return compactPublishedLabel(value);
+  }
+
+  function exactPublishedLabel(value: string | null | undefined) {
+    if (!value) return "Undated";
     return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-      second: "2-digit",
       hour12: false
     }).format(new Date(value));
+  }
+
+  function compactPublishedLabel(value: string | null | undefined) {
+    if (!value) return "--";
+    const date = new Date(value);
+    const deltaSeconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+    const clock = new Intl.DateTimeFormat("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).format(date);
+    if (deltaSeconds < 60) return `${deltaSeconds}s / ${clock}`;
+    const deltaMinutes = Math.floor(deltaSeconds / 60);
+    if (deltaMinutes < 60) return `${deltaMinutes}m / ${clock}`;
+    const deltaHours = Math.floor(deltaMinutes / 60);
+    if (deltaHours < 24) return `${deltaHours}h / ${clock}`;
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).format(date);
   }
 
   function storyTag(item: NewsItem) {
@@ -7240,13 +7269,7 @@ function BloombergNewsFeedMockupPage() {
   }
 
   function rowTime(value: string | null | undefined) {
-    if (!value) return "--:--:--";
-    return new Intl.DateTimeFormat("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false
-    }).format(new Date(value));
+    return compactPublishedLabel(value);
   }
 
   function twitterUrgency(row: TwitterNewsRow) {
@@ -7426,6 +7449,7 @@ function BloombergNewsFeedMockupPage() {
           kind: "social",
           twitter: row,
           time: rowTime(row.published_at || row.discovered_at),
+          exactTime: exactPublishedLabel(row.published_at || row.discovered_at),
           sortTime: new Date(row.published_at || row.discovered_at).getTime() || 0,
           tag: (row.account_handle || row.sport || "X").replace(/^@/, "").slice(0, 8).toUpperCase(),
           urgency: twitterUrgency(row),
@@ -7443,6 +7467,7 @@ function BloombergNewsFeedMockupPage() {
           kind: "media",
           item,
           time: storyTime(item),
+          exactTime: exactPublishedLabel(item.published_at || item.discovered_at),
           sortTime: new Date(item.published_at || item.discovered_at).getTime() || 0,
           tag: storyTag(item),
           urgency: storyUrgency(item),
@@ -7524,7 +7549,7 @@ function BloombergNewsFeedMockupPage() {
 
           <section className="bb-news-tape" aria-label="Bloomberg style news headline tape">
             <div className="bb-news-tape-head">
-              <span>Time</span>
+              <span>Age / Time</span>
               <span>Tag</span>
               <span>U</span>
               <span>Source</span>
@@ -7535,7 +7560,7 @@ function BloombergNewsFeedMockupPage() {
             {error && stories.length === 0 && <div className="bb-news-state error">{error}</div>}
             {stories.map((story) => (
               <button className={story.id === selected.id ? "selected" : ""} type="button" key={story.id} onClick={() => setSelectedId(story.id)}>
-                <time>{story.time}</time>
+                <time title={story.exactTime}>{story.time}</time>
                 <b>{story.tag}</b>
                 <i className={`urgency u${story.urgency}`}>{story.urgency}</i>
                 <span>{story.source}</span>
@@ -7551,7 +7576,7 @@ function BloombergNewsFeedMockupPage() {
               <>
                 <div className="bb-news-detail-head">
                   <span>{selected.source}</span>
-                  <b>{selected.time}</b>
+                  <b>{selected.exactTime}</b>
                 </div>
                 <h1>{selected.headline}</h1>
                 <div className="bb-news-impact">
@@ -7573,6 +7598,7 @@ function BloombergNewsFeedMockupPage() {
                         )}
                       </td>
                     </tr>
+                    <tr><th>Published</th><td>{selected.exactTime}</td></tr>
                     <tr><th>Linked markets</th><td>{selected.item?.impact_assessment?.affected_markets?.join(", ") || selected.twitter?.affected_entity || displayLabel(selected.item?.competition, "Market watch")}</td></tr>
                     <tr><th>Entities</th><td>{selected.twitter ? [selected.twitter.account_handle, selected.twitter.sport, selected.twitter.news_type].filter(Boolean).join(", ") : [selected.item?.entity_name, selected.item?.competition, selected.item?.sport].filter(Boolean).join(", ") || selected.tag}</td></tr>
                     <tr><th>Action</th><td>{selected.item?.impact_assessment?.watch_items?.join(", ") || selected.twitter?.reason || "Keep headline visible in rail and update confidence, not raw venue columns."}</td></tr>

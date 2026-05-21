@@ -6019,9 +6019,9 @@ button {
 .bb-news-tape-head,
 .bb-news-tape button {
   display: grid;
-  grid-template-columns: 78px 58px 34px 136px minmax(380px, 1.5fr) minmax(190px, 0.7fr);
+  grid-template-columns: 98px 92px 34px 146px minmax(380px, 1.5fr) minmax(190px, 0.7fr);
   align-items: center;
-  min-width: 1160px;
+  min-width: 1230px;
 }
 
 .bb-news-tape-head {
