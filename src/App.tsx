@@ -10044,7 +10044,7 @@ function StandaloneLiveNewsPage() {
 }
 
 function AdminConsolePage() {
-  const [panel, setPanel] = useState<"overview" | "users" | "sessions" | "analytics" | "blog">("overview");
+  const [panel, setPanel] = useState<"overview" | "users" | "sessions" | "analytics" | "blog" | "newsSources">("overview");
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [sessions, setSessions] = useState<AdminSessionRow[]>([]);
   const [analytics, setAnalytics] = useState<AdminAnalyticsResponse | null>(null);
@@ -10169,7 +10169,7 @@ function AdminConsolePage() {
           <button className={panel === "sessions" ? "active" : ""} type="button" onClick={() => setPanel("sessions")}><Lock size={16} /> Sessions</button>
           <button className={panel === "analytics" ? "active" : ""} type="button" onClick={() => setPanel("analytics")}><Target size={16} /> Analytics</button>
           <button className={panel === "blog" ? "active" : ""} type="button" onClick={() => setPanel("blog")}><Newspaper size={16} /> Blog</button>
-          <a href="#admin-news-sources"><Database size={16} /> News Sources</a>
+          <button className={panel === "newsSources" ? "active" : ""} type="button" onClick={() => setPanel("newsSources")}><Database size={16} /> News Sources</button>
           <a href="#dashboard"><Activity size={16} /> Terminal</a>
         </nav>
         <div className="rail-card">
@@ -10353,12 +10353,14 @@ function AdminConsolePage() {
             </table>
           </section>
         )}
+
+        {panel === "newsSources" && <AdminNewsSourcesPanel />}
       </section>
     </main>
   );
 }
 
-function AdminNewsSourcesPage() {
+function AdminNewsSourcesPanel() {
   const [data, setData] = useState<AdminNewsSourcesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -10453,37 +10455,7 @@ function AdminNewsSourcesPage() {
   const feedTypes = [...new Set(sources.map((source) => source.feed_type).filter(Boolean))].sort();
 
   return (
-    <main className="admin-news-shell">
-      <aside className="news-rail">
-        <a href="https://sportsedge.markets/" aria-label="SportsEdge Markets home">
-          <img className="news-logo" src={sportsEdgeMarketsLogo} alt="SportsEdge Markets logo" />
-        </a>
-        <nav>
-          <a href="#admin">
-            <ShieldCheck size={16} />
-            Admin
-          </a>
-          <a className="active" href="#admin-news-sources">
-            <Database size={16} />
-            News Sources
-          </a>
-          <a href="#news-console">
-            <Newspaper size={16} />
-            Console
-          </a>
-          <a href="#dashboard">
-            <Activity size={16} />
-            Terminal
-          </a>
-        </nav>
-        <div className="rail-card">
-          <span>Control</span>
-          <strong>ClickHouse</strong>
-          <small>pause / delete endpoints</small>
-        </div>
-      </aside>
-
-      <section className="admin-news-main">
+    <>
         <header className="news-topbar">
           <div>
             <h1>News Endpoints</h1>
@@ -10608,6 +10580,34 @@ function AdminNewsSourcesPage() {
             </table>
           </section>
         )}
+    </>
+  );
+}
+
+function AdminNewsSourcesPage() {
+  return (
+    <main className="admin-news-shell admin-console-shell">
+      <aside className="news-rail admin-console-rail">
+        <a href="#dashboard" aria-label="SportsEdge dashboard">
+          <img className="news-logo mark-only" src={sportsEdgeMark} alt="SportsEdge Markets logo" />
+        </a>
+        <nav>
+          <a href="#admin"><ShieldCheck size={16} /> Admin</a>
+          <a className="active" href="#admin-news-sources"><Database size={16} /> News Sources</a>
+          <a href="#dashboard"><Activity size={16} /> Terminal</a>
+        </nav>
+        <div className="rail-card">
+          <span>Control</span>
+          <strong>News Sources</strong>
+          <small>pause / delete endpoints</small>
+          <button className="admin-rail-logout" type="button" onClick={logoutToLogin}>
+            <LogOut size={14} />
+            Logout
+          </button>
+        </div>
+      </aside>
+      <section className="admin-news-main admin-console-main">
+        <AdminNewsSourcesPanel />
       </section>
     </main>
   );
