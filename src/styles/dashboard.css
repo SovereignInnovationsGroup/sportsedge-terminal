@@ -5087,7 +5087,7 @@ button {
 
 .entry-sport-strip {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
   border-bottom: 1px solid var(--line);
   background: rgba(6, 10, 16, 0.72);
@@ -6757,6 +6757,98 @@ button {
 .bb-profile-news-rail .bb-news-state {
   border-bottom: 0;
 }
+
+.bb-today-page {
+  overflow: hidden;
+}
+
+.bb-today-layout {
+  display: grid;
+  grid-template-columns: 178px minmax(0, 1fr) 330px;
+  height: calc(100vh - 82px);
+  min-height: 0;
+}
+
+.bb-today-main {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: #05080d;
+}
+
+.bb-today-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.72);
+  background: #071019;
+  padding: 14px;
+}
+
+.bb-today-hero span,
+.bb-today-clock span {
+  display: block;
+  color: var(--amber);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.bb-today-hero h1 {
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bb-today-clock {
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  background: rgba(96, 165, 250, 0.08);
+  padding: 10px;
+}
+
+.bb-today-clock strong,
+.bb-today-clock em {
+  display: block;
+  font-family: var(--mono);
+  font-style: normal;
+}
+
+.bb-today-clock strong {
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 20px;
+}
+
+.bb-today-clock em {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.bb-today-kpis {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.bb-today-sports-table th:nth-child(1),
+.bb-today-sports-table td:nth-child(1) { width: 120px; }
+.bb-today-sports-table th:nth-child(4),
+.bb-today-sports-table td:nth-child(4) { width: 120px; }
+.bb-today-sports-table th:nth-child(6),
+.bb-today-sports-table td:nth-child(6) { width: 210px; }
+
+.bb-today-events-table th:nth-child(1),
+.bb-today-events-table td:nth-child(1) { width: 86px; }
+.bb-today-events-table th:nth-child(2),
+.bb-today-events-table td:nth-child(2) { width: 150px; }
+.bb-today-events-table th:nth-child(5),
+.bb-today-events-table td:nth-child(5) { width: 120px; }
 
 .bb-profile-table-link {
   color: var(--blue);

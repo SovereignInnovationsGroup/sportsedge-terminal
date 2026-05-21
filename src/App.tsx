@@ -82,9 +82,12 @@ const TERMINAL_TOP_SPORTS = [
   { label: "Golf", value: "golf", route: "#golf" },
   { label: "News", value: "news", route: "#news" },
   { label: "Arbs", value: "arbs", route: "#arbs" },
+  { label: "Today", value: "dashboard", route: "#dashboard" },
   { label: "AGTEST", value: "agtest", route: "#agtest-mockup" },
   { label: "Profiles", value: "profile-mockup", route: "#profile-mockup" }
 ] as const;
+
+const TERMINAL_SPORT_VALUES = new Set(["football", "horseracing", "tennis", "golf"]);
 
 const SPORT_MARKET_GROUPS: Record<string, Array<{ label: string; value: string }>> = {
   football: [
@@ -234,6 +237,13 @@ const DIAGNOSTIC_EXCHANGES = [
   { key: "betfair", label: "Betfair" },
   { key: "matchbook", label: "Matchbook" }
 ] as const;
+
+const ENTRY_DASHBOARD_EXCHANGES = DIAGNOSTIC_EXCHANGES.filter((exchange) => exchange.key === "betfair" || exchange.key === "matchbook");
+const ENTRY_DASHBOARD_SPORTS = [
+  PRIORITY_SPORTS[0],
+  { label: "Horse Racing", value: "horseracing", detail: "Betfair and Matchbook racing liquidity", newsAliases: ["horse_racing", "horseracing", "racing"] },
+  ...PRIORITY_SPORTS.slice(1)
+];
 
 const SPORT_DASHBOARDS: Record<string, {
   headline: string;
@@ -410,12 +420,12 @@ function sportFromHash(hash = window.location.hash) {
 
 function terminalSportFromHash(hash = window.location.hash) {
   const normalized = hash.replace(/^#/, "");
-  return TERMINAL_TOP_SPORTS.some((sport) => sport.value === normalized) ? normalized : "football";
+  return TERMINAL_SPORT_VALUES.has(normalized) ? normalized : "football";
 }
 
 function isTerminalSportHash(hash = window.location.hash) {
   const normalized = hash.replace(/^#/, "");
-  return TERMINAL_TOP_SPORTS.some((sport) => sport.value === normalized);
+  return TERMINAL_SPORT_VALUES.has(normalized);
 }
 
 function apiSportValue(value: string) {
@@ -3561,8 +3571,8 @@ function DashboardPage({ onLogout }: { onLogout?: () => void }) {
     async function loadEntryEvents() {
       setEntryEventsLoading(true);
       try {
-        const requests = PRIORITY_SPORTS.flatMap((sport) => (
-          DIAGNOSTIC_EXCHANGES.map((exchange) => {
+        const requests = ENTRY_DASHBOARD_SPORTS.flatMap((sport) => (
+          ENTRY_DASHBOARD_EXCHANGES.map((exchange) => {
             const params = new URLSearchParams({
               exchange: exchange.key,
               sport: apiSportValue(sport.value),
@@ -5600,7 +5610,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
     const liveCount = entryEvents.filter((event) => (
       event.latestSeenAt && Date.now() - new Date(event.latestSeenAt).getTime() < 60000
     )).length;
-    const sportCounts = PRIORITY_SPORTS.map((sport) => ({
+    const sportCounts = ENTRY_DASHBOARD_SPORTS.map((sport) => ({
       ...sport,
       count: entryEvents.filter((event) => normalizeSport(event.sport) === sport.value).length,
       liquidity: entryEvents
@@ -5629,7 +5639,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
           <div className="entry-head">
             <div>
               <h1>Today’s Market Dashboard</h1>
-              <p>All exchange-backed events happening today across SportsEdge priority sports.</p>
+              <p>Betfair and Matchbook events happening today, ranked by available liquidity and latest exchange state.</p>
             </div>
             <div className="entry-kpis">
               <div><span>Events</span><strong>{entryEvents.length}</strong></div>
@@ -5655,7 +5665,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
                 <span>{sport.label}</span>
                 <strong>{sport.count}</strong>
                 <em>{sport.liquidity ? formatExchangeMoney(sport.liquidity, "GBP") : "-"}</em>
-                <small>{sport.venues}/{EXCHANGE_COLUMNS.length} venues</small>
+                <small>{sport.venues}/{ENTRY_DASHBOARD_EXCHANGES.length} venues</small>
               </button>
             ))}
           </div>
@@ -5668,8 +5678,8 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
             </article>
             <article>
               <span>Venue health</span>
-              <strong>{venueCount}/{EXCHANGE_COLUMNS.length}</strong>
-              <p>{venueCount ? "Exchange-backed routes available." : "Waiting for exchange state."}</p>
+              <strong>{venueCount}/{ENTRY_DASHBOARD_EXCHANGES.length}</strong>
+              <p>{venueCount ? "Betfair / Matchbook routes available." : "Waiting for BF/MB exchange state."}</p>
             </article>
             <article>
               <span>Top liquidity</span>
@@ -5702,7 +5712,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
                   <th>Sport</th>
                   <th>Competition</th>
                   <th>Liquidity</th>
-                  <th>Venues</th>
+                  <th>BF / MB</th>
                   <th>Latest</th>
                 </tr>
               </thead>
@@ -6022,10 +6032,23 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
         <nav className="testboard-nav" aria-label="Sports">
           {TERMINAL_TOP_SPORTS.map((sport) => (
             <button
-              className={!isEntryDashboard && !diagnosticExchange && !isMatrixPage && selectedSport === sport.value ? "active" : ""}
+              className={(isEntryDashboard && sport.route === "#dashboard") || (!isEntryDashboard && !diagnosticExchange && !isMatrixPage && selectedSport === sport.value) ? "active" : ""}
               type="button"
               key={sport.value}
               onClick={() => {
+                if (sport.route === "#dashboard") {
+                  setIsMatrixPage(false);
+                  setIsEntryDashboard(true);
+                  setDiagnosticExchange(null);
+                  setSelectedFixtureIndex(null);
+                  setMarketSearch("");
+                  window.location.hash = "#dashboard";
+                  return;
+                }
+                if (!TERMINAL_SPORT_VALUES.has(sport.value)) {
+                  window.location.hash = sport.route;
+                  return;
+                }
                 setIsMatrixPage(false);
                 setIsEntryDashboard(false);
                 setDiagnosticExchange(null);
@@ -6033,7 +6056,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
                 setMarketGroup("all");
                 setMarketSearch("");
                 setSelectedFixtureIndex(null);
-                window.location.hash = `#${sport.value}`;
+                window.location.hash = sport.route;
               }}
             >
               {sport.label}
@@ -7933,6 +7956,129 @@ function BloombergProfileMockupPage() {
           <aside className="bb-demo-news">
             <div className="bb-demo-news-head"><strong>Intelligence</strong><span>{profileMode === "team" ? "ARSENAL" : "SAKA"}</span></div>
             {news.map((item) => <article key={`${item[0]}-${item[1]}-${item[2]}`}><time>{item[0]}</time><b>{item[1]}</b><p>{item[2]}</p></article>)}
+          </aside>
+        </div>
+      </main>
+    </>
+  );
+}
+
+function TodayDashboardMockupPage() {
+  const sportRows = [
+    ["Football", "42", "18", "GBP 8.42m", "12s", "Lineups, injuries", "+3"],
+    ["Tennis", "31", "9", "GBP 2.18m", "18s", "Retirement watch", "+1"],
+    ["Basketball", "14", "6", "GBP 1.74m", "22s", "Team news", "0"],
+    ["Baseball", "16", "7", "GBP 1.29m", "31s", "Pitchers confirmed", "0"],
+    ["Golf", "8", "3", "GBP 840k", "44s", "Round markets", "+2"],
+    ["Racing", "56", "24", "GBP 3.66m", "9s", "Going changes", "+4"]
+  ];
+  const eventRows = [
+    ["19:45", "ARS-TOT", "Football", "Match Odds", "GBP 1.42m", "84", "LINEUP"],
+    ["20:00", "CHE-MCI", "Football", "Match Odds", "GBP 2.31m", "91", "SHARP"],
+    ["18:30", "Sinner v Alcaraz", "Tennis", "Moneyline", "GBP 620k", "78", "LIVE"],
+    ["21:05", "Lakers v Knicks", "Basketball", "Spread", "GBP 510k", "73", "TEAM NEWS"],
+    ["22:10", "Yankees v Red Sox", "Baseball", "Moneyline", "GBP 430k", "69", "PITCHERS"],
+    ["Today", "Ascot R4", "Racing", "Win", "GBP 290k", "64", "GOING"]
+  ];
+  const alerts = [
+    ["10:42", "FOOTBALL", "Arsenal lineup sensitivity elevated before London derby"],
+    ["10:38", "TENNIS", "Liquidity building on Sinner-Alcaraz moneyline"],
+    ["10:31", "RACING", "Going update pushed two Ascot markets into watch"],
+    ["10:26", "MEDIA", "Official team-news windows opening for evening fixtures"],
+    ["10:19", "SOCIAL", "Basketball beat reporters flag questionable starters"]
+  ];
+
+  return (
+    <>
+      <SportsEdgeTopbar active="today-demo" searchPlaceholder="TODAY, FOOTBALL, TENNIS, LIQUIDITY, NEWS, ALERTS..." />
+      <main className="agtest-page bb-today-page">
+        <section className="agtest-subbar bb-demo-subbar" aria-label="Today dashboard controls">
+          <nav aria-label="Today views">
+            {["Today", "Live", "Upcoming", "Liquidity", "Alerts", "Diagnostics"].map((item, index) => (
+              <button className={index === 0 ? "active" : ""} type="button" key={item}>{item}</button>
+            ))}
+          </nav>
+          <div>
+            <span>Client login view</span>
+            <span>Demo data</span>
+            <span>SportsEdge today</span>
+          </div>
+        </section>
+
+        <div className="bb-today-layout">
+          <aside className="bb-news-filters">
+            <strong>Market Menu</strong>
+            {["All Sports", "High Liquidity", "Starting Soon", "Live Now", "My Watchlist", "Sharp Moves", "News Alerts", "Saved Screens"].map((item, index) => (
+              <button className={index === 0 ? "active" : ""} type="button" key={item}>{item}</button>
+            ))}
+            <div className="bb-news-filter-card">
+              <span>Session</span>
+              <b>Today Overview</b>
+              <em>First screen after login: where money and attention are concentrated now.</em>
+            </div>
+          </aside>
+
+          <section className="bb-today-main">
+            <div className="bb-today-hero">
+              <div>
+                <span>SportsEdge Today</span>
+                <h1>What is on, what is liquid, what needs attention</h1>
+              </div>
+              <div className="bb-today-clock">
+                <span>As of</span>
+                <strong>10:45</strong>
+                <em>prices 9-44s fresh</em>
+              </div>
+            </div>
+
+            <div className="bb-profile-kpis bb-today-kpis">
+              {[
+                ["Sports Active", "6", "today"],
+                ["Events Tracked", "167", "live + upcoming"],
+                ["Linked Liquidity", "GBP 18.1m", "demo"],
+                ["High Impact Alerts", "10", "+4 last hour"],
+                ["Feed Health", "Live", "WSS + API"]
+              ].map(([label, value, delta]) => (
+                <div key={label}>
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                  <em>{delta}</em>
+                </div>
+              ))}
+            </div>
+
+            <div className="bb-demo-strip"><span>Sports On Today</span><strong>Liquidity and attention by sport</strong><em>Rows open sport dashboards.</em></div>
+            <table className="bb-demo-table bb-today-sports-table">
+              <thead><tr>{["Sport", "Events", "Liquid", "Liquidity", "Fresh", "Market Focus", "Alerts"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+              <tbody>
+                {sportRows.map((row) => (
+                  <tr key={row[0]}>
+                    {row.map((cell, index) => (
+                      <td className={index === 3 || index === 4 ? "bb-mono" : index === 6 && cell !== "0" ? "bb-flag" : ""} key={`${cell}-${index}`}>{cell}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="bb-demo-strip"><span>Top Markets</span><strong>Largest available liquidity now and next</strong><em>SportsEdge fair fields appear when linked.</em></div>
+            <table className="bb-demo-table bb-today-events-table">
+              <thead><tr>{["Time", "Code", "Sport", "Market", "Liquidity", "Conf", "Flag"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+              <tbody>
+                {eventRows.map((row) => (
+                  <tr key={`${row[1]}-${row[3]}`}>
+                    {row.map((cell, index) => (
+                      <td className={index >= 4 ? "bb-mono" : index === 6 ? "bb-flag" : ""} key={`${cell}-${index}`}>{cell}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+
+          <aside className="bb-demo-news bb-profile-news-rail">
+            <div className="bb-demo-news-head"><strong>Intelligence</strong><span>TODAY</span></div>
+            {alerts.map((item) => <article key={`${item[0]}-${item[1]}`}><time>{item[0]}</time><b>{item[1]}</b><p>{item[2]}</p></article>)}
           </aside>
         </div>
       </main>
@@ -10538,6 +10684,7 @@ export default function App() {
   else if (hash.startsWith("#team/")) screen = <TeamProfilePage slug={hash.replace("#team/", "") || "chelsea"} />;
   else if (hash === "#agtest-mockup" || hash === "#bloomberg-demo") screen = <AgtestBloombergMockupPage />;
   else if (hash === "#news" || hash === "#news-feed-mockup") screen = hasSession || previewDashboard ? <BloombergNewsFeedMockupPage /> : <LoginScreen />;
+  else if (hash === "#today-dashboard-mockup") screen = <TodayDashboardMockupPage />;
   else if (hash === "#profile-mockup") screen = <BloombergProfileMockupPage />;
   else if (hash === "#product-map") screen = <SportsEdgeProductMockupPage />;
   else if (hash === "#football-demo") screen = <FootballIntelligenceDemoPage />;
