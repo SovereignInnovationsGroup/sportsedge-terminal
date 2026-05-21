@@ -1,4 +1,4 @@
-import { Component, Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Component, Fragment, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, type ColDef } from "ag-grid-community";
 import "ag-grid-community/styles/ag-grid.css";
@@ -1692,6 +1692,25 @@ function logoutToLogin() {
   window.location.hash = "#login";
 }
 
+type StoredAuthUser = {
+  email?: string;
+  login_id?: string;
+  roles?: string[];
+  subscription?: { level?: string; status?: string; plan_name?: string };
+};
+
+function readStoredAuthUser(): StoredAuthUser | null {
+  try {
+    return JSON.parse(window.localStorage.getItem("sportsedge.auth.user") || "null") as StoredAuthUser | null;
+  } catch {
+    return null;
+  }
+}
+
+function storedUserIsAdmin(user: StoredAuthUser | null) {
+  return (user?.roles || []).some((role) => ["admin", "superadmin", "owner"].includes(String(role).toLowerCase()));
+}
+
 function SportsEdgeTopbar({
   active,
   onLogout = logoutToLogin,
@@ -1708,17 +1727,7 @@ function SportsEdgeTopbar({
   const [commandOpen, setCommandOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [teamSearchResults, setTeamSearchResults] = useState<FootballTeamAsset[]>([]);
-  const [sessionUser] = useState(() => {
-    try {
-      return JSON.parse(window.localStorage.getItem("sportsedge.auth.user") || "null") as {
-        email?: string;
-        login_id?: string;
-        subscription?: { level?: string; status?: string; plan_name?: string };
-      } | null;
-    } catch {
-      return null;
-    }
-  });
+  const [sessionUser] = useState(readStoredAuthUser);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const options = useMemo(() => {
     const teamOptions = query.trim().replace(/^\//, "").length >= 2
@@ -1786,6 +1795,7 @@ function SportsEdgeTopbar({
   const localClock = formatLocalTopbarClock(clockNow);
   const loginId = sessionUser?.login_id || sessionUser?.email || "public";
   const membershipLevel = sessionUser?.subscription?.plan_name || sessionUser?.subscription?.level || sessionUser?.subscription?.status || "guest";
+  const isAdmin = storedUserIsAdmin(sessionUser);
 
   return (
     <header className="testboard-topbar global-terminal-topbar">
@@ -1861,6 +1871,7 @@ function SportsEdgeTopbar({
         {settingsOpen && (
           <div className="testboard-settings-menu" role="menu">
             <button type="button" role="menuitem" onClick={() => { window.location.hash = "#actual"; setSettingsOpen(false); }}>Actual feeds</button>
+            {isAdmin && <button type="button" role="menuitem" onClick={() => { window.location.hash = "#admin"; setSettingsOpen(false); }}>Admin</button>}
             <button type="button" role="menuitem">Routing Rules</button>
             <button type="button" role="menuitem">Display Density</button>
             <div className="testboard-settings-version" role="presentation">
@@ -3085,6 +3096,63 @@ type AdminNewsSourcesResponse = {
   };
 };
 
+type AdminUserRow = {
+  id: string;
+  email: string;
+  full_name?: string | null;
+  status?: string;
+  account_type?: string;
+  roles?: string[];
+  subscription?: { level?: string; plan_name?: string; status?: string };
+  created_at?: string | null;
+  last_login_at?: string | null;
+};
+
+type AdminSessionRow = {
+  id: string;
+  user_id: string;
+  email: string;
+  full_name?: string | null;
+  account_type?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  created_at?: string | null;
+  last_seen_at?: string | null;
+  expires_at?: string | null;
+  revoked_at?: string | null;
+  active?: boolean;
+};
+
+type AdminAnalyticsResponse = {
+  summary?: {
+    pageviews?: number;
+    unique_visitors?: number;
+    sessions?: number;
+    countries?: number;
+    events?: number;
+    avg_page_load_ms?: number;
+  };
+  daily?: Array<{ day: string; pageviews: number; visitors: number; sessions: number }>;
+  topPages?: Array<{ path: string; pageviews: number; visitors: number }>;
+  referrers?: Array<{ referrer: string; pageviews: number }>;
+  countries?: Array<{ country: string; pageviews: number; visitors: number }>;
+  latestVisitors?: Array<{ visitor_uid: string; last_seen_at: string; last_country_code?: string; browser_name?: string; os_name?: string; pageviews: number; sessions: number }>;
+};
+
+type AdminBlogPost = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  body: string;
+  status: "draft" | "published" | "archived";
+  tags: string[];
+  author_email?: string | null;
+  published_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
 type Filters = {
   q: string;
   sport: string;
@@ -3125,6 +3193,20 @@ function asNumber(value: string | number | null | undefined) {
 function authHeaders(): Record<string, string> {
   const token = window.localStorage.getItem("sportsedge.auth.token");
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function fetchAdminJson<T>(path: string, init: RequestInit = {}) {
+  const response = await fetch(path, {
+    ...init,
+    headers: {
+      ...authHeaders(),
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(init.headers || {})
+    }
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.detail || `Admin request failed: ${path}`);
+  return payload as T;
 }
 
 function objectEntries(value: Record<string, unknown> | null | undefined) {
@@ -3453,14 +3535,34 @@ function newsImpactLabel(assessment: ImpactAssessment | null) {
 
 function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup" | "blog" | "about" | "terms" | "privacy" }) {
   const [accessOpen, setAccessOpen] = useState(section === "signup");
-  const articles = [
-    ["Market structure", "Why exchange liquidity, bookmaker anchors and news timing need one screen."],
-    ["Football coverage", "How SportsEdge separates fixture truth from venue-specific market availability."],
-    ["Bias signals", "Turning fragmented prices into a readable institutional market picture."]
+  const [blogPosts, setBlogPosts] = useState<AdminBlogPost[]>([]);
+  const fallbackArticles = [
+    { title: "Market structure", excerpt: "Why exchange liquidity, bookmaker anchors and news timing need one screen." },
+    { title: "Football coverage", excerpt: "How SportsEdge separates fixture truth from venue-specific market availability." },
+    { title: "Bias signals", excerpt: "Turning fragmented prices into a readable institutional market picture." }
   ];
   const policyCopy = section === "terms"
     ? "Terminal access is permissioned, data is source-attributed, and production trading features are subject to venue terms, account approval and risk controls."
     : "SportsEdge collects only the account, session and operational data required to run the terminal, secure access, and improve market intelligence workflows.";
+  const articles = blogPosts.length ? blogPosts : fallbackArticles;
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadBlogPosts() {
+      try {
+        const response = await fetch("/blog-posts", { cache: "no-store" });
+        const payload = await response.json();
+        if (!response.ok || !Array.isArray(payload.posts)) return;
+        if (!cancelled) setBlogPosts(payload.posts);
+      } catch {
+        // Static landing notes remain available if the CMS endpoint is not live.
+      }
+    }
+    loadBlogPosts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <main className="landing-page">
@@ -3518,10 +3620,10 @@ function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup
           <h2>Research notes and product thinking.</h2>
         </div>
         <div className="landing-articles">
-          {articles.map(([title, text]) => (
-            <article key={title}>
-              <strong>{title}</strong>
-              <p>{text}</p>
+          {articles.map((article) => (
+            <article key={article.title}>
+              <strong>{article.title}</strong>
+              <p>{article.excerpt}</p>
             </article>
           ))}
         </div>
@@ -4890,6 +4992,8 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
   const rowOrderRef = useRef<Record<string, number>>({});
   const nextRowOrderRef = useRef(0);
   const sportDashboard = SPORT_DASHBOARDS[selectedSport] || SPORT_DASHBOARDS.football;
+  const sessionUser = useMemo(readStoredAuthUser, []);
+  const isAdmin = storedUserIsAdmin(sessionUser);
   const commandOptions = useMemo(() => {
     const teamOptions = marketSearch.trim().replace(/^\//, "").length >= 2
       ? teamSearchResults.map(footballTeamCommand)
@@ -6462,6 +6566,18 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
               >
                 Actual feeds
               </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setSettingsOpen(false);
+                    window.location.hash = "#admin";
+                  }}
+                >
+                  Admin
+                </button>
+              )}
               <button type="button" role="menuitem">Routing Rules</button>
               <button type="button" role="menuitem">Display Density</button>
               <div className="testboard-settings-version" role="presentation">
@@ -9731,6 +9847,288 @@ function StandaloneLiveNewsPage() {
   );
 }
 
+function AdminConsolePage() {
+  const [panel, setPanel] = useState<"overview" | "users" | "sessions" | "analytics" | "blog">("overview");
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [sessions, setSessions] = useState<AdminSessionRow[]>([]);
+  const [analytics, setAnalytics] = useState<AdminAnalyticsResponse | null>(null);
+  const [posts, setPosts] = useState<AdminBlogPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [blogDraft, setBlogDraft] = useState({
+    id: "",
+    title: "",
+    slug: "",
+    excerpt: "",
+    body: "",
+    status: "draft" as AdminBlogPost["status"],
+    tags: ""
+  });
+
+  async function loadAdmin() {
+    setLoading(true);
+    const nextErrors: Record<string, string> = {};
+    const [userResult, sessionResult, analyticsResult, blogResult] = await Promise.allSettled([
+      fetchAdminJson<{ users: AdminUserRow[] }>("/auth/admin/users"),
+      fetchAdminJson<{ sessions: AdminSessionRow[] }>("/auth/admin/sessions"),
+      fetchAdminJson<AdminAnalyticsResponse>("/auth/admin/analytics?days=30"),
+      fetchAdminJson<{ posts: AdminBlogPost[] }>("/auth/admin/blog-posts")
+    ]);
+
+    if (userResult.status === "fulfilled") setUsers(userResult.value.users || []);
+    else nextErrors.users = userResult.reason instanceof Error ? userResult.reason.message : "Users endpoint failed";
+    if (sessionResult.status === "fulfilled") setSessions(sessionResult.value.sessions || []);
+    else nextErrors.sessions = sessionResult.reason instanceof Error ? sessionResult.reason.message : "Sessions endpoint failed";
+    if (analyticsResult.status === "fulfilled") setAnalytics(analyticsResult.value);
+    else nextErrors.analytics = analyticsResult.reason instanceof Error ? analyticsResult.reason.message : "Analytics endpoint failed";
+    if (blogResult.status === "fulfilled") setPosts(blogResult.value.posts || []);
+    else nextErrors.blog = blogResult.reason instanceof Error ? blogResult.reason.message : "Blog endpoint failed";
+
+    setErrors(nextErrors);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadAdmin();
+  }, []);
+
+  async function revokeSession(session: AdminSessionRow) {
+    setBusy(session.id);
+    try {
+      await fetchAdminJson(`/auth/admin/sessions/${encodeURIComponent(session.id)}/revoke`, { method: "POST" });
+      await loadAdmin();
+    } catch (error) {
+      setErrors((current) => ({ ...current, sessions: error instanceof Error ? error.message : "Session revoke failed" }));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function revokeAllSessions() {
+    if (!window.confirm("Force out every active session except this admin session?")) return;
+    setBusy("all-sessions");
+    try {
+      await fetchAdminJson("/auth/admin/sessions/revoke-all", { method: "POST" });
+      await loadAdmin();
+    } catch (error) {
+      setErrors((current) => ({ ...current, sessions: error instanceof Error ? error.message : "Session revoke failed" }));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function saveBlogPost(event: FormEvent) {
+    event.preventDefault();
+    setBusy("blog");
+    try {
+      const body = JSON.stringify({
+        title: blogDraft.title,
+        slug: blogDraft.slug,
+        excerpt: blogDraft.excerpt,
+        body: blogDraft.body,
+        status: blogDraft.status,
+        tags: blogDraft.tags.split(",").map((tag) => tag.trim()).filter(Boolean)
+      });
+      if (blogDraft.id) {
+        await fetchAdminJson(`/auth/admin/blog-posts/${encodeURIComponent(blogDraft.id)}`, { method: "PATCH", body });
+      } else {
+        await fetchAdminJson("/auth/admin/blog-posts", { method: "POST", body });
+      }
+      setBlogDraft({ id: "", title: "", slug: "", excerpt: "", body: "", status: "draft", tags: "" });
+      await loadAdmin();
+    } catch (error) {
+      setErrors((current) => ({ ...current, blog: error instanceof Error ? error.message : "Blog save failed" }));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  function editPost(post: AdminBlogPost) {
+    setPanel("blog");
+    setBlogDraft({
+      id: post.id,
+      title: post.title,
+      slug: post.slug,
+      excerpt: post.excerpt || "",
+      body: post.body || "",
+      status: post.status,
+      tags: (post.tags || []).join(", ")
+    });
+  }
+
+  const activeSessions = sessions.filter((session) => session.active);
+  const publishedPosts = posts.filter((post) => post.status === "published");
+  const summary = analytics?.summary || {};
+
+  return (
+    <main className="admin-news-shell admin-console-shell">
+      <aside className="news-rail">
+        <a href="#dashboard" aria-label="SportsEdge dashboard">
+          <img className="news-logo" src={sportsEdgeMarketsLogo} alt="SportsEdge Markets logo" />
+        </a>
+        <nav>
+          <button className={panel === "overview" ? "active" : ""} type="button" onClick={() => setPanel("overview")}><Activity size={16} /> Overview</button>
+          <button className={panel === "users" ? "active" : ""} type="button" onClick={() => setPanel("users")}><ShieldCheck size={16} /> Users</button>
+          <button className={panel === "sessions" ? "active" : ""} type="button" onClick={() => setPanel("sessions")}><Lock size={16} /> Sessions</button>
+          <button className={panel === "analytics" ? "active" : ""} type="button" onClick={() => setPanel("analytics")}><Target size={16} /> Analytics</button>
+          <button className={panel === "blog" ? "active" : ""} type="button" onClick={() => setPanel("blog")}><Newspaper size={16} /> Blog</button>
+          <a href="#admin-news-sources"><Database size={16} /> News Sources</a>
+          <a href="#dashboard"><Activity size={16} /> Terminal</a>
+        </nav>
+        <div className="rail-card">
+          <span>Admin</span>
+          <strong>Control</strong>
+          <small>users / sessions / analytics / blog</small>
+        </div>
+      </aside>
+
+      <section className="admin-news-main admin-console-main">
+        <header className="news-topbar">
+          <div>
+            <h1>Admin Console</h1>
+            <p>User control, live sessions, SportsEdge site analytics, and public blog publishing.</p>
+          </div>
+          <div className="news-kpis">
+            <span><strong>{users.length}</strong> users</span>
+            <span><strong>{activeSessions.length}</strong> active sessions</span>
+            <span><strong>{Number(summary.pageviews || 0).toLocaleString("en-GB")}</strong> visits</span>
+            <span><strong>{publishedPosts.length}</strong> published</span>
+          </div>
+          <button className="refresh-button" onClick={loadAdmin} type="button" disabled={loading}>
+            <RefreshCw size={16} />
+            {loading ? "Loading" : "Refresh"}
+          </button>
+        </header>
+
+        <section className="admin-console-grid" aria-label="Admin summary">
+          <article><span>Users</span><strong>{users.length}</strong><p>{errors.users || "Registered terminal accounts."}</p></article>
+          <article><span>Active Sessions</span><strong>{activeSessions.length}</strong><p>{errors.sessions || "Currently valid access sessions."}</p></article>
+          <article><span>Pageviews</span><strong>{Number(summary.pageviews || 0).toLocaleString("en-GB")}</strong><p>{errors.analytics || "Last 30 days SportsEdge traffic."}</p></article>
+          <article><span>Blog Posts</span><strong>{posts.length}</strong><p>{errors.blog || "Draft, publish, and edit public posts."}</p></article>
+        </section>
+
+        {(panel === "overview" || panel === "users") && (
+          <section className="news-panel admin-console-panel">
+            <div className="news-panel-head"><span><ShieldCheck size={15} /> Users</span><strong>{users.length} accounts</strong></div>
+            {errors.users && <div className="news-state error">{errors.users}</div>}
+            <table className="admin-source-table admin-console-table">
+              <thead><tr><th>User</th><th>Status</th><th>Membership</th><th>Roles</th><th>Last login</th><th>Created</th></tr></thead>
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user.id}>
+                    <td><strong>{user.email}</strong><span>{user.full_name || user.id}</span></td>
+                    <td><span className={user.status === "active" ? "source-pill ok" : "source-pill danger"}>{user.status || "-"}</span></td>
+                    <td><strong>{user.subscription?.plan_name || user.account_type || "-"}</strong><span>{user.subscription?.status || "-"}</span></td>
+                    <td>{(user.roles || []).join(", ") || "-"}</td>
+                    <td>{formatDate(user.last_login_at || null)}</td>
+                    <td>{formatDate(user.created_at || null)}</td>
+                  </tr>
+                ))}
+                {!users.length && !errors.users && <tr><td colSpan={6}>No users returned.</td></tr>}
+              </tbody>
+            </table>
+          </section>
+        )}
+
+        {(panel === "overview" || panel === "sessions") && (
+          <section className="news-panel admin-console-panel">
+            <div className="news-panel-head">
+              <span><Lock size={15} /> Active Sessions</span>
+              <button className="refresh-button danger" type="button" onClick={revokeAllSessions} disabled={busy === "all-sessions" || activeSessions.length === 0}>Force out all</button>
+            </div>
+            {errors.sessions && <div className="news-state error">{errors.sessions}</div>}
+            <table className="admin-source-table admin-console-table">
+              <thead><tr><th>User</th><th>IP</th><th>Agent</th><th>Last seen</th><th>Expires</th><th>Action</th></tr></thead>
+              <tbody>
+                {sessions.slice(0, panel === "overview" ? 12 : 500).map((session) => (
+                  <tr key={session.id}>
+                    <td><strong>{session.email}</strong><span>{session.active ? "active" : session.revoked_at ? "revoked" : "expired"}</span></td>
+                    <td>{session.ip_address || "-"}</td>
+                    <td><span>{session.user_agent || "-"}</span></td>
+                    <td>{formatDate(session.last_seen_at || session.created_at || null)}</td>
+                    <td>{formatDate(session.expires_at || null)}</td>
+                    <td><button className="admin-action-button danger" type="button" disabled={!session.active || busy === session.id} onClick={() => revokeSession(session)}>Force out</button></td>
+                  </tr>
+                ))}
+                {!sessions.length && !errors.sessions && <tr><td colSpan={6}>No sessions returned.</td></tr>}
+              </tbody>
+            </table>
+          </section>
+        )}
+
+        {(panel === "overview" || panel === "analytics") && (
+          <section className="news-panel admin-console-panel">
+            <div className="news-panel-head"><span><Target size={15} /> Site Analytics</span><strong>30 days</strong></div>
+            {errors.analytics && <div className="news-state error">{errors.analytics}</div>}
+            <div className="admin-console-grid compact">
+              <article><span>Visitors</span><strong>{Number(summary.unique_visitors || 0).toLocaleString("en-GB")}</strong></article>
+              <article><span>Sessions</span><strong>{Number(summary.sessions || 0).toLocaleString("en-GB")}</strong></article>
+              <article><span>Events</span><strong>{Number(summary.events || 0).toLocaleString("en-GB")}</strong></article>
+              <article><span>Load</span><strong>{summary.avg_page_load_ms ? `${summary.avg_page_load_ms}ms` : "-"}</strong></article>
+            </div>
+            <table className="admin-source-table admin-console-table">
+              <thead><tr><th>Top page</th><th>Pageviews</th><th>Visitors</th><th>Referrer</th><th>Country</th><th>Latest visitor</th></tr></thead>
+              <tbody>
+                {(analytics?.topPages || []).slice(0, 10).map((page, index) => (
+                  <tr key={`${page.path}-${index}`}>
+                    <td><strong>{page.path}</strong></td>
+                    <td>{page.pageviews}</td>
+                    <td>{page.visitors}</td>
+                    <td>{analytics?.referrers?.[index]?.referrer || "-"}</td>
+                    <td>{analytics?.countries?.[index]?.country || "-"}</td>
+                    <td>{analytics?.latestVisitors?.[index] ? formatDate(analytics.latestVisitors[index].last_seen_at) : "-"}</td>
+                  </tr>
+                ))}
+                {!(analytics?.topPages || []).length && !errors.analytics && <tr><td colSpan={6}>No analytics rows returned.</td></tr>}
+              </tbody>
+            </table>
+          </section>
+        )}
+
+        {(panel === "overview" || panel === "blog") && (
+          <section className="news-panel admin-console-panel">
+            <div className="news-panel-head"><span><Newspaper size={15} /> Blog</span><strong>{posts.length} posts</strong></div>
+            {errors.blog && <div className="news-state error">{errors.blog}</div>}
+            <form className="admin-blog-form" onSubmit={saveBlogPost}>
+              <input value={blogDraft.title} onChange={(event) => setBlogDraft((draft) => ({ ...draft, title: event.target.value }))} placeholder="Title" />
+              <input value={blogDraft.slug} onChange={(event) => setBlogDraft((draft) => ({ ...draft, slug: event.target.value }))} placeholder="slug" />
+              <select value={blogDraft.status} onChange={(event) => setBlogDraft((draft) => ({ ...draft, status: event.target.value as AdminBlogPost["status"] }))}>
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+                <option value="archived">Archived</option>
+              </select>
+              <input value={blogDraft.tags} onChange={(event) => setBlogDraft((draft) => ({ ...draft, tags: event.target.value }))} placeholder="tags, comma separated" />
+              <textarea value={blogDraft.excerpt} onChange={(event) => setBlogDraft((draft) => ({ ...draft, excerpt: event.target.value }))} placeholder="Excerpt" />
+              <textarea value={blogDraft.body} onChange={(event) => setBlogDraft((draft) => ({ ...draft, body: event.target.value }))} placeholder="Body" />
+              <div>
+                <button className="refresh-button" type="submit" disabled={busy === "blog"}>{blogDraft.id ? "Update post" : "Create post"}</button>
+                {blogDraft.id && <button className="admin-action-button" type="button" onClick={() => setBlogDraft({ id: "", title: "", slug: "", excerpt: "", body: "", status: "draft", tags: "" })}>New post</button>}
+              </div>
+            </form>
+            <table className="admin-source-table admin-console-table">
+              <thead><tr><th>Post</th><th>Status</th><th>Tags</th><th>Author</th><th>Updated</th><th>Action</th></tr></thead>
+              <tbody>
+                {posts.map((post) => (
+                  <tr key={post.id}>
+                    <td><strong>{post.title}</strong><span>/{post.slug}</span></td>
+                    <td><span className={post.status === "published" ? "source-pill ok" : "source-pill muted"}>{post.status}</span></td>
+                    <td>{(post.tags || []).join(", ") || "-"}</td>
+                    <td>{post.author_email || "-"}</td>
+                    <td>{formatDate(post.updated_at || null)}</td>
+                    <td><button className="admin-action-button" type="button" onClick={() => editPost(post)}>Edit</button></td>
+                  </tr>
+                ))}
+                {!posts.length && !errors.blog && <tr><td colSpan={6}>No blog posts yet.</td></tr>}
+              </tbody>
+            </table>
+          </section>
+        )}
+      </section>
+    </main>
+  );
+}
+
 function AdminNewsSourcesPage() {
   const [data, setData] = useState<AdminNewsSourcesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -9832,6 +10230,10 @@ function AdminNewsSourcesPage() {
           <img className="news-logo" src={sportsEdgeMarketsLogo} alt="SportsEdge Markets logo" />
         </a>
         <nav>
+          <a href="#admin">
+            <ShieldCheck size={16} />
+            Admin
+          </a>
           <a className="active" href="#admin-news-sources">
             <Database size={16} />
             News Sources
@@ -11104,6 +11506,7 @@ export default function App() {
   else if (hash === "#login") screen = <LoginScreen />;
   else if (hash === "#simple-news") screen = <SimpleNewsPage />;
   else if (hash === "#news-console") screen = <NewsPage />;
+  else if (hash === "#admin") screen = hasSession ? <AdminConsolePage /> : <LoginScreen />;
   else if (hash === "#admin-news-sources") screen = hasSession ? <AdminNewsSourcesPage /> : <LoginScreen />;
   else screen = previewDashboard || hasSession ? <TodayDashboardMockupPage /> : <LoginScreen />;
 
