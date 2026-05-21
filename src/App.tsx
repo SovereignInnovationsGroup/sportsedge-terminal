@@ -10159,7 +10159,7 @@ function AdminConsolePage() {
 
   return (
     <main className="admin-news-shell admin-console-shell">
-      <aside className="news-rail">
+      <aside className="news-rail admin-console-rail">
         <a href="#dashboard" aria-label="SportsEdge dashboard">
           <img className="news-logo mark-only" src={sportsEdgeMark} alt="SportsEdge Markets logo" />
         </a>
@@ -10266,7 +10266,7 @@ function AdminConsolePage() {
             <table className="admin-source-table admin-console-table">
               <thead><tr><th>User</th><th>IP</th><th>Agent</th><th>Last seen</th><th>Expires</th><th>Action</th></tr></thead>
               <tbody>
-                {sessions.slice(0, 500).map((session) => (
+                {activeSessions.slice(0, 500).map((session) => (
                   <tr key={session.id}>
                     <td><strong>{session.email}</strong><span>{session.active ? "active" : session.revoked_at ? "revoked" : "expired"}</span></td>
                     <td>{session.ip_address || "-"}</td>
@@ -10276,7 +10276,7 @@ function AdminConsolePage() {
                     <td><button className="admin-action-button danger" type="button" disabled={!session.active || busy === session.id} onClick={() => revokeSession(session)}>Force out</button></td>
                   </tr>
                 ))}
-                {!sessions.length && !errors.sessions && <tr><td colSpan={6}>No sessions returned.</td></tr>}
+                {!activeSessions.length && !errors.sessions && <tr><td colSpan={6}>No active sessions returned.</td></tr>}
               </tbody>
             </table>
           </section>
