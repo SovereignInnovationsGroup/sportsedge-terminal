@@ -6,7 +6,7 @@ const publicVersionPath = resolve(root, "public/version.json");
 const generatedVersionPath = resolve(root, "src/generated/version.ts");
 
 function parseVersion(value) {
-  const match = String(value || "").match(/^(\d{2})\.(\d{2})\.(\d{2})$/);
+  const match = String(value || "").match(/^(\d+)\.(\d+)\.(\d+)$/);
   if (!match) return [0, 0, 0];
   return match.slice(1).map((part) => Number(part));
 }
@@ -21,15 +21,15 @@ function nextVersion([major, minor, patch]) {
     minor = 0;
     major += 1;
   }
-  return [major, minor, patch].map((part) => String(part).padStart(2, "0")).join(".");
+  return [major, minor, patch].map((part) => String(part)).join(".");
 }
 
-let current = "00.00.00";
+let current = "0.0.0";
 try {
   const payload = JSON.parse(readFileSync(publicVersionPath, "utf8"));
   current = payload.version || current;
 } catch {
-  // Missing or malformed version files start from 00.00.00.
+  // Missing or malformed version files start from 0.0.0.
 }
 
 const version = nextVersion(parseVersion(current));

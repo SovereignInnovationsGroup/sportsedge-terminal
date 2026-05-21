@@ -10260,6 +10260,32 @@ button {
   margin-top: auto;
 }
 
+.admin-rail-logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 34px;
+  margin-top: 8px;
+  border: 1px solid rgba(248, 113, 113, 0.38);
+  border-radius: 7px;
+  background: rgba(127, 29, 29, 0.2);
+  color: #fecaca;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-rail-logout:hover,
+.admin-rail-logout:focus-visible {
+  border-color: rgba(248, 113, 113, 0.72);
+  background: rgba(127, 29, 29, 0.36);
+  color: var(--text);
+}
+
 .admin-news-main {
   min-width: 0;
   padding: 18px;

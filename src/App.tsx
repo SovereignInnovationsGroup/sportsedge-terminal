@@ -10176,6 +10176,10 @@ function AdminConsolePage() {
           <span>Admin</span>
           <strong>Control</strong>
           <small>users / sessions / analytics / blog</small>
+          <button className="admin-rail-logout" type="button" onClick={logoutToLogin}>
+            <LogOut size={14} />
+            Logout
+          </button>
         </div>
       </aside>
 
