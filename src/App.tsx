@@ -4520,7 +4520,6 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
   const [footballFixturesError, setFootballFixturesError] = useState("");
   const [entryNews, setEntryNews] = useState<NewsItem[]>([]);
   const [now, setNow] = useState(() => new Date());
-  const localClock = formatLocalTopbarClock(now);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
   const pendingPriceEventsRef = useRef<Array<{ channel: string; payload: unknown }>>([]);
@@ -6008,10 +6007,6 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
             </div>
           )}
         </label>
-        <div className="testboard-local-clock" aria-label={`Local time ${localClock}`}>
-          <span>Local</span>
-          <strong>{localClock}</strong>
-        </div>
         <div className="testboard-settings">
           <button
             className="testboard-icon-button"
