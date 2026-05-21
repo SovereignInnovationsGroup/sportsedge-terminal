@@ -6084,7 +6084,8 @@ button {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
+  align-items: flex-start;
   min-width: 0;
 }
 
@@ -6097,9 +6098,12 @@ button {
 }
 
 .agtest-subbar nav {
+  justify-content: flex-start;
+  max-width: 100%;
   overflow-x: auto;
   scrollbar-width: none;
   white-space: nowrap;
+  width: 100%;
 }
 
 .agtest-filter-secondary {

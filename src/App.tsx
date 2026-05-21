@@ -1541,6 +1541,7 @@ const COMMAND_OPTIONS: CommandOption[] = [
   { label: "Bias Matrix", detail: "Open the football consensus matrix", route: "#matrix", keywords: ["matrix", "bias", "consensus", "prices"] },
   { label: "Arbs", detail: "Monitor Betfair exchange back and lay books", route: "#arbs", keywords: ["arb", "arbs", "arbitrage", "betfair", "back", "lay"] },
   { label: "AG test", detail: "Open the AG Grid football test board", route: "#agtest", keywords: ["ag", "agtest", "grid", "test"] },
+  { label: "Bloomberg mockup", detail: "Open the dense SportsEdge terminal mockup", route: "#bloomberg", keywords: ["bloomberg", "mockup", "terminal", "bb", "demo"] },
   { label: "Odds API diagnostics", detail: "Check provider fields and exchange classification", route: "#oddsapi", keywords: ["odds", "api", "diagnostics", "betfair", "matchbook", "smarkets", "betdaq", "bet365"] },
   { label: "Football markets", detail: "Open the football market board", route: "#agtest", keywords: ["football", "soccer", "markets"] },
   { label: "News", detail: "Open SportsEdge social news stream", route: "#social-news", keywords: ["news", "twitter", "social", "x"] },
@@ -11081,7 +11082,7 @@ export default function App() {
   else if (hash === "#privacy") screen = <MarketingLandingPage section="privacy" />;
   else if (hash.startsWith("#player/")) screen = <PlayerProfilePage id={hash.replace("#player/", "")} />;
   else if (hash.startsWith("#team/")) screen = <TeamProfilePage slug={hash.replace("#team/", "") || "chelsea"} />;
-  else if (hash === "#agtest-mockup" || hash === "#bloomberg-demo") screen = <AgtestBloombergMockupPage />;
+  else if (hash === "#agtest-mockup" || hash === "#bloomberg-demo" || hash === "#bloomberg") screen = <AgtestBloombergMockupPage />;
   else if (hash === "#news" || hash === "#news-feed-mockup") screen = hasSession || previewDashboard ? <BloombergNewsFeedMockupPage /> : <LoginScreen />;
   else if (hash === "#dashboard" || hash === "#today-dashboard-mockup") screen = hasSession || previewDashboard ? <TodayDashboardMockupPage /> : <LoginScreen />;
   else if (hash === "#profile-mockup") screen = <BloombergProfileMockupPage />;
