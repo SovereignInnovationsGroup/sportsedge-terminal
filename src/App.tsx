@@ -1684,15 +1684,7 @@ function SportsEdgeTopbar({
     inputRef.current?.blur();
   }
 
-  const localClock = new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false
-  }).format(clockNow).replace(",", "");
+  const localClock = formatLocalTopbarClock(clockNow);
 
   return (
     <header className="testboard-topbar global-terminal-topbar">
@@ -1774,6 +1766,18 @@ function SportsEdgeTopbar({
       </button>
     </header>
   );
+}
+
+function formatLocalTopbarClock(value: Date) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  }).format(value).replace(",", "");
 }
 
 function rowMatchesSelectedSport(row: BackendPriceRow, selectedSport: string) {
@@ -4516,6 +4520,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
   const [footballFixturesError, setFootballFixturesError] = useState("");
   const [entryNews, setEntryNews] = useState<NewsItem[]>([]);
   const [now, setNow] = useState(() => new Date());
+  const localClock = formatLocalTopbarClock(now);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
   const pendingPriceEventsRef = useRef<Array<{ channel: string; payload: unknown }>>([]);
@@ -5943,7 +5948,7 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
         <nav className="testboard-nav" aria-label="Sports">
           {TERMINAL_TOP_SPORTS.map((sport) => (
             <button
-              className={!diagnosticExchange && !isMatrixPage && selectedSport === sport.value ? "active" : ""}
+              className={!isEntryDashboard && !diagnosticExchange && !isMatrixPage && selectedSport === sport.value ? "active" : ""}
               type="button"
               key={sport.value}
               onClick={() => {
@@ -6003,6 +6008,10 @@ function TestboardPage({ onLogout }: { onLogout?: () => void }) {
             </div>
           )}
         </label>
+        <div className="testboard-local-clock" aria-label={`Local time ${localClock}`}>
+          <span>Local</span>
+          <strong>{localClock}</strong>
+        </div>
         <div className="testboard-settings">
           <button
             className="testboard-icon-button"
