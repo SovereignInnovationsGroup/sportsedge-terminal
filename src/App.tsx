@@ -76,7 +76,7 @@ const PRIORITY_SPORTS = [
 ];
 
 const TERMINAL_TOP_SPORTS = [
-  { label: "Football", value: "football", route: "#football" },
+  { label: "Football", value: "football", route: "#agtest" },
   { label: "Horse Racing", value: "horseracing", route: "#horseracing" },
   { label: "Tennis", value: "tennis", route: "#tennis" },
   { label: "Golf", value: "golf", route: "#golf" },
@@ -1467,7 +1467,7 @@ const COMMAND_OPTIONS: CommandOption[] = [
   { label: "Arbs", detail: "Monitor Betfair exchange back and lay books", route: "#arbs", keywords: ["arb", "arbs", "arbitrage", "betfair", "back", "lay"] },
   { label: "AG test", detail: "Open the AG Grid football test board", route: "#agtest", keywords: ["ag", "agtest", "grid", "test"] },
   { label: "Odds API diagnostics", detail: "Check provider fields and exchange classification", route: "#oddsapi", keywords: ["odds", "api", "diagnostics", "betfair", "matchbook", "smarkets", "betdaq", "bet365"] },
-  { label: "Football markets", detail: "Open the football market board", route: "#football", keywords: ["football", "soccer", "markets"] },
+  { label: "Football markets", detail: "Open the football market board", route: "#agtest", keywords: ["football", "soccer", "markets"] },
   { label: "News", detail: "Open SportsEdge social news stream", route: "#social-news", keywords: ["news", "twitter", "social", "x"] },
   { label: "Actual exchange feeds", detail: "Open raw venue diagnostics", route: "#actual", keywords: ["actual", "exchange", "betfair", "matchbook", "feeds"] }
 ];
@@ -9847,6 +9847,20 @@ function filterAgTestRows(rows: AgTestRow[], query: string) {
   });
 }
 
+function agTestRowMatchesGroup(row: AgTestRow, group: string) {
+  if (group === "all") return true;
+  return rowMatchesMarketGroup({
+    id: row.id,
+    name: row.match,
+    sportName: "football",
+    competitionName: row.competition,
+    marketName: "Match Odds",
+    marketType: "MATCH_ODDS",
+    startAt: null,
+    matches: {}
+  }, group);
+}
+
 function oddsDiagnosticTime(value: number | null | undefined) {
   if (!value) return "-";
   return new Intl.DateTimeFormat("en-GB", {
@@ -10453,13 +10467,15 @@ function AgTestPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [marketGroup, setMarketGroup] = useState("all");
   const [socketStatus, setSocketStatus] = useState<"offline" | "connecting" | "live" | "waiting">("offline");
   const reconnectTimerRef = useRef<number | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const pendingPriceEventsRef = useRef<Array<{ channel: string; payload: unknown }>>([]);
   const priceFlushTimerRef = useRef<number | null>(null);
   const allRows = useMemo(() => buildAgTestRows(fixtures, backendRows), [fixtures, backendRows]);
-  const rows = useMemo(() => filterAgTestRows(allRows, searchQuery), [allRows, searchQuery]);
+  const groupedRows = useMemo(() => allRows.filter((row) => agTestRowMatchesGroup(row, marketGroup)), [allRows, marketGroup]);
+  const rows = useMemo(() => filterAgTestRows(groupedRows, searchQuery), [groupedRows, searchQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -10632,13 +10648,13 @@ function AgTestPage() {
       <main className="agtest-page">
         <section className="agtest-subbar" aria-label="AG test market context">
           <nav aria-label="Football matrix sections">
-            <button type="button" onClick={() => { window.location.hash = "#football"; }}>All</button>
-            <button type="button" onClick={() => { window.location.hash = "#football"; }}>English</button>
+            <button className={marketGroup === "all" ? "active" : ""} type="button" onClick={() => setMarketGroup("all")}>All</button>
+            <button className={marketGroup === "english" ? "active" : ""} type="button" onClick={() => setMarketGroup("english")}>English</button>
             <button type="button" onClick={() => { window.location.hash = "#matrix"; }}>Bias matrix</button>
-            <button className="active" type="button">AGTEST</button>
+            <button className="active scope" type="button">AGTEST</button>
           </nav>
           <div>
-            <span>{rows.length}{searchQuery.trim() ? ` / ${allRows.length}` : ""} markets</span>
+            <span>{rows.length}{searchQuery.trim() || marketGroup !== "all" ? ` / ${allRows.length}` : ""} markets</span>
             <span>BF / MB / SX</span>
             <span>{socketStatus === "live" ? "wss live" : loading ? "loading" : socketStatus}</span>
           </div>
@@ -10690,7 +10706,7 @@ export default function App() {
   else if (hash === "#football-demo") screen = <FootballIntelligenceDemoPage />;
   else if (hash === "#oddsapi") screen = hasSession || previewDashboard ? <OddsApiDiagnosticsPage /> : <LoginScreen />;
   else if (hash === "#arbs") screen = hasSession || previewDashboard ? <BetfairArbsPage /> : <LoginScreen />;
-  else if (hash === "#agtest") screen = hasSession || previewDashboard ? <AgTestPage /> : <LoginScreen />;
+  else if (hash === "#agtest" || hash === "#football") screen = hasSession || previewDashboard ? <AgTestPage /> : <LoginScreen />;
   else if (previewDashboard && (hash === "#dashboard" || hash === "#testboard" || hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash) || !hash)) screen = <TestboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#login") screen = <LoginScreen />;
   else if (previewDashboard && (hash === "#old" || hash.startsWith("#sport"))) screen = <DashboardPage onLogout={handleLogout} />;
