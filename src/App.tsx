@@ -7511,7 +7511,7 @@ function BloombergNewsFeedMockupPage() {
         if (intelligenceView === "transfers") return text.includes("transfer") || text.includes("sign") || text.includes("contract");
         return true;
       })
-      .sort((a, b) => b.rawScore - a.rawScore || b.sortTime - a.sortTime)
+      .sort((a, b) => b.sortTime - a.sortTime || b.rawScore - a.rawScore)
       .slice(0, 220);
   }, [feedMode, intelligenceView, items, sport, twitterRows]);
 
