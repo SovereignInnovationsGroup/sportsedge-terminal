@@ -12370,6 +12370,7 @@ function AgTestPage() {
   const [oddsApiRows, setOddsApiRows] = useState<OddsApiDiagnosticRow[]>([]);
   const [oddsApiSummary, setOddsApiSummary] = useState<OddsApiDiagnosticResponse["counts"] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialSnapshotLoaded, setInitialSnapshotLoaded] = useState(false);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBucket, setFilterBucket] = useState("all");
@@ -12399,6 +12400,7 @@ function AgTestPage() {
             ...(oddsPayload.rows as BackendPriceRow[]),
             ...currentRows
           ]).slice(0, 700));
+          setInitialSnapshotLoaded(true);
           setError("");
           setLoading(false);
         }
@@ -12417,7 +12419,10 @@ function AgTestPage() {
           }
         }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Liquidity board failed");
+        if (!cancelled) {
+          setInitialSnapshotLoaded(true);
+          setError(err instanceof Error ? err.message : "Liquidity board failed");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -12628,16 +12633,24 @@ function AgTestPage() {
           <AgGridReact
             rowData={rows}
             columnDefs={columnDefs}
-            loading={loading && rows.length === 0}
+            loading={!initialSnapshotLoaded && rows.length === 0}
+            overlayNoRowsTemplate="<span></span>"
+            overlayLoadingTemplate="<span></span>"
             rowHeight={36}
             headerHeight={34}
             animateRows
             suppressCellFocus
             defaultColDef={{ sortable: true, resizable: true, filter: false, suppressHeaderMenuButton: true }}
           />
-          {!loading && rows.length === 0 && (
+          {!initialSnapshotLoaded && rows.length === 0 && (
             <div className="agtest-empty-state">
-              <strong>No fixtures for this filter</strong>
+              <strong>Loading liquidity</strong>
+              <span>Fetching BF / MB / SX exchange snapshot</span>
+            </div>
+          )}
+          {initialSnapshotLoaded && rows.length === 0 && (
+            <div className="agtest-empty-state">
+              <strong>No liquidity rows for this filter</strong>
               <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
             </div>
           )}
