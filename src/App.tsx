@@ -3146,7 +3146,20 @@ type AdminAnalyticsResponse = {
   topPages?: Array<{ path: string; pageviews: number; visitors: number }>;
   referrers?: Array<{ referrer: string; pageviews: number }>;
   countries?: Array<{ country: string; pageviews: number; visitors: number }>;
-  latestVisitors?: Array<{ visitor_uid: string; last_seen_at: string; last_country_code?: string; browser_name?: string; os_name?: string; pageviews: number; sessions: number }>;
+  latestVisitors?: Array<{
+    site_name?: string;
+    domain?: string;
+    visitor_uid: string;
+    last_seen_at: string;
+    last_ip?: string;
+    last_country_code?: string;
+    browser_name?: string;
+    os_name?: string;
+    device_type?: string;
+    pageviews: number;
+    sessions: number;
+  }>;
+  latestPageviews?: Array<Record<string, unknown>>;
 };
 
 type AdminBlogPost = {
@@ -3228,6 +3241,15 @@ function shortValue(value: unknown) {
   if (Array.isArray(value)) return value.length ? value.map((item) => (typeof item === "object" ? JSON.stringify(item) : String(item))).slice(0, 3).join(", ") : "none";
   if (value && typeof value === "object") return JSON.stringify(value);
   return cleanText(String(value));
+}
+
+function analyticsCellValue(row: Record<string, unknown>, key: string) {
+  const value = row[key];
+  if (value === null || value === undefined || value === "") return "-";
+  if (/(_at|date|time)$/i.test(key) && typeof value === "string") return formatDate(value);
+  if (typeof value === "number") return Number.isFinite(value) ? value.toLocaleString("en-GB") : "-";
+  if (typeof value === "boolean") return value ? "yes" : "no";
+  return shortValue(value);
 }
 
 function cleanText(value: string | null | undefined) {
@@ -10156,6 +10178,30 @@ function AdminConsolePage() {
   const activeSessions = sessions.filter((session) => session.active);
   const publishedPosts = posts.filter((post) => post.status === "published");
   const summary = analytics?.summary || {};
+  const latestPageviews = analytics?.latestPageviews || [];
+  const pageviewColumns = [
+    "occurred_at",
+    "domain",
+    "site_name",
+    "path",
+    "url",
+    "title",
+    "referrer",
+    "referrer_host",
+    "visitor_id",
+    "session_id",
+    "country_code",
+    "ip",
+    "ip_address",
+    "page_load_ms",
+    "browser_name",
+    "os_name",
+    "device_type",
+    "user_agent",
+    "screen_width",
+    "screen_height",
+    "language"
+  ].filter((key) => latestPageviews.some((row) => Object.prototype.hasOwnProperty.call(row, key)));
 
   return (
     <main className="admin-news-shell admin-console-shell">
@@ -10288,7 +10334,7 @@ function AdminConsolePage() {
 
         {panel === "analytics" && (
           <section className="news-panel admin-console-panel">
-            <div className="news-panel-head"><span><Target size={15} /> Site Analytics</span><strong>30 days</strong></div>
+            <div className="news-panel-head"><span><Target size={15} /> Site Analytics</span><strong>30 days / visitor detail</strong></div>
             {errors.analytics && <div className="news-state error">{errors.analytics}</div>}
             <div className="admin-console-grid compact">
               <article><span>Visitors</span><strong>{Number(summary.unique_visitors || 0).toLocaleString("en-GB")}</strong></article>
@@ -10296,20 +10342,41 @@ function AdminConsolePage() {
               <article><span>Events</span><strong>{Number(summary.events || 0).toLocaleString("en-GB")}</strong></article>
               <article><span>Load</span><strong>{summary.avg_page_load_ms ? `${summary.avg_page_load_ms}ms` : "-"}</strong></article>
             </div>
-            <table className="admin-source-table admin-console-table">
-              <thead><tr><th>Top page</th><th>Pageviews</th><th>Visitors</th><th>Referrer</th><th>Country</th><th>Latest visitor</th></tr></thead>
+            <table className="admin-source-table admin-console-table admin-analytics-table">
+              <thead><tr><th>Visitor</th><th>Last seen</th><th>Domain</th><th>IP</th><th>Country</th><th>Device</th><th>Browser</th><th>OS</th><th>Sessions</th><th>Pageviews</th></tr></thead>
               <tbody>
-                {(analytics?.topPages || []).slice(0, 10).map((page, index) => (
-                  <tr key={`${page.path}-${index}`}>
-                    <td><strong>{page.path}</strong></td>
-                    <td>{page.pageviews}</td>
-                    <td>{page.visitors}</td>
-                    <td>{analytics?.referrers?.[index]?.referrer || "-"}</td>
-                    <td>{analytics?.countries?.[index]?.country || "-"}</td>
-                    <td>{analytics?.latestVisitors?.[index] ? formatDate(analytics.latestVisitors[index].last_seen_at) : "-"}</td>
+                {(analytics?.latestVisitors || []).slice(0, 80).map((visitor) => (
+                  <tr key={`${visitor.visitor_uid}-${visitor.last_seen_at}`}>
+                    <td><strong>{visitor.visitor_uid}</strong><span>{visitor.site_name || "SportsEdge"}</span></td>
+                    <td>{formatDate(visitor.last_seen_at)}</td>
+                    <td>{visitor.domain || "-"}</td>
+                    <td>{visitor.last_ip || "-"}</td>
+                    <td>{visitor.last_country_code || "-"}</td>
+                    <td>{visitor.device_type || "-"}</td>
+                    <td>{visitor.browser_name || "-"}</td>
+                    <td>{visitor.os_name || "-"}</td>
+                    <td>{Number(visitor.sessions || 0).toLocaleString("en-GB")}</td>
+                    <td>{Number(visitor.pageviews || 0).toLocaleString("en-GB")}</td>
                   </tr>
                 ))}
-                {!(analytics?.topPages || []).length && !errors.analytics && <tr><td colSpan={6}>No analytics rows returned.</td></tr>}
+                {!(analytics?.latestVisitors || []).length && !errors.analytics && <tr><td colSpan={10}>No visitor rollup rows returned.</td></tr>}
+              </tbody>
+            </table>
+
+            <div className="news-panel-head admin-analytics-subhead"><span>Raw Tracking Pageviews</span><strong>{latestPageviews.length} latest rows</strong></div>
+            <table className="admin-source-table admin-console-table admin-analytics-table raw">
+              <thead>
+                <tr>
+                  {pageviewColumns.map((column) => <th key={column}>{column.replace(/_/g, " ")}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {latestPageviews.slice(0, 120).map((row, index) => (
+                  <tr key={`${String(row.id || row.occurred_at || index)}-${index}`}>
+                    {pageviewColumns.map((column) => <td key={`${index}-${column}`}>{analyticsCellValue(row, column)}</td>)}
+                  </tr>
+                ))}
+                {!latestPageviews.length && !errors.analytics && <tr><td colSpan={Math.max(pageviewColumns.length, 1)}>No raw pageview rows returned.</td></tr>}
               </tbody>
             </table>
           </section>
@@ -10714,10 +10781,12 @@ type AgTestRow = {
   match: string;
   competition: string;
   coverage: Array<{ label: string; available: boolean }>;
+  oddsCoverage: Array<{ label: string; available: boolean }>;
   outcomes: string[];
   betfair: string[];
   matchbook: string[];
   sx: string[];
+  oddsApi: string[];
   bias: string;
   liquidity: string;
   fresh: string;
@@ -10765,14 +10834,118 @@ function AgStackCell({ values, className = "" }: { values?: string[]; className?
   );
 }
 
-function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendPriceRow[]) {
+const ODDS_API_SOURCE_LABELS: Record<string, string> = {
+  betfair: "OA-BF",
+  matchbook: "OA-MB",
+  smarkets: "SM",
+  betdaq: "BD",
+  bet365: "365"
+};
+
+function oddsApiFixtureKey(value: string) {
+  return normalizeFixtureText(value)
+    .replace(/\b(v|vs|versus)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isMoneylineOddsApiRow(row: OddsApiDiagnosticRow) {
+  const market = String(row.market || "").toLowerCase();
+  return market.includes("moneyline") || market.includes("match odds") || market.includes("1x2");
+}
+
+function decimalOddsLabel(value: number | null | undefined) {
+  if (!Number.isFinite(Number(value))) return "-";
+  const odds = Number(value);
+  return odds >= 10 ? odds.toFixed(1).replace(/\.0$/, "") : odds.toFixed(2).replace(/0$/, "").replace(/\.$/, "");
+}
+
+function shortSelectionLabel(value: string) {
+  const cleaned = String(value || "").trim();
+  if (!cleaned) return "selection";
+  if (/^[a-f0-9]{24,}$/i.test(cleaned)) return "runner";
+  return cleaned
+    .replace(/\s+United\b/gi, " Utd")
+    .replace(/\s+Hotspur\b/gi, " Spurs")
+    .slice(0, 22);
+}
+
+function oddsApiSourceCoverage(rows: OddsApiDiagnosticRow[]) {
+  const seen = new Set(rows.map((row) => String(row.bookmaker || "").toLowerCase()).filter(Boolean));
+  return ["betfair", "matchbook", "smarkets", "betdaq", "bet365"].map((source) => ({
+    label: ODDS_API_SOURCE_LABELS[source] || source.toUpperCase(),
+    available: seen.has(source)
+  }));
+}
+
+function formatOddsApiStack(rows: OddsApiDiagnosticRow[]) {
+  if (!rows.length) return ["-"];
+  const bySource = new Map<string, OddsApiDiagnosticRow[]>();
+  rows.forEach((row) => {
+    const source = String(row.bookmaker || "").toLowerCase();
+    if (!source) return;
+    if (!bySource.has(source)) bySource.set(source, []);
+    bySource.get(source)?.push(row);
+  });
+  return [...bySource.entries()].map(([source, sourceRows]) => {
+    const label = ODDS_API_SOURCE_LABELS[source] || source.toUpperCase();
+    const prices = sourceRows
+      .filter((row) => Number.isFinite(Number(row.odds)))
+      .slice(0, 3)
+      .map((row) => `${shortSelectionLabel(row.selection)} ${decimalOddsLabel(row.odds)}`);
+    return `${label}: ${prices.length ? prices.join(" / ") : "odds"}`;
+  }).slice(0, 5);
+}
+
+function sourceTimestampLabel(rows: OddsApiDiagnosticRow[]) {
+  const latest = rows
+    .map((row) => row.sourceTs ? new Date(row.sourceTs).getTime() : 0)
+    .filter((value) => Number.isFinite(value) && value > 0)
+    .sort((a, b) => b - a)[0];
+  if (!latest) return "";
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    timeZone: "Europe/Madrid"
+  }).format(new Date(latest));
+}
+
+function groupOddsApiRowsByEvent(rows: OddsApiDiagnosticRow[]) {
+  const groups = new Map<string, OddsApiDiagnosticRow[]>();
+  rows.forEach((row) => {
+    const key = row.eventId || oddsApiFixtureKey(row.fixture);
+    if (!key) return;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)?.push(row);
+  });
+  return groups;
+}
+
+function fixtureOddsApiRows(fixtureName: string, oddsRows: OddsApiDiagnosticRow[]) {
+  const key = oddsApiFixtureKey(fixtureName);
+  if (!key) return [];
+  return oddsRows.filter((row) => {
+    const rowKey = oddsApiFixtureKey(row.fixture);
+    return rowKey === key || rowKey.includes(key) || key.includes(rowKey);
+  });
+}
+
+function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendPriceRow[], oddsRows: OddsApiDiagnosticRow[] = []) {
   const displayRows = collapseRowsByFixture(mergeDisplayPriceRows(priceRows));
-  return cleanFootballFixtures(fixtures)
+  const moneylineOddsRows = oddsRows.filter(isMoneylineOddsApiRow);
+  const matchedOddsEventIds = new Set<string>();
+  const baseRows = cleanFootballFixtures(fixtures)
     .map((fixture) => {
       const matched = findMarketRowForFootballFixture(fixture, displayRows);
       const backend = matched?.row;
       const outcomes = tradeableOutcomeRows(backend).slice(0, 3);
       const quote = sportsEdgeMarketQuote(backend);
+      const oddsApiRows = fixtureOddsApiRows(footballFixtureName(fixture), moneylineOddsRows);
+      oddsApiRows.forEach((row) => matchedOddsEventIds.add(row.eventId));
+      const exchangeHasRoute = Boolean(backend && rowHasBettingExchange(backend));
+      const oddsOnlyHasRoute = oddsApiRows.length > 0;
       return {
         id: fixture.id,
         startAt: fixture.kickoffAt,
@@ -10780,16 +10953,44 @@ function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendPriceRow
         match: footballFixtureName(fixture),
         competition: footballFixtureCompetition(fixture),
         coverage: exchangeCoverage(backend).map((exchange) => ({ label: exchange.label, available: exchange.isAvailable })),
+        oddsCoverage: oddsApiSourceCoverage(oddsApiRows),
         outcomes: outcomes.length ? outcomes.map((outcome) => outcome.label) : ["Provider fixture"],
         betfair: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "bf")) : ["-"],
         matchbook: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "mb")) : ["-"],
         sx: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "sx")) : ["-"],
-        bias: rowHasMultiBettingExchange(backend) ? biasFromQuote(quote) : rowHasBettingExchange(backend) ? "Single route" : "No route",
+        oddsApi: formatOddsApiStack(oddsApiRows),
+        bias: rowHasMultiBettingExchange(backend) ? biasFromQuote(quote) : exchangeHasRoute ? "Single route" : oddsOnlyHasRoute ? "Odds-only" : "No route",
         liquidity: quote.liquidity || matched?.totalValue ? formatExchangeMoney(quote.liquidity || matched?.totalValue || 0, "GBP") : "-",
-        fresh: quote.updatedAt || "watch"
+        fresh: quote.updatedAt || sourceTimestampLabel(oddsApiRows) || "watch"
       };
-    })
-    .filter((row) => row.coverage.some((exchange) => exchange.available));
+    });
+
+  const oddsOnlyRows = [...groupOddsApiRowsByEvent(moneylineOddsRows).entries()]
+    .filter(([eventId]) => !matchedOddsEventIds.has(eventId))
+    .map(([eventId, eventRows]) => {
+      const first = eventRows[0];
+      const startAt = first?.startTime ? new Date(first.startTime * 1000).toISOString() : null;
+      return {
+        id: `oddsapi-${eventId}`,
+        startAt,
+        kickoff: first?.startTime ? oddsDiagnosticTime(first.startTime) : "-",
+        match: first?.fixture || eventId,
+        competition: first?.league || "Odds API football",
+        coverage: exchangeCoverage(undefined).map((exchange) => ({ label: exchange.label, available: false })),
+        oddsCoverage: oddsApiSourceCoverage(eventRows),
+        outcomes: eventRows.slice(0, 3).map((row) => shortSelectionLabel(row.selection)),
+        betfair: ["-"],
+        matchbook: ["-"],
+        sx: ["-"],
+        oddsApi: formatOddsApiStack(eventRows),
+        bias: "Odds-only",
+        liquidity: "-",
+        fresh: sourceTimestampLabel(eventRows) || "watch"
+      };
+    });
+
+  return [...baseRows, ...oddsOnlyRows]
+    .filter((row) => row.coverage.some((exchange) => exchange.available) || row.oddsCoverage.some((source) => source.available));
 }
 
 function filterAgTestRows(rows: AgTestRow[], query: string) {
@@ -10801,10 +11002,12 @@ function filterAgTestRows(rows: AgTestRow[], query: string) {
       row.match,
       row.competition,
       row.coverage.filter((exchange) => exchange.available).map((exchange) => exchange.label).join(" "),
+      row.oddsCoverage.filter((source) => source.available).map((source) => source.label).join(" "),
       row.outcomes.join(" "),
       row.betfair.join(" "),
       row.matchbook.join(" "),
       row.sx.join(" "),
+      row.oddsApi.join(" "),
       row.bias,
       row.liquidity,
       row.fresh
@@ -11438,6 +11641,8 @@ function BetfairArbsPage() {
 function AgTestPage() {
   const [fixtures, setFixtures] = useState<FootballFixture[]>([]);
   const [backendRows, setBackendRows] = useState<BackendPriceRow[]>([]);
+  const [oddsApiRows, setOddsApiRows] = useState<OddsApiDiagnosticRow[]>([]);
+  const [oddsApiSummary, setOddsApiSummary] = useState<OddsApiDiagnosticResponse["counts"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -11448,7 +11653,7 @@ function AgTestPage() {
   const socketRef = useRef<WebSocket | null>(null);
   const pendingPriceEventsRef = useRef<Array<{ channel: string; payload: unknown }>>([]);
   const priceFlushTimerRef = useRef<number | null>(null);
-  const allRows = useMemo(() => buildAgTestRows(fixtures, backendRows), [fixtures, backendRows]);
+  const allRows = useMemo(() => buildAgTestRows(fixtures, backendRows, oddsApiRows), [fixtures, backendRows, oddsApiRows]);
   const groupedRows = useMemo(() => allRows.filter((row) => agTestRowMatchesGroup(row, marketGroup)), [allRows, marketGroup]);
   const rows = useMemo(() => filterAgTestRows(groupedRows, searchQuery), [groupedRows, searchQuery]);
   const secondaryFilters = AGTEST_FOOTBALL_SECONDARY_FILTERS[filterBucket] || [];
@@ -11459,12 +11664,14 @@ function AgTestPage() {
     async function loadRows() {
       setLoading(true);
       try {
-        const [fixtureResponse, oddsResponse] = await Promise.all([
+        const [fixtureResponse, oddsResponse, oddsApiResponse] = await Promise.all([
           fetch("/api/football/fixtures?days=4&limit=2000&timezone=Europe/London", { cache: "no-store" }),
-          fetch("/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=500", { cache: "no-store" })
+          fetch("/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=500", { cache: "no-store" }),
+          fetch("/api/odds-api/diagnostics?sport=soccer&bookmakers=betfair,matchbook,smarkets,betdaq,bet365&eventLimit=20&scanPages=5&pageLimit=200&oddsLimit=1000", { cache: "no-store" })
         ]);
         const fixturePayload = await fixtureResponse.json();
         const oddsPayload = await oddsResponse.json();
+        const oddsApiPayload = await oddsApiResponse.json().catch(() => ({}));
         if (!fixtureResponse.ok || !Array.isArray(fixturePayload.fixtures)) throw new Error(fixturePayload.detail || "fixtures failed");
         if (!oddsResponse.ok || !Array.isArray(oddsPayload.rows)) throw new Error(oddsPayload.detail || "odds failed");
 
@@ -11474,6 +11681,13 @@ function AgTestPage() {
             ...(oddsPayload.rows as BackendPriceRow[]),
             ...currentRows
           ]).slice(0, 700));
+          if (oddsApiResponse.ok && Array.isArray(oddsApiPayload.rows)) {
+            setOddsApiRows(oddsApiPayload.rows as OddsApiDiagnosticRow[]);
+            setOddsApiSummary(oddsApiPayload.counts || null);
+          } else {
+            setOddsApiRows([]);
+            setOddsApiSummary(null);
+          }
           setError("");
         }
       } catch (err) {
@@ -11596,7 +11810,7 @@ function AgTestPage() {
     {
       field: "coverage",
       headerName: "Coverage",
-      width: 132,
+      width: 156,
       cellRenderer: ({ data }: { data?: AgTestRow }) => (
         <div className="exchange-coverage ag-coverage">
           {(data?.coverage || []).map((exchange) => (
@@ -11605,10 +11819,23 @@ function AgTestPage() {
         </div>
       )
     },
+    {
+      field: "oddsCoverage",
+      headerName: "Odds API",
+      width: 196,
+      cellRenderer: ({ data }: { data?: AgTestRow }) => (
+        <div className="exchange-coverage ag-coverage oddsapi-coverage">
+          {(data?.oddsCoverage || []).map((source) => (
+            <span className={source.available ? "available odds-source" : ""} key={source.label}>{source.label}</span>
+          ))}
+        </div>
+      )
+    },
     { field: "outcomes", headerName: "Outcomes", minWidth: 260, flex: 1.05, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.outcomes} /> },
     { field: "betfair", headerName: "Betfair", minWidth: 230, flex: 1, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betfair} className="ag-price-stack" /> },
     { field: "matchbook", headerName: "Matchbook", minWidth: 250, flex: 1.1, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.matchbook} className="ag-price-stack" /> },
     { field: "sx", headerName: "SX", minWidth: 210, flex: 0.9, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.sx} className="ag-price-stack" /> },
+    { field: "oddsApi", headerName: "Odds-only", minWidth: 330, flex: 1.25, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.oddsApi} className="ag-price-stack oddsapi-stack" /> },
     { field: "bias", headerName: "Bias", width: 150 },
     { field: "liquidity", headerName: "Liquidity", width: 140 },
     { field: "fresh", headerName: "Fresh", width: 118 }
@@ -11658,9 +11885,18 @@ function AgTestPage() {
           <div>
             <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
             <span>{rows.length}{searchQuery.trim() || marketGroup !== "all" ? ` / ${allRows.length}` : ""} markets</span>
-            <span>BF / MB / SX</span>
+            <span>BF / MB / SX + Odds API</span>
+            <span>{oddsApiRows.length} odds rows</span>
             <span>{socketStatus === "live" ? "wss live" : loading ? "loading" : socketStatus}</span>
           </div>
+        </section>
+        <section className="agtest-source-strip" aria-label="AGTEST source status">
+          <span>Exchange ladder: BF / MB / SX</span>
+          <span>Odds-only: BF {oddsApiSummary?.byBookmaker?.betfair || 0}</span>
+          <span>MB {oddsApiSummary?.byBookmaker?.matchbook || 0}</span>
+          <span>SM {oddsApiSummary?.byBookmaker?.smarkets || 0}</span>
+          <span>BD {oddsApiSummary?.byBookmaker?.betdaq || 0}</span>
+          <span>365 {oddsApiSummary?.byBookmaker?.bet365 || 0}</span>
         </section>
         <section className="agtest-grid-wrap ag-theme-quartz-dark">
           <AgGridReact

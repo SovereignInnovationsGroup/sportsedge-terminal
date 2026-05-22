@@ -10420,6 +10420,43 @@ button {
   white-space: nowrap;
 }
 
+.admin-analytics-subhead {
+  margin-top: 18px;
+}
+
+.admin-analytics-table {
+  min-width: 1120px;
+}
+
+.admin-analytics-table.raw {
+  min-width: 1780px;
+}
+
+.admin-console-panel:has(.admin-analytics-table) {
+  overflow-x: auto;
+}
+
+.admin-analytics-table td {
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.admin-analytics-table td:first-child strong {
+  display: block;
+  max-width: 260px;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-analytics-table.raw td {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .admin-action-button {
   border: 1px solid rgba(96, 165, 250, 0.32);
   border-radius: 7px;
