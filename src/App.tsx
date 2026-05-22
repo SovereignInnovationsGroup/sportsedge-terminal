@@ -1053,6 +1053,7 @@ function fixtureTeams(name: string) {
 }
 
 type FootballTeamAsset = {
+  id?: string;
   slug: string;
   ticker: string;
   fullName: string;
@@ -11095,6 +11096,200 @@ function oddsDiagnosticTime(value: number | null | undefined) {
   }).format(new Date(value * 1000));
 }
 
+function footballTeamAssetMatchesGroup(team: FootballTeamAsset, group: string) {
+  if (group === "all" || group === "today" || group === "tomorrow") return true;
+  const haystack = normalizeSelectionKey([
+    team.fullName,
+    team.shortName,
+    team.country,
+    team.currentLeague,
+    ...(team.aliases || [])
+  ].join(" "));
+  const country = normalizeSelectionKey(team.country);
+  if (group === "uk") return ["england", "scotland", "wales", "northern ireland"].includes(country);
+  if (group === "english" || group === "england") return country === "england";
+  if (group === "scottish") return country === "scotland" || haystack.includes("scottish");
+  if (group === "wales") return country === "wales" || haystack.includes("cymru") || haystack.includes("welsh");
+  if (group === "northern-ireland") return country === "northern ireland" || haystack.includes("nifl");
+  if (group === "uefa") return ["uefa", "champions league", "europa league", "conference league", "nations league"].some((term) => haystack.includes(term));
+  if (group === "international") return Boolean(team.national) || ["world cup", "euro", "copa", "afcon", "friendly", "national"].some((term) => haystack.includes(term));
+  if (group === "world") return Boolean(team.national) || ["world", "fifa", "international"].some((term) => haystack.includes(term));
+  const countryGroups: Record<string, string[]> = {
+    germany: ["germany", "bundesliga"],
+    spain: ["spain", "la liga", "segunda"],
+    italy: ["italy", "serie a", "serie b"],
+    france: ["france", "ligue 1", "ligue 2"],
+    netherlands: ["netherlands", "eredivisie", "eerste divisie"],
+    portugal: ["portugal", "primeira liga", "liga portugal"],
+    turkey: ["turkey", "super lig", "super league"]
+  };
+  if (countryGroups[group]) return countryGroups[group].some((term) => haystack.includes(normalizeSelectionKey(term)));
+  const terms = FOOTBALL_GROUP_TERMS[group];
+  if (terms) return terms.some((term) => haystack.includes(normalizeSelectionKey(term)));
+  return haystack.includes(normalizeSelectionKey(group));
+}
+
+function FootballProfilesPage() {
+  const [teams, setTeams] = useState<FootballTeamAsset[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [filterBucket, setFilterBucket] = useState("all");
+  const [marketGroup, setMarketGroup] = useState("all");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadTeams() {
+      setLoading(true);
+      try {
+        const response = await fetch("/api/assets/football-teams?active=true&limit=25000", { cache: "no-store" });
+        const payload = await response.json();
+        if (!response.ok || !Array.isArray(payload.teams)) throw new Error(payload.detail || "team profiles failed");
+        if (!cancelled) {
+          setTeams(payload.teams as FootballTeamAsset[]);
+          registerFootballTeamAssets(payload.teams as FootballTeamAsset[]);
+          setError("");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setTeams([]);
+          setError(err instanceof Error ? err.message : "team profiles failed");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    loadTeams();
+    return () => { cancelled = true; };
+  }, []);
+
+  const secondaryFilters = AGTEST_FOOTBALL_SECONDARY_FILTERS[filterBucket] || [];
+  const filteredTeams = useMemo(() => {
+    const terms = normalizeFixtureText(query).split(" ").filter(Boolean);
+    return teams
+      .filter((team) => footballTeamAssetMatchesGroup(team, marketGroup))
+      .filter((team) => {
+        if (!terms.length) return true;
+        const haystack = normalizeFixtureText([
+          team.fullName,
+          team.shortName,
+          team.country,
+          team.currentLeague,
+          team.ticker,
+          ...(team.aliases || [])
+        ].join(" "));
+        return terms.every((term) => haystack.includes(term));
+      })
+      .sort((a, b) => {
+        const country = String(a.country || "").localeCompare(String(b.country || ""));
+        if (country !== 0) return country;
+        return String(a.fullName || a.shortName).localeCompare(String(b.fullName || b.shortName));
+      });
+  }, [teams, marketGroup, query]);
+
+  return (
+    <>
+      <SportsEdgeTopbar active="profile-mockup" onSearchChange={setQuery} searchPlaceholder="Filter football teams, country, league..." />
+      <main className="football-profiles-page">
+        <section className="agtest-subbar" aria-label="Football profile filters">
+          <div className="agtest-filter-stack">
+            <nav aria-label="Football profile regions">
+              {AGTEST_FOOTBALL_PRIMARY_FILTERS.filter((filter) => !["today", "tomorrow"].includes(filter.value)).map((filter) => (
+                <button
+                  className={filterBucket === filter.value ? "active" : ""}
+                  key={filter.value}
+                  type="button"
+                  onClick={() => {
+                    setFilterBucket(filter.value);
+                    setMarketGroup(filter.value);
+                  }}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </nav>
+            {secondaryFilters.length > 0 && (
+              <nav className="agtest-filter-secondary" aria-label="Football profile league filters">
+                {secondaryFilters.map((filter) => (
+                  <button
+                    className={marketGroup === filter.value ? "active" : ""}
+                    key={filter.value}
+                    type="button"
+                    onClick={() => setMarketGroup(filter.value)}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </nav>
+            )}
+          </div>
+          <div>
+            <span>{filteredTeams.length} / {teams.length} teams</span>
+            <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
+            <span>{loading ? "loading" : "double-click opens profile"}</span>
+          </div>
+        </section>
+
+        <section className="football-profiles-header">
+          <div>
+            <span>SportsEdge Football Profiles</span>
+            <h1>Team Directory</h1>
+          </div>
+          <p>Canonical team identity, logos, countries, leagues, provider ids and aliases. Double-click any row to open the detail profile.</p>
+        </section>
+
+        {error && <div className="agtest-error">{error}</div>}
+
+        <section className="football-profiles-table-wrap">
+          <table className="football-profiles-table">
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th>Code</th>
+                <th>Country</th>
+                <th>League</th>
+                <th>Provider</th>
+                <th>Aliases</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTeams.map((team) => (
+                <tr
+                  key={team.id || team.slug}
+                  onDoubleClick={() => { window.location.hash = `#team/${team.slug || encodeURIComponent(team.fullName)}`; }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") window.location.hash = `#team/${team.slug || encodeURIComponent(team.fullName)}`;
+                  }}
+                  tabIndex={0}
+                >
+                  <td className="football-profile-team-cell">
+                    <span className={`team-logo-frame matrix-team-logo${team.national ? " flag-logo" : ""}`}>
+                      {team.logoUrl || team.flagUrl ? <img src={team.logoUrl || team.flagUrl || ""} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
+                      <span>{team.ticker || teamInitials(team.shortName || team.fullName)}</span>
+                    </span>
+                    <strong>{team.fullName || team.shortName}</strong>
+                  </td>
+                  <td className="mono">{team.ticker || "-"}</td>
+                  <td>{team.country || "-"}</td>
+                  <td>{team.currentLeague || "-"}</td>
+                  <td className="mono">{team.providerTeamId || team.provider || "-"}</td>
+                  <td>{(team.aliases || []).slice(0, 4).join(" / ") || "-"}</td>
+                </tr>
+              ))}
+              {!loading && filteredTeams.length === 0 && (
+                <tr><td className="empty" colSpan={6}>No teams matched this filter.</td></tr>
+              )}
+              {loading && filteredTeams.length === 0 && (
+                <tr><td className="empty" colSpan={6}>Loading football teams.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </section>
+      </main>
+    </>
+  );
+}
+
 function mergeSportDashboardEvents(rows: BackendPriceRow[], fallbackSport: string) {
   const merged = new Map<string, EntryEventRow>();
   rows.forEach((row) => {
@@ -12457,7 +12652,7 @@ export default function App() {
   else if (hash === "#agtest-mockup" || hash === "#bloomberg-demo" || hash === "#bloomberg") screen = <AgtestBloombergMockupPage />;
   else if (hash === "#news" || hash === "#news-feed-mockup") screen = hasSession || previewDashboard ? <BloombergNewsFeedMockupPage /> : <LoginScreen />;
   else if (hash === "#dashboard" || hash === "#today-dashboard-mockup") screen = hasSession || previewDashboard ? <TodayDashboardMockupPage /> : <LoginScreen />;
-  else if (hash === "#profile-mockup") screen = <BloombergProfileMockupPage />;
+  else if (hash === "#profile-mockup" || hash === "#profiles") screen = hasSession || previewDashboard ? <FootballProfilesPage /> : <LoginScreen />;
   else if (hash === "#product-map") screen = <SportsEdgeProductMockupPage />;
   else if (hash === "#football-demo") screen = <FootballIntelligenceDemoPage />;
   else if (hash === "#oddsapi") screen = hasSession || previewDashboard ? <OddsApiDiagnosticsPage /> : <LoginScreen />;

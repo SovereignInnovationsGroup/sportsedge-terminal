@@ -7293,6 +7293,126 @@ button {
   font-weight: 800;
 }
 
+.football-profiles-page {
+  min-height: calc(100vh - 52px);
+  background: #05080d;
+  color: var(--text);
+  overflow: hidden;
+}
+
+.football-profiles-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.62);
+  background: #071019;
+  padding: 18px 16px;
+}
+
+.football-profiles-header span {
+  color: var(--gold);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.football-profiles-header h1 {
+  margin: 6px 0 0;
+  color: var(--text);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.football-profiles-header p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--muted);
+  font-weight: 850;
+  text-align: right;
+}
+
+.football-profiles-table-wrap {
+  height: calc(100vh - 178px);
+  overflow: auto;
+}
+
+.football-profiles-table {
+  width: 100%;
+  min-width: 1160px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.football-profiles-table th,
+.football-profiles-table td {
+  height: 42px;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.48);
+  padding: 0 10px;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.football-profiles-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #071019;
+  color: rgba(203, 213, 225, 0.86);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.football-profiles-table tbody tr:nth-child(even) td {
+  background: #080d13;
+}
+
+.football-profiles-table tbody tr {
+  cursor: pointer;
+}
+
+.football-profiles-table tbody tr:hover td,
+.football-profiles-table tbody tr:focus td {
+  background: rgba(27, 43, 61, 0.58);
+  outline: 0;
+}
+
+.football-profiles-table th:nth-child(1),
+.football-profiles-table td:nth-child(1) { width: 300px; }
+
+.football-profiles-table th:nth-child(2),
+.football-profiles-table td:nth-child(2) { width: 90px; }
+
+.football-profiles-table th:nth-child(3),
+.football-profiles-table td:nth-child(3) { width: 150px; }
+
+.football-profiles-table th:nth-child(4),
+.football-profiles-table td:nth-child(4) { width: 260px; }
+
+.football-profiles-table th:nth-child(5),
+.football-profiles-table td:nth-child(5) { width: 120px; }
+
+.football-profile-team-cell {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.football-profile-team-cell strong {
+  overflow: hidden;
+  color: rgba(241, 245, 249, 0.98);
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .arbs-page {
   overflow: hidden;
 }
