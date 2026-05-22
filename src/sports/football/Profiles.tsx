@@ -1,16 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
+import { AGTEST_FOOTBALL_PRIMARY_FILTERS, AGTEST_FOOTBALL_SECONDARY_FILTERS, footballFilterBreadcrumb } from "./filters";
+import { normalizeFixtureText, teamInitials } from "../../core/format";
 import {
-  AGTEST_FOOTBALL_PRIMARY_FILTERS,
-  AGTEST_FOOTBALL_SECONDARY_FILTERS,
   cachedFootballTeamAssets,
-  footballFilterBreadcrumb,
   footballTeamAssetMatchesGroup,
-  normalizeFixtureText,
   prefetchFootballTeamAssets,
-  teamInitials,
   type FootballTeamAsset
-} from "../../runtime/SportsEdgeTerminalRuntime";
+} from "./teamAssets";
 
 export default function Profiles() {
   const cachedTeams = cachedFootballTeamAssets();

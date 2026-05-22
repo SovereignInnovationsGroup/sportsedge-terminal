@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
+import { formatExchangeMoney, normalizeFixtureText } from "../../core/format";
 import {
-  formatExchangeMoney,
-  normalizeFixtureText,
   type BackendExchangeMatch,
   type BackendPriceRow,
   type BackendRunner,
   type BackendRunnerLevel
-} from "../../runtime/SportsEdgeTerminalRuntime";
+} from "./marketData";
 
 type ArbRow = {
   id: string;

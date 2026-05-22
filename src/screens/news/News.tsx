@@ -1,3 +1,1 @@
-import { BloombergNewsFeedMockupPage } from "../../runtime/SportsEdgeTerminalRuntime";
-
-export default BloombergNewsFeedMockupPage;
+export { default } from "./StandaloneNews";

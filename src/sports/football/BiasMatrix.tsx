@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
+import { normalizeFixtureText } from "../../core/format";
 import {
   decimalOddsLabel,
   groupOddsApiRowsByEvent,
   isMoneylineOddsApiRow,
-  normalizeFixtureText,
   oddsDiagnosticTime,
   type OddsApiDiagnosticResponse,
   type OddsApiDiagnosticRow
-} from "../../runtime/SportsEdgeTerminalRuntime";
+} from "./oddsApi";
 
 type OddsOutcome = "home" | "draw" | "away";
 
@@ -78,7 +78,7 @@ function buildBiasMatrixRows(rows: OddsApiDiagnosticRow[]): BiasMatrixRow[] {
     });
 
     const maxSpread = Math.max(...outcomeSpreads, 0);
-    const read = sourceCount < 3 ? "sparse" : maxSpread > 0.08 ? "split" : "aligned";
+    const read: BiasMatrixRow["read"] = sourceCount < 3 ? "sparse" : maxSpread > 0.08 ? "split" : "aligned";
     const shortestOutcome = BIAS_MATRIX_OUTCOMES
       .filter((outcome) => Number.isFinite(Number(consensus[outcome])))
       .sort((a, b) => Number(consensus[a]) - Number(consensus[b]))[0];

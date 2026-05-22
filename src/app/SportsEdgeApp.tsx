@@ -3,7 +3,6 @@ import { hasTerminalSession } from "../core/session";
 import { LoadingScreen } from "./LoadingScreen";
 import "../styles/dashboard.css";
 
-const TerminalRuntimeApp = lazy(() => import("../runtime/TerminalRuntimeApp"));
 const Marketing = lazy(() => import("../screens/Marketing"));
 const Blog = lazy(() => import("../screens/Blog"));
 const Login = lazy(() => import("../screens/Login"));
@@ -56,7 +55,7 @@ function screenForHash(hash: string) {
   if (hash === "#football-profiles" || hash === "#profile-mockup" || hash === "#profiles") return requireSession(<FootballProfiles />);
   if (hash.startsWith("#team/")) return requireSession(<TeamProfile slug={hash.replace("#team/", "") || "chelsea"} />);
   if (hash.startsWith("#player/")) return requireSession(<PlayerProfile id={hash.replace("#player/", "")} />);
-  return null;
+  return requireSession(<Dashboard />);
 }
 
 export default function SportsEdgeApp() {
@@ -71,7 +70,7 @@ export default function SportsEdgeApp() {
 
   return (
     <Suspense fallback={<LoadingScreen />}>
-      {screen || <TerminalRuntimeApp />}
+      {screen}
     </Suspense>
   );
 }

@@ -2,9 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import type { ColDef } from "ag-grid-community";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
+import { AGTEST_FOOTBALL_PRIMARY_FILTERS, AGTEST_FOOTBALL_SECONDARY_FILTERS, footballFilterBreadcrumb } from "./filters";
 import {
-  AGTEST_FOOTBALL_PRIMARY_FILTERS,
-  AGTEST_FOOTBALL_SECONDARY_FILTERS,
   AgStackCell,
   BETTING_EXCHANGE_COLUMNS,
   agTestRowMatchesGroup,
@@ -12,7 +11,6 @@ import {
   cachedFootballLiquidityRows,
   exchangePriceChannel,
   filterAgTestRows,
-  footballFilterBreadcrumb,
   isPrimaryTradingMarket,
   mergeDisplayPriceRows,
   mergeLivePriceRows,
@@ -22,7 +20,7 @@ import {
   type AgTestRow,
   type BackendPriceRow,
   type FootballFixture
-} from "../../runtime/SportsEdgeTerminalRuntime";
+} from "./marketData";
 
 export default function Liquidity() {
   const cachedLiquidityRows = cachedFootballLiquidityRows();
@@ -39,7 +37,7 @@ export default function Liquidity() {
   const socketRef = useRef<WebSocket | null>(null);
   const pendingPriceEventsRef = useRef<Array<{ channel: string; payload: unknown }>>([]);
   const priceFlushTimerRef = useRef<number | null>(null);
-  const allRows = useMemo(() => buildAgTestRows(fixtures, backendRows, []), [fixtures, backendRows]);
+  const allRows = useMemo(() => buildAgTestRows(fixtures, backendRows), [fixtures, backendRows]);
   const groupedRows = useMemo(() => allRows.filter((row) => agTestRowMatchesGroup(row, marketGroup)), [allRows, marketGroup]);
   const rows = useMemo(() => filterAgTestRows(groupedRows, searchQuery), [groupedRows, searchQuery]);
   const secondaryFilters = AGTEST_FOOTBALL_SECONDARY_FILTERS[filterBucket] || [];
