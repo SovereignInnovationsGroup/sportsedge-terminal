@@ -140,7 +140,7 @@ const SPORT_MARKET_GROUPS: Record<string, Array<{ label: string; value: string }
 
 type FootballGridFilter = { label: string; value: string };
 
-const AGTEST_FOOTBALL_PRIMARY_FILTERS: FootballGridFilter[] = [
+export const AGTEST_FOOTBALL_PRIMARY_FILTERS: FootballGridFilter[] = [
   { label: "All", value: "all" },
   { label: "Today", value: "today" },
   { label: "Tomorrow", value: "tomorrow" },
@@ -151,7 +151,7 @@ const AGTEST_FOOTBALL_PRIMARY_FILTERS: FootballGridFilter[] = [
   { label: "World", value: "world" }
 ];
 
-const AGTEST_FOOTBALL_SECONDARY_FILTERS: Record<string, FootballGridFilter[]> = {
+export const AGTEST_FOOTBALL_SECONDARY_FILTERS: Record<string, FootballGridFilter[]> = {
   uk: [
     { label: "All UK", value: "uk" },
     { label: "England", value: "english" },
@@ -436,7 +436,7 @@ const EXCHANGE_COLUMNS = [
 ];
 
 type ExchangeColumn = typeof EXCHANGE_COLUMNS[number];
-const BETTING_EXCHANGE_COLUMNS = EXCHANGE_COLUMNS.filter((exchange) => ["bf", "mb", "sx"].includes(exchange.key));
+export const BETTING_EXCHANGE_COLUMNS = EXCHANGE_COLUMNS.filter((exchange) => ["bf", "mb", "sx"].includes(exchange.key));
 const MATRIX_VENUES = [
   { key: "betfair", label: "Betfair", short: "BF", matchKeys: ["bf", "betfair"], supports: ["football", "tennis", "golf", "basketball"], weight: 1.15 },
   { key: "matchbook", label: "Matchbook", short: "MB", matchKeys: ["mb", "matchbook"], supports: ["football", "tennis", "golf", "basketball"], weight: 1.05 },
@@ -515,11 +515,11 @@ function apiSportValue(value: string) {
   return value;
 }
 
-function exchangePriceChannel(exchange: ExchangeColumn) {
+export function exchangePriceChannel(exchange: ExchangeColumn) {
   return `${exchange.name.toLowerCase()}.price`;
 }
 
-function sportsEdgeWsUrl(token: string) {
+export function sportsEdgeWsUrl(token: string) {
   const encoded = encodeURIComponent(token);
   return `wss://terminal.sportsedge.markets/ws?token=${encoded}`;
 }
@@ -537,7 +537,7 @@ function fixtureExchangeValue(_sport: string, _fixture: FixtureRow, _exchange: E
   return null;
 }
 
-function formatExchangeMoney(value: number, currency: string) {
+export function formatExchangeMoney(value: number, currency: string) {
   const symbol = currency === "GBP" ? "£" : "$";
   if (value >= 1_000_000) return `${symbol}${(value / 1_000_000).toFixed(2)}m`;
   if (value >= 1_000) return `${symbol}${Math.round(value / 1_000)}k`;
@@ -548,7 +548,7 @@ function fixtureExchangeUpdateKey(sport: string, fixture: FixtureRow, exchangeKe
   return `${sport}:${fixture[0]}:${fixture[1]}:${exchangeKey}`.toLowerCase();
 }
 
-function normalizeFixtureText(value: string) {
+export function normalizeFixtureText(value: string) {
   return value
     .toLowerCase()
     .replace(/\b(vs?|versus|at)\b/g, " ")
@@ -973,7 +973,7 @@ function teamFallbackIsFlag(team: string) {
   return Boolean(directCountryFlag(team) || footballTeamAsset(team)?.country);
 }
 
-function teamInitials(name: string) {
+export function teamInitials(name: string) {
   const teams = String(name || "").split(/\s+(?:v|vs|versus)\.?\s+/i);
   const source = teams[0] || name;
   return source
@@ -1051,7 +1051,7 @@ function fixtureTeams(name: string) {
     .slice(0, 2);
 }
 
-type FootballTeamAsset = {
+export type FootballTeamAsset = {
   id?: string;
   slug: string;
   ticker: string;
@@ -1072,13 +1072,13 @@ const FOOTBALL_TEAM_ASSET_URL = "/api/assets/football-teams?active=true&limit=25
 let footballTeamAssetCache: { teams: FootballTeamAsset[]; fetchedAt: number } | null = null;
 let footballTeamAssetPrefetchPromise: Promise<FootballTeamAsset[]> | null = null;
 
-function cachedFootballTeamAssets(maxAgeMs = 5 * 60 * 1000) {
+export function cachedFootballTeamAssets(maxAgeMs = 5 * 60 * 1000) {
   if (!footballTeamAssetCache) return [];
   if (Date.now() - footballTeamAssetCache.fetchedAt > maxAgeMs) return [];
   return footballTeamAssetCache.teams;
 }
 
-async function prefetchFootballTeamAssets() {
+export async function prefetchFootballTeamAssets() {
   const cachedTeams = cachedFootballTeamAssets();
   if (cachedTeams.length) return cachedTeams;
   if (footballTeamAssetPrefetchPromise) return footballTeamAssetPrefetchPromise;
@@ -2137,9 +2137,9 @@ type NewsItem = {
   isNew?: boolean;
 };
 
-type BackendRunnerLevel = { odds: number; amount: number; level?: number };
+export type BackendRunnerLevel = { odds: number; amount: number; level?: number };
 type BackendRunnerPrice = BackendRunnerLevel | null;
-type BackendRunner = {
+export type BackendRunner = {
   id: string;
   name: string;
   sortOrder?: number;
@@ -2148,7 +2148,7 @@ type BackendRunner = {
   backLevels?: BackendRunnerLevel[];
   layLevels?: BackendRunnerLevel[];
 };
-type BackendExchangeMatch = {
+export type BackendExchangeMatch = {
   exchange: string;
   eventId: string;
   marketId: string;
@@ -2161,7 +2161,7 @@ type BackendExchangeMatch = {
   observedAt: string | null;
   runners: BackendRunner[];
 };
-type BackendPriceRow = {
+export type BackendPriceRow = {
   id: string;
   name: string;
   sportName?: string | null;
@@ -2191,7 +2191,7 @@ function readStoredFootballLiquidity(maxAgeMs: number) {
   }
 }
 
-function storeFootballLiquidity(rows: BackendPriceRow[]) {
+export function storeFootballLiquidity(rows: BackendPriceRow[]) {
   const snapshot = { rows: rows.slice(0, 250), fetchedAt: Date.now() };
   footballLiquidityCache = snapshot;
   try {
@@ -2201,7 +2201,7 @@ function storeFootballLiquidity(rows: BackendPriceRow[]) {
   }
 }
 
-function cachedFootballLiquidityRows(maxAgeMs = 2 * 60 * 1000) {
+export function cachedFootballLiquidityRows(maxAgeMs = 2 * 60 * 1000) {
   if (footballLiquidityCache && Date.now() - footballLiquidityCache.fetchedAt <= maxAgeMs) return footballLiquidityCache.rows;
   const stored = readStoredFootballLiquidity(maxAgeMs);
   if (!stored) return [];
@@ -2209,7 +2209,7 @@ function cachedFootballLiquidityRows(maxAgeMs = 2 * 60 * 1000) {
   return stored.rows;
 }
 
-async function prefetchFootballLiquiditySnapshot() {
+export async function prefetchFootballLiquiditySnapshot() {
   const cachedRows = cachedFootballLiquidityRows();
   if (cachedRows.length) return cachedRows;
   if (footballLiquidityPrefetchPromise) return footballLiquidityPrefetchPromise;
@@ -2280,7 +2280,7 @@ type EntryEventRow = {
   exchanges: string[];
 };
 
-type FootballFixture = {
+export type FootballFixture = {
   id: string;
   provider: string;
   providerFixtureId: string;
@@ -2966,7 +2966,7 @@ function rowMatchedValue(row: BackendPriceRow) {
   }, 0);
 }
 
-function mergeDisplayPriceRows(rows: BackendPriceRow[]) {
+export function mergeDisplayPriceRows(rows: BackendPriceRow[]) {
   const merged = new Map<string, BackendPriceRow>();
   for (const row of rows) {
     const key = stableDisplayRowKey(row) || row.id;
@@ -2991,7 +2991,7 @@ function mergeDisplayPriceRows(rows: BackendPriceRow[]) {
   ));
 }
 
-function isPrimaryTradingMarket(payload: unknown, selectedSport: string) {
+export function isPrimaryTradingMarket(payload: unknown, selectedSport: string) {
   const marketType = textFromPayload(payload, ["market_type", "marketType"]).toLowerCase();
   const marketName = textFromPayload(payload, ["market_name", "marketName"]).toLowerCase();
   const eventName = textFromPayload(payload, ["event_name", "eventName", "fixture", "fixture_name", "event", "name", "title"]).toLowerCase();
@@ -3042,7 +3042,7 @@ function isPrimaryTradingMarket(payload: unknown, selectedSport: string) {
   return true;
 }
 
-function mergeLivePriceRows(rows: BackendPriceRow[], channel: string, payload: unknown, selectedSport: string, primaryOnly = true, maxRows = 80) {
+export function mergeLivePriceRows(rows: BackendPriceRow[], channel: string, payload: unknown, selectedSport: string, primaryOnly = true, maxRows = 80) {
   const exchangeKey = exchangeFromEvent(channel, payload);
   const exchange = EXCHANGE_COLUMNS.find((item) => item.key === exchangeKey);
   if (!exchange?.supports.includes(selectedSport)) return rows;
@@ -10966,7 +10966,7 @@ function RefreshUpdateNotice() {
   );
 }
 
-type AgTestRow = {
+export type AgTestRow = {
   id: string;
   startAt: string | null;
   kickoff: string;
@@ -10987,7 +10987,7 @@ type AgTestRow = {
   fresh: string;
 };
 
-type OddsApiDiagnosticRow = {
+export type OddsApiDiagnosticRow = {
   eventId: string;
   startTime: number | null;
   league: string;
@@ -11004,7 +11004,7 @@ type OddsApiDiagnosticRow = {
   fieldKeys: string[];
 };
 
-type OddsApiDiagnosticResponse = {
+export type OddsApiDiagnosticResponse = {
   generatedAt: string;
   provider: string;
   sport: string;
@@ -11020,7 +11020,7 @@ type OddsApiDiagnosticResponse = {
   errors: Array<{ eventId: string; fixture: string; message: string }>;
 };
 
-function AgStackCell({ values, className = "" }: { values?: string[]; className?: string }) {
+export function AgStackCell({ values, className = "" }: { values?: string[]; className?: string }) {
   const displayValues = values?.length ? values : ["-"];
   return (
     <div className={`ag-stack-cell ${className}`}>
@@ -11044,12 +11044,12 @@ function oddsApiFixtureKey(value: string) {
     .trim();
 }
 
-function isMoneylineOddsApiRow(row: OddsApiDiagnosticRow) {
+export function isMoneylineOddsApiRow(row: OddsApiDiagnosticRow) {
   const market = String(row.market || "").toLowerCase();
   return market.includes("moneyline") || market.includes("match odds") || market.includes("1x2");
 }
 
-function decimalOddsLabel(value: number | null | undefined) {
+export function decimalOddsLabel(value: number | null | undefined) {
   if (!Number.isFinite(Number(value))) return "-";
   const odds = Number(value);
   return odds >= 10 ? odds.toFixed(1).replace(/\.0$/, "") : odds.toFixed(2).replace(/0$/, "").replace(/\.$/, "");
@@ -11107,7 +11107,7 @@ function sourceTimestampLabel(rows: OddsApiDiagnosticRow[]) {
   }).format(new Date(latest));
 }
 
-function groupOddsApiRowsByEvent(rows: OddsApiDiagnosticRow[]) {
+export function groupOddsApiRowsByEvent(rows: OddsApiDiagnosticRow[]) {
   const groups = new Map<string, OddsApiDiagnosticRow[]>();
   rows.forEach((row) => {
     const key = row.eventId || oddsApiFixtureKey(row.fixture);
@@ -11127,7 +11127,7 @@ function fixtureOddsApiRows(fixtureName: string, oddsRows: OddsApiDiagnosticRow[
   });
 }
 
-function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendPriceRow[], oddsRows: OddsApiDiagnosticRow[] = []) {
+export function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendPriceRow[], oddsRows: OddsApiDiagnosticRow[] = []) {
   const displayRows = collapseRowsByFixture(mergeDisplayPriceRows(priceRows));
   const moneylineOddsRows = oddsRows.filter(isMoneylineOddsApiRow);
   const matchedOddsEventIds = new Set<string>();
@@ -11223,7 +11223,7 @@ function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendPriceRow
     .filter((row) => row.coverage.some((exchange) => exchange.available) || row.oddsCoverage.some((source) => source.available));
 }
 
-function filterAgTestRows(rows: AgTestRow[], query: string) {
+export function filterAgTestRows(rows: AgTestRow[], query: string) {
   const terms = normalizeFixtureText(query).split(" ").filter(Boolean);
   if (!terms.length) return rows;
   return rows.filter((row) => {
@@ -11249,7 +11249,7 @@ function filterAgTestRows(rows: AgTestRow[], query: string) {
   });
 }
 
-function agTestRowMatchesGroup(row: AgTestRow, group: string) {
+export function agTestRowMatchesGroup(row: AgTestRow, group: string) {
   if (group === "all") return true;
   return rowMatchesMarketGroup({
     id: row.id,
@@ -11263,7 +11263,7 @@ function agTestRowMatchesGroup(row: AgTestRow, group: string) {
   }, group);
 }
 
-function footballFilterBreadcrumb(bucket: string, group: string) {
+export function footballFilterBreadcrumb(bucket: string, group: string) {
   const bucketLabel = AGTEST_FOOTBALL_FILTER_LABELS.get(bucket);
   const groupLabel = AGTEST_FOOTBALL_FILTER_LABELS.get(group);
   return ["All", "Football", bucketLabel, group !== bucket ? groupLabel : ""]
@@ -11271,7 +11271,7 @@ function footballFilterBreadcrumb(bucket: string, group: string) {
     .join(" / ");
 }
 
-function oddsDiagnosticTime(value: number | null | undefined) {
+export function oddsDiagnosticTime(value: number | null | undefined) {
   if (!value) return "-";
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -11283,7 +11283,7 @@ function oddsDiagnosticTime(value: number | null | undefined) {
   }).format(new Date(value * 1000));
 }
 
-function footballTeamAssetMatchesGroup(team: FootballTeamAsset, group: string) {
+export function footballTeamAssetMatchesGroup(team: FootballTeamAsset, group: string) {
   if (group === "all" || group === "today" || group === "tomorrow") return true;
   const haystack = normalizeSelectionKey([
     team.fullName,
@@ -11314,166 +11314,6 @@ function footballTeamAssetMatchesGroup(team: FootballTeamAsset, group: string) {
   const terms = FOOTBALL_GROUP_TERMS[group];
   if (terms) return terms.some((term) => haystack.includes(normalizeSelectionKey(term)));
   return haystack.includes(normalizeSelectionKey(group));
-}
-
-export function FootballProfilesPage() {
-  const cachedTeams = cachedFootballTeamAssets();
-  const [teams, setTeams] = useState<FootballTeamAsset[]>(cachedTeams);
-  const [loading, setLoading] = useState(cachedTeams.length === 0);
-  const [error, setError] = useState("");
-  const [query, setQuery] = useState("");
-  const [filterBucket, setFilterBucket] = useState("all");
-  const [marketGroup, setMarketGroup] = useState("all");
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadTeams() {
-      if (!cachedFootballTeamAssets().length) setLoading(true);
-      try {
-        const teams = await prefetchFootballTeamAssets();
-        if (!teams.length) throw new Error("team profiles failed");
-        if (!cancelled) {
-          setTeams(teams);
-          setError("");
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setTeams([]);
-          setError(err instanceof Error ? err.message : "team profiles failed");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    loadTeams();
-    return () => { cancelled = true; };
-  }, []);
-
-  const secondaryFilters = AGTEST_FOOTBALL_SECONDARY_FILTERS[filterBucket] || [];
-  const filteredTeams = useMemo(() => {
-    const terms = normalizeFixtureText(query).split(" ").filter(Boolean);
-    return teams
-      .filter((team) => footballTeamAssetMatchesGroup(team, marketGroup))
-      .filter((team) => {
-        if (!terms.length) return true;
-        const haystack = normalizeFixtureText([
-          team.fullName,
-          team.shortName,
-          team.country,
-          team.currentLeague,
-          team.ticker,
-          ...(team.aliases || [])
-        ].join(" "));
-        return terms.every((term) => haystack.includes(term));
-      })
-      .sort((a, b) => {
-        const country = String(a.country || "").localeCompare(String(b.country || ""));
-        if (country !== 0) return country;
-        return String(a.fullName || a.shortName).localeCompare(String(b.fullName || b.shortName));
-      });
-  }, [teams, marketGroup, query]);
-
-  return (
-    <>
-      <SportsEdgeTopbar active="football-profiles" onSearchChange={setQuery} searchPlaceholder="Filter football teams, country, league..." />
-      <main className="football-profiles-page">
-        <section className="agtest-subbar" aria-label="Football profile filters">
-          <div className="agtest-filter-stack">
-            <nav aria-label="Football profile regions">
-              {AGTEST_FOOTBALL_PRIMARY_FILTERS.filter((filter) => !["today", "tomorrow"].includes(filter.value)).map((filter) => (
-                <button
-                  className={filterBucket === filter.value ? "active" : ""}
-                  key={filter.value}
-                  type="button"
-                  onClick={() => {
-                    setFilterBucket(filter.value);
-                    setMarketGroup(filter.value);
-                  }}
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </nav>
-            {secondaryFilters.length > 0 && (
-              <nav className="agtest-filter-secondary" aria-label="Football profile league filters">
-                {secondaryFilters.map((filter) => (
-                  <button
-                    className={marketGroup === filter.value ? "active" : ""}
-                    key={filter.value}
-                    type="button"
-                    onClick={() => setMarketGroup(filter.value)}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
-              </nav>
-            )}
-          </div>
-          <div>
-            <span>{filteredTeams.length} / {teams.length} teams</span>
-            <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
-            <span>{loading ? "loading" : "double-click opens profile"}</span>
-          </div>
-        </section>
-
-        <section className="football-profiles-header">
-          <div>
-            <span>SportsEdge Football Profiles</span>
-            <h1>Team Directory</h1>
-          </div>
-          <p>Canonical team identity, logos, countries, leagues, provider ids and aliases. Double-click any row to open the detail profile.</p>
-        </section>
-
-        {error && <div className="agtest-error">{error}</div>}
-
-        <section className="football-profiles-table-wrap">
-          <table className="football-profiles-table">
-            <thead>
-              <tr>
-                <th>Team</th>
-                <th>Code</th>
-                <th>Country</th>
-                <th>League</th>
-                <th>Provider</th>
-                <th>Aliases</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTeams.map((team) => (
-                <tr
-                  key={team.id || team.slug}
-                  onDoubleClick={() => { window.location.hash = `#team/${team.slug || encodeURIComponent(team.fullName)}`; }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") window.location.hash = `#team/${team.slug || encodeURIComponent(team.fullName)}`;
-                  }}
-                  tabIndex={0}
-                >
-                  <td className="football-profile-team-cell">
-                    <span className={`team-logo-frame matrix-team-logo${team.national ? " flag-logo" : ""}`}>
-                      {team.logoUrl || team.flagUrl ? <img src={team.logoUrl || team.flagUrl || ""} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
-                      <span>{team.ticker || teamInitials(team.shortName || team.fullName)}</span>
-                    </span>
-                    <strong>{team.fullName || team.shortName}</strong>
-                  </td>
-                  <td className="mono">{team.ticker || "-"}</td>
-                  <td>{team.country || "-"}</td>
-                  <td>{team.currentLeague || "-"}</td>
-                  <td className="mono">{team.providerTeamId || team.provider || "-"}</td>
-                  <td>{(team.aliases || []).slice(0, 4).join(" / ") || "-"}</td>
-                </tr>
-              ))}
-              {!loading && filteredTeams.length === 0 && (
-                <tr><td className="empty" colSpan={6}>No teams matched this filter.</td></tr>
-              )}
-              {loading && filteredTeams.length === 0 && (
-                <tr><td className="empty" colSpan={6}>Loading football teams.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </section>
-      </main>
-    </>
-  );
 }
 
 function mergeSportDashboardEvents(rows: BackendPriceRow[], fallbackSport: string) {
@@ -11788,1038 +11628,6 @@ export function OddsApiDiagnosticsPage() {
   );
 }
 
-type BetfairArbRow = {
-  id: string;
-  fixture: string;
-  competition: string;
-  market: string;
-  startAt: string | null;
-  observedAt: string | null;
-  type: "back_book" | "lay_book" | "crossed_runner" | "watch";
-  status: "EXECUTABLE_ARB" | "ANOMALY" | "WATCH";
-  edgePct: number;
-  roiPct: number;
-  backBookPct: number | null;
-  layBookPct: number | null;
-  usableLiquidity: number;
-  validRunners: number;
-  expectedRunners: number | null;
-  missingRunners: number | null;
-  marketComplete: boolean;
-  staleMs: number | null;
-  executable: boolean;
-  executableStake: number;
-  maxProfit: number;
-  maxLoss: number;
-  reason: string;
-  bestBack: string;
-  bestLay: string;
-  outcomes: string;
-  liquidity: number;
-};
-
-const ARB_FRESH_MS = 2000;
-const MIN_EXECUTABLE_STAKE = 10;
-
-function runnerPriceText(runner: BackendRunner) {
-  const back = runner.back ? `B ${runner.back.odds.toFixed(2)} ${formatExchangeMoney(runner.back.amount, "GBP")}` : "B -";
-  const lay = runner.lay ? `L ${runner.lay.odds.toFixed(2)} ${formatExchangeMoney(runner.lay.amount, "GBP")}` : "L -";
-  return `${runner.name}: ${back} / ${lay}`;
-}
-
-function marketBookPct(runners: BackendRunner[], side: "back" | "lay") {
-  const prices = runners
-    .map((runner) => runner[side]?.odds)
-    .filter((odds): odds is number => Number.isFinite(Number(odds)) && Number(odds) > 1);
-  if (prices.length !== runners.length || prices.length < 2) return null;
-  return prices.reduce((sum, odds) => sum + 1 / odds, 0) * 100;
-}
-
-function safeArbMarket(match: BackendExchangeMatch, runners: BackendRunner[]) {
-  const marketType = String(match.marketType || "").toUpperCase();
-  const marketName = String(match.marketName || "").toLowerCase();
-  if (marketType === "MATCH_ODDS" && runners.length === 3) return true;
-  if ((marketType.startsWith("OVER_UNDER") || marketName.startsWith("over/under")) && runners.length === 2) return true;
-  if ((marketType === "BOTH_TEAMS_TO_SCORE" || marketName.includes("both teams to score")) && runners.length === 2) return true;
-  return false;
-}
-
-function expectedRunnerCount(match: BackendExchangeMatch) {
-  const marketType = String(match.marketType || "").toUpperCase();
-  const marketName = String(match.marketName || "").toLowerCase();
-  if (marketType === "MATCH_ODDS") return 3;
-  if (marketType.startsWith("OVER_UNDER") || marketName.startsWith("over/under")) return 2;
-  if (marketType === "BOTH_TEAMS_TO_SCORE" || marketName.includes("both teams to score")) return 2;
-  return null;
-}
-
-function runnerHasBothSides(runner: BackendRunner) {
-  return Number(runner.back?.odds || 0) > 1
-    && Number(runner.lay?.odds || 0) > 1
-    && Number(runner.back?.amount || 0) > 0
-    && Number(runner.lay?.amount || 0) > 0;
-}
-
-function staleMsFromObservedAt(value: string | null | undefined) {
-  if (!value) return null;
-  const normalized = String(value).includes("T") ? String(value) : `${String(value).replace(" ", "T")}Z`;
-  const ms = Date.now() - new Date(normalized).getTime();
-  return Number.isFinite(ms) ? ms : null;
-}
-
-function arbFreshnessLabel(ms: number | null) {
-  if (ms == null) return "-";
-  if (ms < 1000) return `${Math.max(0, ms)}ms`;
-  const seconds = Math.round(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  return `${Math.round(seconds / 60)}m`;
-}
-
-function usableBookLiquidity(runners: BackendRunner[], side: "back" | "lay") {
-  const prices = runners.map((runner) => runner[side]).filter(Boolean) as BackendRunnerLevel[];
-  if (prices.length !== runners.length || !prices.length) return 0;
-  const weights = prices.map((price) => 1 / price.odds);
-  const scale = Math.min(...prices.map((price, index) => price.amount / weights[index]));
-  if (!Number.isFinite(scale) || scale <= 0) return 0;
-  return weights.reduce((sum, weight) => sum + weight * scale, 0);
-}
-
-function backBookExecution(runners: BackendRunner[], bookPct: number | null) {
-  if (bookPct == null || bookPct <= 0 || bookPct >= 100) return { executableStake: 0, maxProfit: 0, maxLoss: 0 };
-  const prices = runners.map((runner) => runner.back).filter(Boolean) as BackendRunnerLevel[];
-  if (prices.length !== runners.length) return { executableStake: 0, maxProfit: 0, maxLoss: 0 };
-  const book = bookPct / 100;
-  const weights = prices.map((price) => 1 / price.odds);
-  const maxReturn = Math.min(...prices.map((price, index) => price.amount / weights[index]));
-  if (!Number.isFinite(maxReturn) || maxReturn <= 0) return { executableStake: 0, maxProfit: 0, maxLoss: 0 };
-  const executableStake = maxReturn * book;
-  const maxProfit = maxReturn - executableStake;
-  return { executableStake, maxProfit, maxLoss: 0 };
-}
-
-function layBookExecution(runners: BackendRunner[], bookPct: number | null) {
-  if (bookPct == null || bookPct <= 100) return { executableStake: 0, maxProfit: 0, maxLoss: 0 };
-  const prices = runners.map((runner) => runner.lay).filter(Boolean) as BackendRunnerLevel[];
-  if (prices.length !== runners.length) return { executableStake: 0, maxProfit: 0, maxLoss: 0 };
-  const book = bookPct / 100;
-  const maxStake = Math.min(...prices.map((price) => price.amount * book * price.odds));
-  if (!Number.isFinite(maxStake) || maxStake <= 0) return { executableStake: 0, maxProfit: 0, maxLoss: 0 };
-  const maxProfit = maxStake * (1 - 1 / book);
-  return { executableStake: maxStake, maxProfit, maxLoss: 0 };
-}
-
-function crossedRunnerExecution(runner: BackendRunner) {
-  const backOdds = Number(runner.back?.odds || 0);
-  const layOdds = Number(runner.lay?.odds || 0);
-  const backAmount = Number(runner.back?.amount || 0);
-  const layAmount = Number(runner.lay?.amount || 0);
-  if (backOdds <= 1 || layOdds <= 1 || backOdds <= layOdds || backAmount <= 0 || layAmount <= 0) {
-    return { executableStake: 0, maxProfit: 0, maxLoss: 0 };
-  }
-  const backStake = Math.min(backAmount, layAmount * layOdds / backOdds);
-  const layStake = backStake * backOdds / layOdds;
-  const maxProfit = layStake - backStake;
-  return { executableStake: backStake + layStake, maxProfit, maxLoss: 0 };
-}
-
-function executionStatus(execution: { executableStake: number; maxProfit: number; maxLoss: number }, isFresh: boolean, marketComplete: boolean) {
-  return isFresh
-    && marketComplete
-    && execution.executableStake >= MIN_EXECUTABLE_STAKE
-    && execution.maxProfit > 0
-    && execution.maxLoss <= 0;
-}
-
-function buildBetfairArbRows(rows: BackendPriceRow[]) {
-  const output: BetfairArbRow[] = [];
-
-  for (const row of rows) {
-    const match = row.matches?.betfair;
-    if (!match || !match.runners?.length) continue;
-    const marketName = match.marketName || row.marketName || "Market";
-    const runners = [...match.runners].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
-    if (runners.length < 2 || runners.length > 30) continue;
-    const expectedRunners = expectedRunnerCount(match);
-    const validRunners = runners.filter(runnerHasBothSides).length;
-    const missingRunners = expectedRunners == null ? null : Math.max(0, expectedRunners - validRunners);
-    const marketComplete = expectedRunners != null && runners.length === expectedRunners && validRunners === expectedRunners && missingRunners === 0;
-    const staleMs = staleMsFromObservedAt(match.observedAt);
-    const isFresh = staleMs != null && staleMs <= ARB_FRESH_MS;
-    const isSafeMarket = safeArbMarket(match, runners);
-
-    const backBookPct = isSafeMarket && marketComplete ? marketBookPct(runners, "back") : null;
-    const layBookPct = isSafeMarket && marketComplete ? marketBookPct(runners, "lay") : null;
-    let hasSignal = false;
-    const outcomes = runners.map(runnerPriceText).join(" | ");
-    const liquidity = runners.reduce((sum, runner) => (
-      sum
-      + Number(runner.back?.amount || 0)
-      + Number(runner.lay?.amount || 0)
-    ), 0);
-    const base = {
-      fixture: match.name || row.name,
-      competition: match.competitionName || row.competitionName || "",
-      market: marketName,
-      startAt: match.startAt || row.startAt,
-      observedAt: match.observedAt,
-      backBookPct,
-      layBookPct,
-      validRunners,
-      expectedRunners,
-      missingRunners,
-      marketComplete,
-      staleMs,
-      executable: false,
-      executableStake: 0,
-      maxProfit: 0,
-      maxLoss: 0,
-      reason: !isSafeMarket ? "unsupported market"
-        : !marketComplete ? `incomplete ${validRunners}/${expectedRunners || runners.length}`
-          : !isFresh ? `stale ${arbFreshnessLabel(staleMs)}`
-            : "watch",
-      bestBack: backBookPct == null ? "-" : `${backBookPct.toFixed(2)}%`,
-      bestLay: layBookPct == null ? "-" : `${layBookPct.toFixed(2)}%`,
-      outcomes,
-      usableLiquidity: 0,
-      liquidity
-    };
-
-    if (backBookPct != null && backBookPct < 99.95) {
-      const id = `${match.marketId}:back`;
-      const roiPct = (100 / backBookPct - 1) * 100;
-      const execution = backBookExecution(runners, backBookPct);
-      const executable = executionStatus(execution, isFresh, marketComplete);
-      hasSignal = true;
-      output.push({
-        id,
-        ...base,
-        type: "back_book",
-        status: executable ? "EXECUTABLE_ARB" : "ANOMALY",
-        edgePct: 100 - backBookPct,
-        roiPct,
-        usableLiquidity: execution.executableStake || usableBookLiquidity(runners, "back"),
-        executable,
-        executableStake: execution.executableStake,
-        maxProfit: execution.maxProfit,
-        maxLoss: execution.maxLoss,
-        reason: executable ? "complete + fresh + sized" : execution.executableStake < MIN_EXECUTABLE_STAKE ? "below min executable stake" : base.reason
-      });
-    }
-
-    if (layBookPct != null && layBookPct > 100.05) {
-      const id = `${match.marketId}:lay`;
-      const roiPct = (1 - 100 / layBookPct) * 100;
-      const execution = layBookExecution(runners, layBookPct);
-      const executable = executionStatus(execution, isFresh, marketComplete);
-      hasSignal = true;
-      output.push({
-        id,
-        ...base,
-        type: "lay_book",
-        status: executable ? "EXECUTABLE_ARB" : "ANOMALY",
-        edgePct: layBookPct - 100,
-        roiPct,
-        usableLiquidity: execution.executableStake || usableBookLiquidity(runners, "lay"),
-        executable,
-        executableStake: execution.executableStake,
-        maxProfit: execution.maxProfit,
-        maxLoss: execution.maxLoss,
-        reason: executable ? "complete + fresh + sized" : execution.executableStake < MIN_EXECUTABLE_STAKE ? "below min executable stake" : base.reason
-      });
-    }
-
-    for (const runner of runners) {
-      const backOdds = Number(runner.back?.odds || 0);
-      const layOdds = Number(runner.lay?.odds || 0);
-      if (backOdds > 1 && layOdds > 1 && backOdds > layOdds) {
-        const id = `${match.marketId}:${runner.id}:crossed`;
-        const roiPct = ((backOdds / layOdds) - 1) * 100;
-        const execution = crossedRunnerExecution(runner);
-        const executable = isFresh
-          && execution.executableStake >= MIN_EXECUTABLE_STAKE
-          && execution.maxProfit > 0;
-        hasSignal = true;
-        output.push({
-          id,
-          ...base,
-          type: "crossed_runner",
-          status: executable ? "EXECUTABLE_ARB" : "ANOMALY",
-          edgePct: roiPct,
-          roiPct,
-          usableLiquidity: execution.executableStake,
-          executable,
-          executableStake: execution.executableStake,
-          maxProfit: execution.maxProfit,
-          maxLoss: execution.maxLoss,
-          reason: executable ? "crossed + fresh + sized" : execution.executableStake < MIN_EXECUTABLE_STAKE ? "below min executable stake" : base.reason,
-          outcomes: runnerPriceText(runner)
-        });
-      }
-    }
-
-    const watchId = `${match.marketId}:watch`;
-    if (!hasSignal && output.length < 120) {
-      const backMiss = backBookPct == null ? Number.POSITIVE_INFINITY : Math.abs(100 - backBookPct);
-      const layMiss = layBookPct == null ? Number.POSITIVE_INFINITY : Math.abs(100 - layBookPct);
-      const edgePct = -Math.min(backMiss, layMiss);
-      output.push({
-        id: watchId,
-        ...base,
-        type: "watch",
-        status: "WATCH",
-        edgePct,
-        roiPct: 0,
-        usableLiquidity: 0,
-        executableStake: 0,
-        maxProfit: 0,
-        maxLoss: 0,
-        reason: base.reason
-      });
-    }
-  }
-
-  return output.sort((a, b) => {
-    const statusRank = { EXECUTABLE_ARB: 0, ANOMALY: 1, WATCH: 2 };
-    if (a.status !== b.status) return statusRank[a.status] - statusRank[b.status];
-    return b.edgePct - a.edgePct || b.liquidity - a.liquidity;
-  });
-}
-
-function betfairArbTypeLabel(type: BetfairArbRow["type"]) {
-  if (type === "back_book") return "Back book";
-  if (type === "lay_book") return "Lay book";
-  if (type === "crossed_runner") return "Crossed runner";
-  return "Watch";
-}
-
-function arbStatusClass(status: BetfairArbRow["status"]) {
-  return status.toLowerCase().replace("_", "-");
-}
-
-export function BetfairArbsPage() {
-  const [rows, setRows] = useState<BetfairArbRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [query, setQuery] = useState("");
-  const [lastRefresh, setLastRefresh] = useState<string | null>(null);
-
-  async function loadArbs() {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        sport: "football",
-        exchanges: "betfair",
-        segment: "all",
-        limit: "1000"
-      });
-      const response = await fetch(`/api/exchange-odds?${params.toString()}`, { cache: "no-store" });
-      const payload = await response.json();
-      if (!response.ok || !Array.isArray(payload.rows)) throw new Error(payload.detail || "Betfair arb scan failed");
-      setRows(buildBetfairArbRows(payload.rows as BackendPriceRow[]));
-      setLastRefresh(payload.generatedAt || new Date().toISOString());
-      setError("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Betfair arb scan failed");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    loadArbs();
-    const timer = window.setInterval(loadArbs, 15000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  const filteredRows = useMemo(() => {
-    const terms = normalizeFixtureText(query).split(" ").filter(Boolean);
-    if (!terms.length) return rows;
-    return rows.filter((row) => {
-      const haystack = normalizeFixtureText([
-        row.fixture,
-        row.competition,
-        row.market,
-        row.type,
-        row.outcomes
-      ].join(" "));
-      return terms.every((term) => haystack.includes(term));
-    });
-  }, [query, rows]);
-
-  const executableRows = filteredRows.filter((row) => row.status === "EXECUTABLE_ARB");
-  const anomalyRows = filteredRows.filter((row) => row.status === "ANOMALY");
-  const watchedMarkets = rows.length;
-  const freshest = lastRefresh ? new Intl.DateTimeFormat("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    timeZone: "Europe/Madrid",
-    hour12: false
-  }).format(new Date(lastRefresh)) : "-";
-
-  return (
-    <>
-      <SportsEdgeTopbar active="arbs" onSearchChange={setQuery} searchPlaceholder="Filter arbs, fixture, market, runner..." />
-      <main className="agtest-page arbs-page">
-        <section className="agtest-subbar" aria-label="Betfair arb monitor context">
-          <nav aria-label="Arbitrage sections">
-            <button className="active" type="button">Betfair</button>
-            <button type="button" onClick={() => { window.location.hash = "#liquidity"; }}>Liquidity</button>
-            <button type="button" onClick={() => { window.location.hash = "#oddsapi"; }}>Odds API</button>
-          </nav>
-          <div>
-            <span>{executableRows.length} executable</span>
-            <span>{anomalyRows.length} anomalies</span>
-            <span>{watchedMarkets} watched</span>
-            <span>{loading ? "scanning" : `fresh ${freshest}`}</span>
-          </div>
-        </section>
-
-        <section className="arbs-summary">
-          <article><span>Executable</span><strong>{executableRows.length}</strong></article>
-          <article><span>Anomalies</span><strong>{anomalyRows.length}</strong></article>
-          <article><span>Best ROI</span><strong>{executableRows[0] ? `${executableRows[0].roiPct.toFixed(2)}%` : "-"}</strong></article>
-          <article><span>Markets watched</span><strong>{watchedMarkets}</strong></article>
-        </section>
-
-        <section className="arbs-table-wrap">
-          {error && <div className="agtest-error">{error}</div>}
-          <table className="arbs-table">
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Fixture</th>
-                <th>Market</th>
-                <th>Signal</th>
-                <th>Status</th>
-                <th>Arb %</th>
-                <th>ROI</th>
-                <th>Back total</th>
-                <th>Lay total</th>
-                <th>expected_runners</th>
-                <th>valid_runners</th>
-                <th>missing_runners</th>
-                <th>stale_ms</th>
-                <th>executable_stake</th>
-                <th>max_profit</th>
-                <th>max_loss</th>
-                <th>Both sides</th>
-                <th>Fresh</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.map((row) => (
-                <tr className={row.status === "EXECUTABLE_ARB" ? "is-executable" : row.status === "ANOMALY" ? "is-anomaly" : ""} key={row.id}>
-                  <td className="mono">{row.startAt ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid", hour12: false }).format(new Date(row.startAt)) : "-"}</td>
-                  <td><strong>{row.fixture}</strong><span>{row.competition}</span></td>
-                  <td>{row.market}</td>
-                  <td><span className={`arb-type ${arbStatusClass(row.status)}`}>{betfairArbTypeLabel(row.type)}</span></td>
-                  <td><strong>{row.status}</strong><span>{row.reason}</span></td>
-                  <td className={row.status === "EXECUTABLE_ARB" ? "mono positive" : "mono"}>{row.edgePct > 0 ? `+${row.edgePct.toFixed(2)}%` : `${row.edgePct.toFixed(2)}%`}</td>
-                  <td className={row.status === "EXECUTABLE_ARB" ? "mono positive" : "mono"}>{row.roiPct ? `${row.roiPct.toFixed(2)}%` : "-"}</td>
-                  <td className="mono">{row.bestBack}</td>
-                  <td className="mono">{row.bestLay}</td>
-                  <td className="mono">{row.expectedRunners ?? "-"}</td>
-                  <td className="mono">{row.validRunners}</td>
-                  <td className="mono">{row.missingRunners ?? "-"}</td>
-                  <td className="mono">{row.staleMs == null ? "-" : Math.max(0, Math.round(row.staleMs))}</td>
-                  <td className="mono">{row.executableStake ? formatExchangeMoney(row.executableStake, "GBP") : "-"}</td>
-                  <td className={row.maxProfit > 0 ? "mono positive" : "mono"}>{row.maxProfit ? formatExchangeMoney(row.maxProfit, "GBP") : "-"}</td>
-                  <td className="mono">{row.maxLoss ? formatExchangeMoney(row.maxLoss, "GBP") : "£0"}</td>
-                  <td className="arbs-outcomes">{row.outcomes}</td>
-                  <td className="mono">{arbFreshnessLabel(row.staleMs)}</td>
-                </tr>
-              ))}
-              {!loading && filteredRows.length === 0 && (
-                <tr><td className="empty" colSpan={18}>No Betfair markets matched the current arb scan.</td></tr>
-              )}
-              {loading && filteredRows.length === 0 && (
-                <tr><td className="empty" colSpan={18}>Scanning Betfair back and lay books.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </section>
-      </main>
-    </>
-  );
-}
-
-type OddsOutcome = "home" | "draw" | "away";
-type AgTest2EventRow = {
-  id: string;
-  startTime: number | null;
-  kickoff: string;
-  fixture: string;
-  league: string;
-  read: "aligned" | "split" | "sparse";
-  sourceOdds: Record<string, Partial<Record<OddsOutcome, number>>>;
-  consensus: Partial<Record<OddsOutcome, number>>;
-  bias: string;
-  note: string;
-};
-
-const AGTEST2_SOURCES = [
-  { key: "matchbook", label: "Matchbook", short: "MB", kind: "exchange" },
-  { key: "betfair", label: "Betfair", short: "BF", kind: "exchange" },
-  { key: "smarkets", label: "Smarkets", short: "SM", kind: "exchange" },
-  { key: "betdaq", label: "Betdaq", short: "BD", kind: "exchange" },
-  { key: "unibet", label: "Unibet", short: "UNI", kind: "anchor" }
-] as const;
-
-function oddsOutcomeFromRow(row: OddsApiDiagnosticRow): OddsOutcome | null {
-  const market = String(row.market || "").toLowerCase();
-  const selection = normalizeFixtureText(row.selection || "");
-  if (market.includes("/draw") || selection === "draw" || selection.includes(" the draw")) return "draw";
-  if (market.includes("/home")) return "home";
-  if (market.includes("/away")) return "away";
-  return null;
-}
-
-function buildAgTest2Rows(rows: OddsApiDiagnosticRow[]): AgTest2EventRow[] {
-  const moneylineRows = rows.filter((row) => isMoneylineOddsApiRow(row) && Number.isFinite(Number(row.odds)));
-  const grouped = groupOddsApiRowsByEvent(moneylineRows);
-  return [...grouped.entries()].map(([eventId, eventRows]) => {
-    const first = eventRows[0];
-    const sourceOdds: Record<string, Partial<Record<OddsOutcome, number>>> = {};
-    eventRows.forEach((row) => {
-      const source = String(row.bookmaker || "").toLowerCase();
-      const outcome = oddsOutcomeFromRow(row);
-      const odds = Number(row.odds);
-      if (!AGTEST2_SOURCES.some((item) => item.key === source) || !outcome || !Number.isFinite(odds)) return;
-      sourceOdds[source] = sourceOdds[source] || {};
-      const current = sourceOdds[source][outcome];
-      if (!current || odds > current) sourceOdds[source][outcome] = odds;
-    });
-    const consensus: Partial<Record<OddsOutcome, number>> = {};
-    (["home", "draw", "away"] as OddsOutcome[]).forEach((outcome) => {
-      const prices = AGTEST2_SOURCES
-        .map((source) => sourceOdds[source.key]?.[outcome])
-        .filter((value): value is number => Number.isFinite(Number(value)));
-      if (prices.length) consensus[outcome] = prices.reduce((sum, value) => sum + value, 0) / prices.length;
-    });
-    const sourceCount = AGTEST2_SOURCES.filter((source) => Object.keys(sourceOdds[source.key] || {}).length > 0).length;
-    const outcomeSpreads = (["home", "draw", "away"] as OddsOutcome[]).map((outcome) => {
-      const prices = AGTEST2_SOURCES
-        .map((source) => sourceOdds[source.key]?.[outcome])
-        .filter((value): value is number => Number.isFinite(Number(value)));
-      if (prices.length < 2) return 0;
-      return (Math.max(...prices) - Math.min(...prices)) / Math.max(...prices);
-    });
-    const maxSpread = Math.max(...outcomeSpreads, 0);
-    const read = sourceCount < 3 ? "sparse" : maxSpread > 0.08 ? "split" : "aligned";
-    const shortestOutcome = (["home", "draw", "away"] as OddsOutcome[])
-      .filter((outcome) => Number.isFinite(Number(consensus[outcome])))
-      .sort((a, b) => Number(consensus[a]) - Number(consensus[b]))[0];
-    const bias = shortestOutcome === "home" ? "Home consensus" : shortestOutcome === "away" ? "Away consensus" : shortestOutcome === "draw" ? "Draw pressure" : "No read";
-    const note = read === "aligned"
-      ? "Sources broadly aligned"
-      : read === "split"
-        ? "Book/exchange spread worth watching"
-        : "Limited source count";
-    return {
-      id: eventId,
-      startTime: first?.startTime || null,
-      kickoff: first?.startTime ? oddsDiagnosticTime(first.startTime) : "-",
-      fixture: first?.fixture || eventId,
-      league: first?.league || "Football",
-      read,
-      sourceOdds,
-      consensus,
-      bias,
-      note
-    };
-  }).filter((row) => AGTEST2_SOURCES.some((source) => Object.keys(row.sourceOdds[source.key] || {}).length > 0))
-    .sort((a, b) => (a.startTime || 0) - (b.startTime || 0));
-}
-
-function oddsPillClass(value: number | undefined, row: AgTest2EventRow, outcome: OddsOutcome) {
-  if (!Number.isFinite(Number(value))) return "miss";
-  const prices = AGTEST2_SOURCES
-    .map((source) => row.sourceOdds[source.key]?.[outcome])
-    .filter((price): price is number => Number.isFinite(Number(price)));
-  if (prices.length < 2) return "";
-  const max = Math.max(...prices);
-  const min = Math.min(...prices);
-  if (Math.abs(Number(value) - max) < 0.0001) return "best";
-  if (Math.abs(Number(value) - min) < 0.0001) return "short";
-  return "";
-}
-
-function agTest2OddsKey(eventId: string, source: string, outcome: OddsOutcome) {
-  return `${eventId}:${source}:${outcome}`;
-}
-
-function flattenAgTest2Odds(rows: AgTest2EventRow[]) {
-  const values = new Map<string, number>();
-  rows.forEach((row) => {
-    AGTEST2_SOURCES.forEach((source) => {
-      (["home", "draw", "away"] as OddsOutcome[]).forEach((outcome) => {
-        const value = row.sourceOdds[source.key]?.[outcome];
-        if (Number.isFinite(Number(value))) values.set(agTest2OddsKey(row.id, source.key, outcome), Number(value));
-      });
-    });
-  });
-  return values;
-}
-
-function OddsPill({ label, value, tone, changed }: { label: string; value?: number; tone: string; changed?: boolean }) {
-  const classes = ["agtest2-odd", tone, changed ? "changed" : ""].filter(Boolean).join(" ");
-  return <span className={classes}><b>{label}</b>{Number.isFinite(Number(value)) ? decimalOddsLabel(value) : "-"}</span>;
-}
-
-function OddsSourceCell({ row, source, changedKeys }: { row: AgTest2EventRow; source: typeof AGTEST2_SOURCES[number]; changedKeys: Set<string> }) {
-  const odds = row.sourceOdds[source.key] || {};
-  return (
-    <div className="agtest2-odds-set" title={source.label}>
-      <OddsPill label="H" value={odds.home} tone={oddsPillClass(odds.home, row, "home")} changed={changedKeys.has(agTest2OddsKey(row.id, source.key, "home"))} />
-      <OddsPill label="D" value={odds.draw} tone={oddsPillClass(odds.draw, row, "draw")} changed={changedKeys.has(agTest2OddsKey(row.id, source.key, "draw"))} />
-      <OddsPill label="A" value={odds.away} tone={oddsPillClass(odds.away, row, "away")} changed={changedKeys.has(agTest2OddsKey(row.id, source.key, "away"))} />
-    </div>
-  );
-}
-
-function ConsensusCell({ row }: { row: AgTest2EventRow }) {
-  return (
-    <div className="agtest2-odds-set agtest2-consensus-set" title="Average consensus across visible source prices">
-      <OddsPill label="H" value={row.consensus.home} tone={row.bias === "Home consensus" ? "consensus" : ""} />
-      <OddsPill label="D" value={row.consensus.draw} tone={row.bias === "Draw pressure" ? "consensus" : ""} />
-      <OddsPill label="A" value={row.consensus.away} tone={row.bias === "Away consensus" ? "consensus" : ""} />
-    </div>
-  );
-}
-
-export function AgTest2Page() {
-  const [data, setData] = useState<OddsApiDiagnosticResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [query, setQuery] = useState("");
-  const [changedKeys, setChangedKeys] = useState<Set<string>>(new Set());
-  const previousOddsRef = useRef<Map<string, number> | null>(null);
-  const clearChangedTimerRef = useRef<number | null>(null);
-
-  async function loadRows() {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        sport: "soccer",
-        bookmakers: AGTEST2_SOURCES.map((source) => source.key).join(","),
-        eventLimit: "40",
-        scanPages: "5",
-        pageLimit: "200",
-        oddsLimit: "1000"
-      });
-      const response = await fetch(`/api/odds-api/diagnostics?${params.toString()}`, { cache: "no-store" });
-      const payload = await response.json();
-      if (!response.ok || !Array.isArray(payload.rows)) throw new Error(payload.detail || "odds alignment failed");
-      setData(payload as OddsApiDiagnosticResponse);
-      setError("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "odds alignment failed");
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    loadRows();
-    const timer = window.setInterval(loadRows, 5000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  const allRows = useMemo(() => buildAgTest2Rows(data?.rows || []), [data]);
-  useEffect(() => {
-    const currentOdds = flattenAgTest2Odds(allRows);
-    const previousOdds = previousOddsRef.current;
-    if (previousOdds) {
-      const nextChanged = new Set<string>();
-      currentOdds.forEach((value, key) => {
-        const previous = previousOdds.get(key);
-        if (previous !== undefined && Math.abs(previous - value) > 0.0001) nextChanged.add(key);
-      });
-      if (nextChanged.size) {
-        setChangedKeys(nextChanged);
-        if (clearChangedTimerRef.current) window.clearTimeout(clearChangedTimerRef.current);
-        clearChangedTimerRef.current = window.setTimeout(() => setChangedKeys(new Set()), 2200);
-      }
-    }
-    previousOddsRef.current = currentOdds;
-  }, [allRows]);
-
-  useEffect(() => () => {
-    if (clearChangedTimerRef.current) window.clearTimeout(clearChangedTimerRef.current);
-  }, []);
-
-  const rows = useMemo(() => {
-    const terms = normalizeFixtureText(query).split(" ").filter(Boolean);
-    if (!terms.length) return allRows;
-    return allRows.filter((row) => {
-      const haystack = normalizeFixtureText([row.fixture, row.league, row.read, row.bias, row.note].join(" "));
-      return terms.every((term) => haystack.includes(term));
-    });
-  }, [allRows, query]);
-  const aligned = allRows.filter((row) => row.read === "aligned").length;
-  const split = allRows.filter((row) => row.read === "split").length;
-  const sparse = allRows.filter((row) => row.read === "sparse").length;
-  const bookmakerCounts = data?.counts.byBookmaker || {};
-
-  return (
-    <>
-      <SportsEdgeTopbar active="bias-matrix" onSearchChange={setQuery} searchPlaceholder="Filter alignment rows, fixture, source, bias..." />
-      <main className="agtest2-page">
-        <section className="agtest-subbar" aria-label="Bias Matrix odds alignment context">
-          <nav aria-label="Bias Matrix sections">
-            <button className="active" type="button">Odds Alignment</button>
-            <button type="button" onClick={() => { window.location.hash = "#liquidity"; }}>Liquidity</button>
-            <button type="button" onClick={() => { window.location.hash = "#oddsapi"; }}>Diagnostics</button>
-          </nav>
-          <div>
-            <span>{rows.length}{query.trim() ? ` / ${allRows.length}` : ""} fixtures</span>
-            <span>MB / BF / SM / BD / UNI</span>
-            <span>{loading ? "loading" : "odds-only bias"}</span>
-          </div>
-        </section>
-        <section className="agtest2-summary">
-          <article><span>Fixtures</span><strong>{allRows.length}</strong></article>
-          <article><span>Aligned</span><strong>{aligned}</strong></article>
-          <article><span>Split</span><strong>{split}</strong></article>
-          <article><span>Sparse</span><strong>{sparse}</strong></article>
-          <article><span>Anchor</span><strong>Unibet</strong></article>
-          <article><span>B365</span><strong>0</strong></article>
-        </section>
-        {error && <div className="agtest-error">{error}</div>}
-        <section className="agtest2-table-wrap">
-          <table className="agtest2-table">
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Fixture</th>
-                <th>Read</th>
-                {AGTEST2_SOURCES.map((source) => <th key={source.key}>{source.label}<small>{bookmakerCounts[source.key] || 0}</small></th>)}
-                <th>Consensus</th>
-                <th>Bias</th>
-                <th>Human note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <td className="mono agtest2-time">{row.kickoff}</td>
-                  <td className="agtest2-fixture"><strong>{row.fixture}</strong><span>{row.league}</span></td>
-                  <td><span className={`agtest2-status ${row.read}`}>{row.read}</span></td>
-                  {AGTEST2_SOURCES.map((source) => <td key={`${row.id}-${source.key}`}><OddsSourceCell row={row} source={source} changedKeys={changedKeys} /></td>)}
-                  <td className="agtest2-consensus"><ConsensusCell row={row} /></td>
-                  <td className="mono agtest2-bias">{row.bias}</td>
-                  <td className="agtest2-note">{row.note}</td>
-                </tr>
-              ))}
-              {!loading && rows.length === 0 && <tr><td className="empty" colSpan={11}>No odds alignment rows matched the current filter.</td></tr>}
-              {loading && rows.length === 0 && <tr><td className="empty" colSpan={11}>Loading odds alignment matrix.</td></tr>}
-            </tbody>
-          </table>
-        </section>
-        <footer className="agtest2-legend">
-          <span><b>H</b> home</span>
-          <span><b>D</b> draw</span>
-          <span><b>A</b> away</span>
-          <span>green = best price</span>
-          <span>red = shortest</span>
-          <span>grey = missing source</span>
-        </footer>
-      </main>
-    </>
-  );
-}
-
-export function AgTestPage() {
-  const cachedLiquidityRows = cachedFootballLiquidityRows();
-  const [fixtures, setFixtures] = useState<FootballFixture[]>([]);
-  const [backendRows, setBackendRows] = useState<BackendPriceRow[]>(cachedLiquidityRows);
-  const [loading, setLoading] = useState(cachedLiquidityRows.length === 0);
-  const [initialSnapshotLoaded, setInitialSnapshotLoaded] = useState(cachedLiquidityRows.length > 0);
-  const [error, setError] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterBucket, setFilterBucket] = useState("all");
-  const [marketGroup, setMarketGroup] = useState("all");
-  const [socketStatus, setSocketStatus] = useState<"offline" | "connecting" | "live" | "waiting">("offline");
-  const reconnectTimerRef = useRef<number | null>(null);
-  const socketRef = useRef<WebSocket | null>(null);
-  const pendingPriceEventsRef = useRef<Array<{ channel: string; payload: unknown }>>([]);
-  const priceFlushTimerRef = useRef<number | null>(null);
-  const allRows = useMemo(() => buildAgTestRows(fixtures, backendRows, []), [fixtures, backendRows]);
-  const groupedRows = useMemo(() => allRows.filter((row) => agTestRowMatchesGroup(row, marketGroup)), [allRows, marketGroup]);
-  const rows = useMemo(() => filterAgTestRows(groupedRows, searchQuery), [groupedRows, searchQuery]);
-  const secondaryFilters = AGTEST_FOOTBALL_SECONDARY_FILTERS[filterBucket] || [];
-
-  useEffect(() => {
-    let cancelled = false;
-    let hydrateTimer: number | null = null;
-
-    async function loadRows() {
-      if (!cachedFootballLiquidityRows().length) setLoading(true);
-      try {
-        const fastRows = await prefetchFootballLiquiditySnapshot();
-        if (!fastRows.length) throw new Error("odds failed");
-
-        if (!cancelled) {
-          setBackendRows((currentRows) => mergeDisplayPriceRows([
-            ...fastRows,
-            ...currentRows
-          ]).slice(0, 700));
-          setInitialSnapshotLoaded(true);
-          setError("");
-          setLoading(false);
-        }
-
-        hydrateTimer = window.setTimeout(async () => {
-          try {
-            const [fullOddsResponse, fixtureResponse] = await Promise.all([
-              fetch("/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=700", { cache: "no-store" }),
-              fetch("/api/football/fixtures?days=4&limit=2000&timezone=Europe/London", { cache: "no-store" })
-            ]);
-            const fullOddsPayload = await fullOddsResponse.json().catch(() => ({}));
-            const fixturePayload = await fixtureResponse.json().catch(() => ({}));
-            if (!cancelled) {
-              if (fullOddsResponse.ok && Array.isArray(fullOddsPayload.rows)) {
-                storeFootballLiquidity(fullOddsPayload.rows as BackendPriceRow[]);
-                setBackendRows((currentRows) => mergeDisplayPriceRows([
-                  ...(fullOddsPayload.rows as BackendPriceRow[]),
-                  ...currentRows
-                ]).slice(0, 700));
-              }
-              if (fixtureResponse.ok && Array.isArray(fixturePayload.fixtures)) setFixtures(fixturePayload.fixtures as FootballFixture[]);
-            }
-          } catch {
-            // Keep the fast exchange snapshot visible if slower enrichment fails.
-          }
-        }, 80);
-      } catch (err) {
-        if (!cancelled) {
-          setInitialSnapshotLoaded(true);
-          setError(err instanceof Error ? err.message : "Liquidity board failed");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    loadRows();
-    const timer = window.setInterval(loadRows, 30000);
-    return () => {
-      cancelled = true;
-      if (hydrateTimer) window.clearTimeout(hydrateTimer);
-      window.clearInterval(timer);
-    };
-  }, []);
-
-  useEffect(() => {
-    const token = window.localStorage.getItem("sportsedge.auth.token");
-    let closedByEffect = false;
-
-    function clearReconnect() {
-      if (reconnectTimerRef.current) {
-        window.clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = null;
-      }
-    }
-
-    function subscribe(socket: WebSocket) {
-      BETTING_EXCHANGE_COLUMNS.forEach((exchange) => {
-        socket.send(JSON.stringify({
-          type: "subscribe",
-          channel: exchangePriceChannel(exchange),
-          filters: { sport: "football" }
-        }));
-      });
-    }
-
-    function flushPriceEvents() {
-      const events = pendingPriceEventsRef.current.splice(0);
-      priceFlushTimerRef.current = null;
-      if (!events.length) return;
-      setBackendRows((currentRows) => mergeDisplayPriceRows(events.reduce(
-        (nextRows, item) => mergeLivePriceRows(nextRows, item.channel, item.payload, "football", true, 700),
-        currentRows
-      )).slice(0, 700));
-    }
-
-    function connect() {
-      clearReconnect();
-      if (!token) {
-        setSocketStatus("waiting");
-        return;
-      }
-      setSocketStatus("connecting");
-      const socket = new WebSocket(sportsEdgeWsUrl(token));
-      socketRef.current = socket;
-
-      socket.addEventListener("open", () => {
-        setSocketStatus("live");
-        subscribe(socket);
-      });
-
-      socket.addEventListener("message", (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          if (message?.type !== "event" || !message.payload) return;
-          if (!isPrimaryTradingMarket(message.payload, "football")) return;
-          pendingPriceEventsRef.current.push({
-            channel: String(message.channel || ""),
-            payload: message.payload
-          });
-          if (!priceFlushTimerRef.current) {
-            priceFlushTimerRef.current = window.setTimeout(flushPriceEvents, 50);
-          }
-        } catch {
-          // Ignore malformed socket payloads.
-        }
-      });
-
-      socket.addEventListener("close", () => {
-        if (closedByEffect) return;
-        setSocketStatus("offline");
-        reconnectTimerRef.current = window.setTimeout(connect, 2500);
-      });
-
-      socket.addEventListener("error", () => setSocketStatus("offline"));
-    }
-
-    connect();
-
-    return () => {
-      closedByEffect = true;
-      clearReconnect();
-      if (priceFlushTimerRef.current) {
-        window.clearTimeout(priceFlushTimerRef.current);
-        priceFlushTimerRef.current = null;
-      }
-      pendingPriceEventsRef.current = [];
-      socketRef.current?.close();
-      socketRef.current = null;
-    };
-  }, []);
-
-  const columnDefs = useMemo<ColDef<AgTestRow>[]>(() => [
-    { field: "kickoff", headerName: "Time", width: 128, pinned: "left" },
-    {
-      field: "match",
-      headerName: "Fixture",
-      minWidth: 390,
-      flex: 1.6,
-      pinned: "left",
-      cellRenderer: ({ data }: { data?: AgTestRow }) => (
-        <div className="ag-fixture-cell">
-          <strong>{data?.match}</strong>
-          <span>{data?.competition}</span>
-        </div>
-      )
-    },
-    {
-      field: "coverage",
-      headerName: "Coverage",
-      width: 156,
-      cellRenderer: ({ data }: { data?: AgTestRow }) => (
-        <div className="exchange-coverage ag-coverage">
-          {(data?.coverage || []).map((exchange) => (
-            <span className={exchange.available ? "available" : ""} key={exchange.label}>{exchange.label}</span>
-          ))}
-        </div>
-      )
-    },
-    { field: "outcomes", headerName: "Outcomes", minWidth: 260, flex: 1.05, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.outcomes} /> },
-    { field: "betfair", headerName: "Betfair", minWidth: 230, flex: 1, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betfair} className="ag-price-stack" /> },
-    { field: "matchbook", headerName: "Matchbook", minWidth: 250, flex: 1.1, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.matchbook} className="ag-price-stack" /> },
-    { field: "sx", headerName: "SX", minWidth: 210, flex: 0.9, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.sx} className="ag-price-stack" /> },
-    { field: "bias", headerName: "Bias", width: 150 },
-    { field: "bfLiquidity", headerName: "BF Vol", width: 108 },
-    { field: "mbLiquidity", headerName: "MB Vol", width: 108 },
-    { field: "sxLiquidity", headerName: "SX Vol", width: 108 },
-    { field: "fresh", headerName: "Fresh", width: 118 }
-  ], []);
-
-  return (
-    <>
-      <SportsEdgeTopbar
-        active="liquidity"
-        onSearchChange={setSearchQuery}
-        searchPlaceholder="Filter table, open team/player, market..."
-      />
-      <main className="agtest-page">
-        <section className="agtest-subbar" aria-label="Liquidity market context">
-          <div className="agtest-filter-stack">
-            <nav aria-label="Football region filters">
-              {AGTEST_FOOTBALL_PRIMARY_FILTERS.map((filter) => (
-                <button
-                  className={filterBucket === filter.value ? "active" : ""}
-                  key={filter.value}
-                  type="button"
-                  onClick={() => {
-                    setFilterBucket(filter.value);
-                    setMarketGroup(filter.value);
-                  }}
-                >
-                  {filter.label}
-                </button>
-              ))}
-              <button type="button" onClick={() => { window.location.hash = "#matrix"; }}>Bias Matrix</button>
-            </nav>
-            {secondaryFilters.length > 0 && (
-              <nav className="agtest-filter-secondary" aria-label="Football league filters">
-                {secondaryFilters.map((filter) => (
-                  <button
-                    className={marketGroup === filter.value ? "active" : ""}
-                    key={filter.value}
-                    type="button"
-                    onClick={() => setMarketGroup(filter.value)}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
-              </nav>
-            )}
-          </div>
-          <div>
-            <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
-            <span>{rows.length}{searchQuery.trim() || marketGroup !== "all" ? ` / ${allRows.length}` : ""} markets</span>
-            <span>BF / MB / SX exchange ladder</span>
-            <span>{socketStatus === "live" ? "wss live" : loading ? "loading" : socketStatus}</span>
-          </div>
-        </section>
-        <section className="agtest-source-strip" aria-label="Liquidity source status">
-          <span>Exchange ladder: BF / MB / SX</span>
-        </section>
-        <section className="agtest-grid-wrap ag-theme-quartz-dark">
-          <AgGridReact
-            rowData={rows}
-            columnDefs={columnDefs}
-            loading={!initialSnapshotLoaded && rows.length === 0}
-            overlayNoRowsTemplate="<span></span>"
-            overlayLoadingTemplate="<span></span>"
-            rowHeight={36}
-            headerHeight={34}
-            animateRows
-            suppressCellFocus
-            defaultColDef={{ sortable: true, resizable: true, filter: false, suppressHeaderMenuButton: true }}
-          />
-          {!initialSnapshotLoaded && rows.length === 0 && (
-            <div className="agtest-empty-state">
-              <strong>Loading liquidity</strong>
-              <span>Fetching BF / MB / SX exchange snapshot</span>
-            </div>
-          )}
-          {initialSnapshotLoaded && !loading && rows.length === 0 && (
-            <div className="agtest-empty-state">
-              <strong>No liquidity rows for this filter</strong>
-              <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
-            </div>
-          )}
-        </section>
-        {error && <div className="agtest-error">{error}</div>}
-      </main>
-    </>
-  );
-}
-
 export default function App() {
   const [hash, setHash] = useState(window.location.hash);
   const previewDashboard = import.meta.env.DEV;
@@ -12859,13 +11667,13 @@ export default function App() {
   else if (hash === "#agtest-mockup" || hash === "#bloomberg-demo" || hash === "#bloomberg") screen = <AgtestBloombergMockupPage />;
   else if (hash === "#news" || hash === "#news-feed-mockup") screen = hasSession || previewDashboard ? <BloombergNewsFeedMockupPage /> : <LoginScreen />;
   else if (hash === "#dashboard" || hash === "#today-dashboard-mockup") screen = hasSession || previewDashboard ? <TodayDashboardMockupPage /> : <LoginScreen />;
-  else if (hash === "#football-profiles" || hash === "#profile-mockup" || hash === "#profiles") screen = hasSession || previewDashboard ? <FootballProfilesPage /> : <LoginScreen />;
+  else if (hash === "#football-profiles" || hash === "#profile-mockup" || hash === "#profiles") screen = hasSession || previewDashboard ? <TodayDashboardMockupPage /> : <LoginScreen />;
   else if (hash === "#product-map") screen = <SportsEdgeProductMockupPage />;
   else if (hash === "#football-demo") screen = <FootballIntelligenceDemoPage />;
   else if (hash === "#oddsapi") screen = hasSession || previewDashboard ? <OddsApiDiagnosticsPage /> : <LoginScreen />;
-  else if (hash === "#arbs") screen = hasSession || previewDashboard ? <BetfairArbsPage /> : <LoginScreen />;
-  else if (hash === "#bias-matrix" || hash === "#agtest2") screen = hasSession || previewDashboard ? <AgTest2Page /> : <LoginScreen />;
-  else if (hash === "#liquidity" || hash === "#agtest") screen = hasSession || previewDashboard ? <AgTestPage /> : <LoginScreen />;
+  else if (hash === "#arbs") screen = hasSession || previewDashboard ? <TodayDashboardMockupPage /> : <LoginScreen />;
+  else if (hash === "#bias-matrix" || hash === "#agtest2") screen = hasSession || previewDashboard ? <TodayDashboardMockupPage /> : <LoginScreen />;
+  else if (hash === "#liquidity" || hash === "#agtest") screen = hasSession || previewDashboard ? <TodayDashboardMockupPage /> : <LoginScreen />;
   else if (isTerminalSportHash(hash)) screen = hasSession || previewDashboard ? <SportSummaryDashboardPage sport={terminalSportFromHash(hash)} /> : <LoginScreen />;
   else if (previewDashboard && (hash === "#testboard" || hash === "#matrix" || hash === "#actual")) screen = <TestboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#login") screen = <LoginScreen />;
