@@ -3527,6 +3527,40 @@ function isTodayInMadrid(value: string | null | undefined) {
   return formatter.format(date) === formatter.format(new Date());
 }
 
+function madridDateKey(value: Date | string | null | undefined) {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(String(value).includes("T") ? value : String(value).replace(" ", "T"));
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
+}
+
+function madridOffsetDateKey(offsetDays: number) {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetDays);
+  return madridDateKey(date);
+}
+
+function isTomorrowInMadrid(value: string | null | undefined) {
+  return Boolean(value) && madridDateKey(value) === madridOffsetDateKey(1);
+}
+
+function madridEventTime(value: string | null | undefined) {
+  if (!value) return "TBD";
+  const date = new Date(String(value).includes("T") ? value : String(value).replace(" ", "T"));
+  if (Number.isNaN(date.getTime())) return "TBD";
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Europe/Madrid"
+  }).format(date);
+}
+
 function exchangeOddsRowToEntryEvent(row: BackendPriceRow, fallbackSport: string): EntryEventRow {
   const matches = Object.entries(row.matches || {}).filter(([, match]) => Boolean(match)) as Array<[string, BackendExchangeMatch]>;
   const firstMatch = matches[0]?.[1];
@@ -11061,6 +11095,179 @@ function oddsDiagnosticTime(value: number | null | undefined) {
   }).format(new Date(value * 1000));
 }
 
+function mergeSportDashboardEvents(rows: BackendPriceRow[], fallbackSport: string) {
+  const merged = new Map<string, EntryEventRow>();
+  rows.forEach((row) => {
+    const entry = exchangeOddsRowToEntryEvent(row, fallbackSport);
+    if (!entry.name || !entry.startAt || !entry.exchanges.length) return;
+    const key = entryEventKey(entry);
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, entry);
+      return;
+    }
+    existing.liquidity += entry.liquidity;
+    existing.exchanges = Array.from(new Set([...existing.exchanges, ...entry.exchanges]));
+    if (eventStartSortValue(entry.latestSeenAt) > eventStartSortValue(existing.latestSeenAt)) existing.latestSeenAt = entry.latestSeenAt;
+  });
+  return Array.from(merged.values()).sort((a, b) => {
+    const startDiff = eventStartSortValue(a.startAt) - eventStartSortValue(b.startAt);
+    if (startDiff !== 0) return startDiff;
+    return b.liquidity - a.liquidity;
+  });
+}
+
+function SportDashboardFixtureTable({ title, rows, loading }: { title: string; rows: EntryEventRow[]; loading: boolean }) {
+  return (
+    <section className="sport-summary-panel sport-summary-fixtures">
+      <header>
+        <span>{title}</span>
+        <strong>{rows.length}</strong>
+      </header>
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Fixture</th>
+            <th>Competition</th>
+            <th>Venues</th>
+            <th>Liquidity</th>
+            <th>Latest</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.slice(0, 12).map((event) => (
+            <tr key={`${title}-${event.id}-${event.startAt}`}>
+              <td className="mono positive">{madridEventTime(event.startAt)}</td>
+              <td><strong>{event.name}</strong></td>
+              <td>{event.competition || "-"}</td>
+              <td><span className="sport-summary-venue">{event.exchanges.join(" / ")}</span></td>
+              <td className="mono">{event.liquidity ? formatExchangeMoney(event.liquidity, "GBP") : "-"}</td>
+              <td className="mono">{event.latestSeenAt ? madridEventTime(event.latestSeenAt) : "-"}</td>
+            </tr>
+          ))}
+          {!loading && rows.length === 0 && (
+            <tr><td className="empty" colSpan={6}>No fixtures returned for this day.</td></tr>
+          )}
+          {loading && rows.length === 0 && (
+            <tr><td className="empty" colSpan={6}>Loading fixtures.</td></tr>
+          )}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function SportSummaryDashboardPage({ sport }: { sport: string }) {
+  const normalizedSport = sport === "horse-racing" ? "horseracing" : sport;
+  const sportLabel = SPORT_LABELS.get(normalizedSport) || displayLabel(normalizedSport, "Sport");
+  const [events, setEvents] = useState<EntryEventRow[]>([]);
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSportDashboard() {
+      setLoading(true);
+      try {
+        const oddsParams = new URLSearchParams({
+          sport: apiSportValue(normalizedSport),
+          exchanges: ENTRY_DASHBOARD_EXCHANGES.map((exchange) => exchange.key).join(","),
+          limit: "400"
+        });
+        const newsParams = new URLSearchParams({
+          sport: apiSportValue(normalizedSport),
+          limit: "30"
+        });
+        const [oddsResponse, newsResponse] = await Promise.all([
+          fetch(`/api/exchange-odds?${oddsParams.toString()}`, { cache: "no-store" }),
+          fetch(`/api/news?${newsParams.toString()}`, { cache: "no-store" })
+        ]);
+        const oddsPayload = await oddsResponse.json();
+        const newsPayload = await newsResponse.json();
+        if (!oddsResponse.ok || !Array.isArray(oddsPayload.rows)) throw new Error(oddsPayload.detail || "fixtures failed");
+        if (!cancelled) {
+          setEvents(mergeSportDashboardEvents(oddsPayload.rows as BackendPriceRow[], normalizedSport));
+          setNews(Array.isArray(newsPayload.items) ? newsPayload.items as NewsItem[] : []);
+          setError("");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setEvents([]);
+          setNews([]);
+          setError(err instanceof Error ? err.message : "sport dashboard failed");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadSportDashboard();
+    const timer = window.setInterval(loadSportDashboard, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [normalizedSport]);
+
+  const todayRows = events.filter((event) => isTodayInMadrid(event.startAt)).slice(0, 40);
+  const tomorrowRows = events.filter((event) => isTomorrowInMadrid(event.startAt)).slice(0, 40);
+  const topLiquidity = [...todayRows, ...tomorrowRows].sort((a, b) => b.liquidity - a.liquidity)[0];
+  const venueCount = new Set(events.flatMap((event) => event.exchanges)).size;
+  const latestTick = events
+    .map((event) => event.latestSeenAt ? new Date(event.latestSeenAt).getTime() : 0)
+    .filter((value) => Number.isFinite(value) && value > 0)
+    .sort((a, b) => b - a)[0];
+
+  return (
+    <>
+      <SportsEdgeTopbar active={normalizedSport} searchPlaceholder={`${sportLabel}: fixtures, news, liquidity...`} />
+      <main className="sport-summary-page">
+        <section className="sport-summary-hero">
+          <div>
+            <span>SportsEdge / {sportLabel}</span>
+            <h1>{sportLabel} Dashboard</h1>
+            <p>Today and tomorrow fixtures, exchange coverage, available liquidity, and sport-specific news.</p>
+          </div>
+          <div className="sport-summary-kpis">
+            <article><span>Today</span><strong>{todayRows.length}</strong></article>
+            <article><span>Tomorrow</span><strong>{tomorrowRows.length}</strong></article>
+            <article><span>Venues</span><strong>{venueCount || "-"}</strong></article>
+            <article><span>Top Liquidity</span><strong>{topLiquidity?.liquidity ? formatExchangeMoney(topLiquidity.liquidity, "GBP") : "-"}</strong></article>
+            <article><span>Latest Tick</span><strong>{latestTick ? madridEventTime(new Date(latestTick).toISOString()) : "-"}</strong></article>
+          </div>
+        </section>
+
+        {error && <div className="agtest-error">{error}</div>}
+
+        <section className="sport-summary-layout">
+          <div className="sport-summary-main">
+            <SportDashboardFixtureTable title="Today" rows={todayRows} loading={loading} />
+            <SportDashboardFixtureTable title="Tomorrow" rows={tomorrowRows} loading={loading} />
+          </div>
+          <aside className="sport-summary-news" aria-label={`${sportLabel} news`}>
+            <header>
+              <span>News</span>
+              <strong>{news.length}</strong>
+            </header>
+            {news.slice(0, 14).map((item) => (
+              <article key={item.id || `${item.title}-${item.published_at}`}>
+                <div><span>{terminalNewsTimeLabel(item)}</span><strong>{terminalNewsTag(item)}</strong></div>
+                <h3>{terminalNewsHeadline(item)}</h3>
+                <p>{terminalNewsImpactText(item)}</p>
+              </article>
+            ))}
+            {!loading && news.length === 0 && <p className="sport-summary-empty">No news returned for {sportLabel} yet.</p>}
+            {loading && news.length === 0 && <p className="sport-summary-empty">Loading news.</p>}
+          </aside>
+        </section>
+      </main>
+    </>
+  );
+}
+
 function OddsApiDiagnosticsPage() {
   const [data, setData] = useState<OddsApiDiagnosticResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -12256,13 +12463,14 @@ export default function App() {
   else if (hash === "#oddsapi") screen = hasSession || previewDashboard ? <OddsApiDiagnosticsPage /> : <LoginScreen />;
   else if (hash === "#arbs") screen = hasSession || previewDashboard ? <BetfairArbsPage /> : <LoginScreen />;
   else if (hash === "#bias-matrix" || hash === "#agtest2") screen = hasSession || previewDashboard ? <AgTest2Page /> : <LoginScreen />;
-  else if (hash === "#liquidity" || hash === "#agtest" || hash === "#football") screen = hasSession || previewDashboard ? <AgTestPage /> : <LoginScreen />;
-  else if (previewDashboard && (hash === "#testboard" || hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash))) screen = <TestboardPage onLogout={handleLogout} />;
+  else if (hash === "#liquidity" || hash === "#agtest") screen = hasSession || previewDashboard ? <AgTestPage /> : <LoginScreen />;
+  else if (isTerminalSportHash(hash)) screen = hasSession || previewDashboard ? <SportSummaryDashboardPage sport={terminalSportFromHash(hash)} /> : <LoginScreen />;
+  else if (previewDashboard && (hash === "#testboard" || hash === "#matrix" || hash === "#actual")) screen = <TestboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#login") screen = <LoginScreen />;
   else if (previewDashboard && (hash === "#old" || hash.startsWith("#sport"))) screen = <DashboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#social-news") screen = <StandaloneLiveNewsPage />;
   else if (hash === "#testboard") screen = hasSession ? <TestboardPage onLogout={handleLogout} /> : <LoginScreen />;
-  else if (hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash)) screen = hasSession ? <TestboardPage onLogout={handleLogout} /> : <LoginScreen />;
+  else if (hash === "#matrix" || hash === "#actual") screen = hasSession ? <TestboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash === "#old") screen = hasSession ? <DashboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash === "#legacy-news") screen = hasSession ? <DashboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash.startsWith("#sport")) screen = hasSession ? <DashboardPage onLogout={handleLogout} /> : <LoginScreen />;
