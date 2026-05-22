@@ -7283,7 +7283,11 @@ button {
 .sport-summary-fixtures th:nth-child(5),
 .sport-summary-fixtures td:nth-child(5),
 .sport-summary-fixtures th:nth-child(6),
-.sport-summary-fixtures td:nth-child(6) { width: 116px; }
+.sport-summary-fixtures td:nth-child(6),
+.sport-summary-fixtures th:nth-child(7),
+.sport-summary-fixtures td:nth-child(7),
+.sport-summary-fixtures th:nth-child(8),
+.sport-summary-fixtures td:nth-child(8) { width: 104px; }
 
 .sport-summary-venue {
   display: inline-flex;

@@ -2276,6 +2276,7 @@ type EntryEventRow = {
   startAt: string | null;
   status: string | null;
   liquidity: number;
+  liquidityByExchange: Record<string, number>;
   latestSeenAt: string | null;
   exchanges: string[];
 };
@@ -3689,6 +3690,10 @@ function exchangeOddsRowToEntryEvent(row: BackendPriceRow, fallbackSport: string
     startAt: row.startAt || firstMatch?.startAt || null,
     status: null,
     liquidity: rowMatchedValue(row),
+    liquidityByExchange: Object.fromEntries(ENTRY_DASHBOARD_EXCHANGES.map((exchange) => [
+      exchange.key,
+      backendMatchLiquidity(row, exchange.key)
+    ])),
     latestSeenAt: latestSeenAtMs ? new Date(latestSeenAtMs).toISOString() : firstMatch?.observedAt || null,
     exchanges: Array.from(new Set(exchangeLabels))
   };
@@ -11484,6 +11489,9 @@ function mergeSportDashboardEvents(rows: BackendPriceRow[], fallbackSport: strin
       return;
     }
     existing.liquidity += entry.liquidity;
+    ENTRY_DASHBOARD_EXCHANGES.forEach((exchange) => {
+      existing.liquidityByExchange[exchange.key] = Number(existing.liquidityByExchange[exchange.key] || 0) + Number(entry.liquidityByExchange[exchange.key] || 0);
+    });
     existing.exchanges = Array.from(new Set([...existing.exchanges, ...entry.exchanges]));
     if (eventStartSortValue(entry.latestSeenAt) > eventStartSortValue(existing.latestSeenAt)) existing.latestSeenAt = entry.latestSeenAt;
   });
@@ -11508,7 +11516,9 @@ function SportDashboardFixtureTable({ title, rows, loading }: { title: string; r
             <th>Fixture</th>
             <th>Competition</th>
             <th>Venues</th>
-            <th>Liquidity</th>
+            <th>BF Vol</th>
+            <th>MB Vol</th>
+            <th>Total</th>
             <th>Latest</th>
           </tr>
         </thead>
@@ -11519,15 +11529,17 @@ function SportDashboardFixtureTable({ title, rows, loading }: { title: string; r
               <td><strong>{event.name}</strong></td>
               <td>{event.competition || "-"}</td>
               <td><span className="sport-summary-venue">{event.exchanges.join(" / ")}</span></td>
+              <td className="mono">{event.liquidityByExchange.betfair ? formatExchangeMoney(event.liquidityByExchange.betfair, "GBP") : "-"}</td>
+              <td className="mono">{event.liquidityByExchange.matchbook ? formatExchangeMoney(event.liquidityByExchange.matchbook, "GBP") : "-"}</td>
               <td className="mono">{event.liquidity ? formatExchangeMoney(event.liquidity, "GBP") : "-"}</td>
               <td className="mono">{event.latestSeenAt ? madridEventTime(event.latestSeenAt) : "-"}</td>
             </tr>
           ))}
           {!loading && rows.length === 0 && (
-            <tr><td className="empty" colSpan={6}>No fixtures returned for this day.</td></tr>
+            <tr><td className="empty" colSpan={8}>No fixtures returned for this day.</td></tr>
           )}
           {loading && rows.length === 0 && (
-            <tr><td className="empty" colSpan={6}>Loading fixtures.</td></tr>
+            <tr><td className="empty" colSpan={8}>Loading fixtures.</td></tr>
           )}
         </tbody>
       </table>
@@ -12524,8 +12536,6 @@ function AgTestPage() {
   const cachedLiquidityRows = cachedFootballLiquidityRows();
   const [fixtures, setFixtures] = useState<FootballFixture[]>([]);
   const [backendRows, setBackendRows] = useState<BackendPriceRow[]>(cachedLiquidityRows);
-  const [oddsApiRows, setOddsApiRows] = useState<OddsApiDiagnosticRow[]>([]);
-  const [oddsApiSummary, setOddsApiSummary] = useState<OddsApiDiagnosticResponse["counts"] | null>(null);
   const [loading, setLoading] = useState(cachedLiquidityRows.length === 0);
   const [initialSnapshotLoaded, setInitialSnapshotLoaded] = useState(cachedLiquidityRows.length > 0);
   const [error, setError] = useState("");
@@ -12537,7 +12547,7 @@ function AgTestPage() {
   const socketRef = useRef<WebSocket | null>(null);
   const pendingPriceEventsRef = useRef<Array<{ channel: string; payload: unknown }>>([]);
   const priceFlushTimerRef = useRef<number | null>(null);
-  const allRows = useMemo(() => buildAgTestRows(fixtures, backendRows, oddsApiRows), [fixtures, backendRows, oddsApiRows]);
+  const allRows = useMemo(() => buildAgTestRows(fixtures, backendRows, []), [fixtures, backendRows]);
   const groupedRows = useMemo(() => allRows.filter((row) => agTestRowMatchesGroup(row, marketGroup)), [allRows, marketGroup]);
   const rows = useMemo(() => filterAgTestRows(groupedRows, searchQuery), [groupedRows, searchQuery]);
   const secondaryFilters = AGTEST_FOOTBALL_SECONDARY_FILTERS[filterBucket] || [];
@@ -12564,14 +12574,12 @@ function AgTestPage() {
 
         hydrateTimer = window.setTimeout(async () => {
           try {
-            const [fullOddsResponse, fixtureResponse, oddsApiResponse] = await Promise.all([
+            const [fullOddsResponse, fixtureResponse] = await Promise.all([
               fetch("/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=700", { cache: "no-store" }),
-              fetch("/api/football/fixtures?days=4&limit=2000&timezone=Europe/London", { cache: "no-store" }),
-              fetch("/api/odds-api/diagnostics?sport=soccer&bookmakers=betfair,matchbook,smarkets,betdaq,bet365&eventLimit=20&scanPages=5&pageLimit=200&oddsLimit=1000", { cache: "no-store" })
+              fetch("/api/football/fixtures?days=4&limit=2000&timezone=Europe/London", { cache: "no-store" })
             ]);
             const fullOddsPayload = await fullOddsResponse.json().catch(() => ({}));
             const fixturePayload = await fixtureResponse.json().catch(() => ({}));
-            const oddsApiPayload = await oddsApiResponse.json().catch(() => ({}));
             if (!cancelled) {
               if (fullOddsResponse.ok && Array.isArray(fullOddsPayload.rows)) {
                 storeFootballLiquidity(fullOddsPayload.rows as BackendPriceRow[]);
@@ -12581,10 +12589,6 @@ function AgTestPage() {
                 ]).slice(0, 700));
               }
               if (fixtureResponse.ok && Array.isArray(fixturePayload.fixtures)) setFixtures(fixturePayload.fixtures as FootballFixture[]);
-              if (oddsApiResponse.ok && Array.isArray(oddsApiPayload.rows)) {
-                setOddsApiRows(oddsApiPayload.rows as OddsApiDiagnosticRow[]);
-                setOddsApiSummary(oddsApiPayload.counts || null);
-              }
             }
           } catch {
             // Keep the fast exchange snapshot visible if slower enrichment fails.
@@ -12723,23 +12727,10 @@ function AgTestPage() {
         </div>
       )
     },
-    {
-      field: "oddsCoverage",
-      headerName: "Odds API",
-      width: 196,
-      cellRenderer: ({ data }: { data?: AgTestRow }) => (
-        <div className="exchange-coverage ag-coverage oddsapi-coverage">
-          {(data?.oddsCoverage || []).map((source) => (
-            <span className={source.available ? "available odds-source" : ""} key={source.label}>{source.label}</span>
-          ))}
-        </div>
-      )
-    },
     { field: "outcomes", headerName: "Outcomes", minWidth: 260, flex: 1.05, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.outcomes} /> },
     { field: "betfair", headerName: "Betfair", minWidth: 230, flex: 1, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betfair} className="ag-price-stack" /> },
     { field: "matchbook", headerName: "Matchbook", minWidth: 250, flex: 1.1, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.matchbook} className="ag-price-stack" /> },
     { field: "sx", headerName: "SX", minWidth: 210, flex: 0.9, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.sx} className="ag-price-stack" /> },
-    { field: "oddsApi", headerName: "Odds-only", minWidth: 330, flex: 1.25, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.oddsApi} className="ag-price-stack oddsapi-stack" /> },
     { field: "bias", headerName: "Bias", width: 150 },
     { field: "bfLiquidity", headerName: "BF Vol", width: 108 },
     { field: "mbLiquidity", headerName: "MB Vol", width: 108 },
@@ -12791,18 +12782,12 @@ function AgTestPage() {
           <div>
             <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
             <span>{rows.length}{searchQuery.trim() || marketGroup !== "all" ? ` / ${allRows.length}` : ""} markets</span>
-            <span>BF / MB / SX + Odds API</span>
-            <span>{oddsApiRows.length} odds rows</span>
+            <span>BF / MB / SX exchange ladder</span>
             <span>{socketStatus === "live" ? "wss live" : loading ? "loading" : socketStatus}</span>
           </div>
         </section>
         <section className="agtest-source-strip" aria-label="Liquidity source status">
           <span>Exchange ladder: BF / MB / SX</span>
-          <span>Odds-only: BF {oddsApiSummary?.byBookmaker?.betfair || 0}</span>
-          <span>MB {oddsApiSummary?.byBookmaker?.matchbook || 0}</span>
-          <span>SM {oddsApiSummary?.byBookmaker?.smarkets || 0}</span>
-          <span>BD {oddsApiSummary?.byBookmaker?.betdaq || 0}</span>
-          <span>365 {oddsApiSummary?.byBookmaker?.bet365 || 0}</span>
         </section>
         <section className="agtest-grid-wrap ag-theme-quartz-dark">
           <AgGridReact
