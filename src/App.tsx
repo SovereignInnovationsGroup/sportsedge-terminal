@@ -2174,14 +2174,40 @@ type BackendPriceRow = {
   arbs?: Array<{ edgePct?: number; backExchange?: string; layExchange?: string; label?: string }>;
 };
 
-const FOOTBALL_LIQUIDITY_FAST_URL = "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=150";
+const FOOTBALL_LIQUIDITY_FAST_URL = "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=50";
+const FOOTBALL_LIQUIDITY_STORAGE_KEY = "sportsedge.footballLiquiditySnapshot.v1";
 let footballLiquidityCache: { rows: BackendPriceRow[]; fetchedAt: number } | null = null;
 let footballLiquidityPrefetchPromise: Promise<BackendPriceRow[]> | null = null;
 
-function cachedFootballLiquidityRows(maxAgeMs = 30000) {
-  if (!footballLiquidityCache) return [];
-  if (Date.now() - footballLiquidityCache.fetchedAt > maxAgeMs) return [];
-  return footballLiquidityCache.rows;
+function readStoredFootballLiquidity(maxAgeMs: number) {
+  try {
+    const raw = window.localStorage.getItem(FOOTBALL_LIQUIDITY_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { rows?: BackendPriceRow[]; fetchedAt?: number };
+    if (!Array.isArray(parsed.rows) || !parsed.fetchedAt) return null;
+    if (Date.now() - parsed.fetchedAt > maxAgeMs) return null;
+    return { rows: parsed.rows, fetchedAt: parsed.fetchedAt };
+  } catch {
+    return null;
+  }
+}
+
+function storeFootballLiquidity(rows: BackendPriceRow[]) {
+  const snapshot = { rows: rows.slice(0, 250), fetchedAt: Date.now() };
+  footballLiquidityCache = snapshot;
+  try {
+    window.localStorage.setItem(FOOTBALL_LIQUIDITY_STORAGE_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Browser storage may be unavailable or full; in-memory cache still works.
+  }
+}
+
+function cachedFootballLiquidityRows(maxAgeMs = 2 * 60 * 1000) {
+  if (footballLiquidityCache && Date.now() - footballLiquidityCache.fetchedAt <= maxAgeMs) return footballLiquidityCache.rows;
+  const stored = readStoredFootballLiquidity(maxAgeMs);
+  if (!stored) return [];
+  footballLiquidityCache = stored;
+  return stored.rows;
 }
 
 async function prefetchFootballLiquiditySnapshot() {
@@ -2193,7 +2219,7 @@ async function prefetchFootballLiquiditySnapshot() {
       const payload = await response.json();
       if (!response.ok || !Array.isArray(payload.rows)) throw new Error(payload.detail || "liquidity prefetch failed");
       const rows = payload.rows as BackendPriceRow[];
-      footballLiquidityCache = { rows, fetchedAt: Date.now() };
+      storeFootballLiquidity(rows);
       return rows;
     })
     .catch(() => [])
@@ -12548,7 +12574,7 @@ function AgTestPage() {
             const oddsApiPayload = await oddsApiResponse.json().catch(() => ({}));
             if (!cancelled) {
               if (fullOddsResponse.ok && Array.isArray(fullOddsPayload.rows)) {
-                footballLiquidityCache = { rows: fullOddsPayload.rows as BackendPriceRow[], fetchedAt: Date.now() };
+                storeFootballLiquidity(fullOddsPayload.rows as BackendPriceRow[]);
                 setBackendRows((currentRows) => mergeDisplayPriceRows([
                   ...(fullOddsPayload.rows as BackendPriceRow[]),
                   ...currentRows
@@ -12820,6 +12846,15 @@ export default function App() {
     window.addEventListener("hashchange", handleHash);
     return () => window.removeEventListener("hashchange", handleHash);
   }, []);
+
+  useEffect(() => {
+    if (!hasSession && !previewDashboard) return;
+    const timer = window.setTimeout(() => {
+      void prefetchFootballLiquiditySnapshot();
+      void prefetchFootballTeamAssets();
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [hasSession, previewDashboard]);
 
   function handleLogout() {
     window.localStorage.removeItem("sportsedge.auth.token");
