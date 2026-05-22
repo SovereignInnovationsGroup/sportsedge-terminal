@@ -96,7 +96,7 @@ export const BETTING_EXCHANGE_COLUMNS = [
 
 type BettingExchangeColumn = typeof BETTING_EXCHANGE_COLUMNS[number];
 
-const FOOTBALL_LIQUIDITY_FAST_URL = "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=50";
+const FOOTBALL_LIQUIDITY_FAST_URL = "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=80";
 const FOOTBALL_LIQUIDITY_STORAGE_KEY = "sportsedge.footballLiquiditySnapshot.v1";
 let footballLiquidityCache: { rows: BackendPriceRow[]; fetchedAt: number } | null = null;
 let footballLiquidityPrefetchPromise: Promise<BackendPriceRow[]> | null = null;

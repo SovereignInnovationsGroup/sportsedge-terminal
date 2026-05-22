@@ -5,7 +5,10 @@ import { normalizeFixtureText, teamInitials } from "../../core/format";
 import {
   cachedFootballTeamAssets,
   footballTeamAssetMatchesGroup,
+  footballTeamAssetCacheIsComplete,
+  hydrateFootballTeamAssets,
   prefetchFootballTeamAssets,
+  searchFootballTeamAssets,
   type FootballTeamAsset
 } from "./teamAssets";
 
@@ -13,6 +16,8 @@ export default function Profiles() {
   const cachedTeams = cachedFootballTeamAssets();
   const [teams, setTeams] = useState<FootballTeamAsset[]>(cachedTeams);
   const [loading, setLoading] = useState(cachedTeams.length === 0);
+  const [hydrating, setHydrating] = useState(!footballTeamAssetCacheIsComplete());
+  const [serverSearchTeams, setServerSearchTeams] = useState<FootballTeamAsset[] | null>(null);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [filterBucket, setFilterBucket] = useState("all");
@@ -29,6 +34,12 @@ export default function Profiles() {
           setTeams(teams);
           setError("");
         }
+        hydrateFootballTeamAssets().then((hydratedTeams) => {
+          if (!cancelled && hydratedTeams.length) {
+            setTeams(hydratedTeams);
+            setHydrating(!footballTeamAssetCacheIsComplete());
+          }
+        });
       } catch (err) {
         if (!cancelled) {
           setTeams([]);
@@ -42,10 +53,30 @@ export default function Profiles() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2 || footballTeamAssetCacheIsComplete()) {
+      setServerSearchTeams(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      searchFootballTeamAssets(trimmed).then((results) => {
+        if (!cancelled) setServerSearchTeams(results);
+      }).catch(() => {
+        if (!cancelled) setServerSearchTeams(null);
+      });
+    }, 180);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [query]);
+
   const secondaryFilters = AGTEST_FOOTBALL_SECONDARY_FILTERS[filterBucket] || [];
   const filteredTeams = useMemo(() => {
     const terms = normalizeFixtureText(query).split(" ").filter(Boolean);
-    return teams
+    return (serverSearchTeams || teams)
       .filter((team) => footballTeamAssetMatchesGroup(team, marketGroup))
       .filter((team) => {
         if (!terms.length) return true;
@@ -64,7 +95,7 @@ export default function Profiles() {
         if (country !== 0) return country;
         return String(a.fullName || a.shortName).localeCompare(String(b.fullName || b.shortName));
       });
-  }, [teams, marketGroup, query]);
+  }, [teams, serverSearchTeams, marketGroup, query]);
 
   return (
     <>
@@ -105,7 +136,7 @@ export default function Profiles() {
           <div>
             <span>{filteredTeams.length} / {teams.length} teams</span>
             <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
-            <span>{loading ? "loading" : "double-click opens profile"}</span>
+            <span>{loading ? "loading" : hydrating ? "loading full directory" : "double-click opens profile"}</span>
           </div>
         </section>
 

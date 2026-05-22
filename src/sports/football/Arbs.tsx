@@ -312,6 +312,7 @@ export default function Arbs() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [lastRefresh, setLastRefresh] = useState<string | null>(null);
+  const [sourceMarkets, setSourceMarkets] = useState(0);
 
   async function loadArbs() {
     setLoading(true);
@@ -319,12 +320,13 @@ export default function Arbs() {
       const params = new URLSearchParams({
         sport: "football",
         exchanges: "betfair",
-        segment: "all",
-        limit: "1000"
+        segment: "upcoming4",
+        limit: "300"
       });
       const response = await fetch(`/api/exchange-odds?${params.toString()}`, { cache: "no-store" });
       const payload = await response.json();
       if (!response.ok || !Array.isArray(payload.rows)) throw new Error(payload.detail || "Betfair arb scan failed");
+      setSourceMarkets(payload.rows.length);
       setRows(buildArbRows(payload.rows as BackendPriceRow[]));
       setLastRefresh(payload.generatedAt || new Date().toISOString());
       setError("");
@@ -380,6 +382,7 @@ export default function Arbs() {
             <span>{executableRows.length} executable</span>
             <span>{anomalyRows.length} anomalies</span>
             <span>{rows.length} watched</span>
+            <span>{sourceMarkets} BF markets</span>
             <span>{loading ? "scanning" : `fresh ${freshest}`}</span>
           </div>
         </section>
@@ -440,7 +443,11 @@ export default function Arbs() {
                 </tr>
               ))}
               {!loading && filteredRows.length === 0 && (
-                <tr><td className="empty" colSpan={18}>No Betfair markets matched the current arb scan.</td></tr>
+                <tr><td className="empty" colSpan={18}>
+                  {sourceMarkets > 0
+                    ? "Betfair markets returned, but none passed the complete-runner, both-sides, fresh-liquidity arb checks."
+                    : "No Betfair football markets matched the current arb scan."}
+                </td></tr>
               )}
               {loading && filteredRows.length === 0 && (
                 <tr><td className="empty" colSpan={18}>Scanning Betfair back and lay books.</td></tr>

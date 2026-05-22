@@ -1,4 +1,4 @@
-import { Search, Settings } from "lucide-react";
+import { LogOut, Search, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const sportsEdgeMarketsLogo = "/images/sportsedge-markets-logo.png";
@@ -48,6 +48,12 @@ function formatClock(value: Date) {
     hour12: false,
     timeZone: "Europe/Madrid"
   }).format(value);
+}
+
+function logoutToLogin() {
+  window.localStorage.removeItem("sportsedge.auth.token");
+  window.localStorage.removeItem("sportsedge.auth.user");
+  window.location.hash = "#login";
 }
 
 export function TerminalTopbar({
@@ -124,6 +130,9 @@ export function TerminalTopbar({
       </div>
       <button className="testboard-icon-button" type="button" aria-label="Settings">
         <Settings size={16} />
+      </button>
+      <button className="testboard-icon-button" type="button" aria-label="Logout" onClick={logoutToLogin}>
+        <LogOut size={16} />
       </button>
     </header>
   );

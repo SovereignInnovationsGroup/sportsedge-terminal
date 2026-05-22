@@ -18,9 +18,11 @@ export type FootballTeamAsset = {
   aliases: string[];
 };
 
-const FOOTBALL_TEAM_ASSET_URL = "/api/assets/football-teams?active=true&limit=25000";
-let footballTeamAssetCache: { teams: FootballTeamAsset[]; fetchedAt: number } | null = null;
+const FOOTBALL_TEAM_INITIAL_ASSET_URL = "/api/assets/football-teams?active=true&limit=800";
+const FOOTBALL_TEAM_FULL_ASSET_URL = "/api/assets/football-teams?active=true&limit=25000";
+let footballTeamAssetCache: { teams: FootballTeamAsset[]; fetchedAt: number; complete: boolean } | null = null;
 let footballTeamAssetPrefetchPromise: Promise<FootballTeamAsset[]> | null = null;
+let footballTeamAssetHydratePromise: Promise<FootballTeamAsset[]> | null = null;
 
 export function cachedFootballTeamAssets(maxAgeMs = 5 * 60 * 1000) {
   if (!footballTeamAssetCache) return [];
@@ -28,23 +30,49 @@ export function cachedFootballTeamAssets(maxAgeMs = 5 * 60 * 1000) {
   return footballTeamAssetCache.teams;
 }
 
+export function footballTeamAssetCacheIsComplete(maxAgeMs = 5 * 60 * 1000) {
+  return Boolean(footballTeamAssetCache?.complete && Date.now() - footballTeamAssetCache.fetchedAt <= maxAgeMs);
+}
+
+async function fetchFootballTeamAssets(url: string, complete: boolean) {
+  const response = await fetch(url, { cache: "no-store" });
+  const payload = await response.json();
+  if (!response.ok || !Array.isArray(payload.teams)) throw new Error(payload.detail || "team profiles prefetch failed");
+  const teams = payload.teams as FootballTeamAsset[];
+  footballTeamAssetCache = { teams, fetchedAt: Date.now(), complete };
+  return teams;
+}
+
 export async function prefetchFootballTeamAssets() {
   const cachedTeams = cachedFootballTeamAssets();
   if (cachedTeams.length) return cachedTeams;
   if (footballTeamAssetPrefetchPromise) return footballTeamAssetPrefetchPromise;
-  footballTeamAssetPrefetchPromise = fetch(FOOTBALL_TEAM_ASSET_URL, { cache: "no-store" })
-    .then(async (response) => {
-      const payload = await response.json();
-      if (!response.ok || !Array.isArray(payload.teams)) throw new Error(payload.detail || "team profiles prefetch failed");
-      const teams = payload.teams as FootballTeamAsset[];
-      footballTeamAssetCache = { teams, fetchedAt: Date.now() };
-      return teams;
-    })
+  footballTeamAssetPrefetchPromise = fetchFootballTeamAssets(FOOTBALL_TEAM_INITIAL_ASSET_URL, false)
     .catch(() => [])
     .finally(() => {
       footballTeamAssetPrefetchPromise = null;
     });
   return footballTeamAssetPrefetchPromise;
+}
+
+export async function hydrateFootballTeamAssets() {
+  if (footballTeamAssetCacheIsComplete()) return cachedFootballTeamAssets();
+  if (footballTeamAssetHydratePromise) return footballTeamAssetHydratePromise;
+  footballTeamAssetHydratePromise = fetchFootballTeamAssets(FOOTBALL_TEAM_FULL_ASSET_URL, true)
+    .catch(() => cachedFootballTeamAssets())
+    .finally(() => {
+      footballTeamAssetHydratePromise = null;
+    });
+  return footballTeamAssetHydratePromise;
+}
+
+export async function searchFootballTeamAssets(query: string, limit = 500) {
+  const trimmed = query.trim();
+  if (!trimmed) return cachedFootballTeamAssets();
+  const response = await fetch(`/api/assets/football-teams?active=true&limit=${limit}&q=${encodeURIComponent(trimmed)}`, { cache: "no-store" });
+  const payload = await response.json();
+  if (!response.ok || !Array.isArray(payload.teams)) throw new Error(payload.detail || "team profile search failed");
+  return payload.teams as FootballTeamAsset[];
 }
 
 export function footballTeamAssetMatchesGroup(team: FootballTeamAsset, group: string) {

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
-import type { ColDef } from "ag-grid-community";
+import { AllCommunityModule, ModuleRegistry, type ColDef } from "ag-grid-community";
+import "ag-grid-community/styles/ag-grid.css";
+import "ag-grid-community/styles/ag-theme-quartz.css";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { AGTEST_FOOTBALL_PRIMARY_FILTERS, AGTEST_FOOTBALL_SECONDARY_FILTERS, footballFilterBreadcrumb } from "./filters";
 import {
@@ -21,6 +23,8 @@ import {
   type BackendPriceRow,
   type FootballFixture
 } from "./marketData";
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 export default function Liquidity() {
   const cachedLiquidityRows = cachedFootballLiquidityRows();
@@ -65,7 +69,7 @@ export default function Liquidity() {
         hydrateTimer = window.setTimeout(async () => {
           try {
             const [fullOddsResponse, fixtureResponse] = await Promise.all([
-              fetch("/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=700", { cache: "no-store" }),
+              fetch("/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=220", { cache: "no-store" }),
               fetch("/api/football/fixtures?days=4&limit=2000&timezone=Europe/London", { cache: "no-store" })
             ]);
             const fullOddsPayload = await fullOddsResponse.json().catch(() => ({}));
