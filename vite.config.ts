@@ -632,6 +632,18 @@
     build: {
       target: 'esnext',
       outDir: 'build',
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined;
+            if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('scheduler')) return 'react-vendor';
+            if (id.includes('ag-grid')) return 'grid-vendor';
+            if (id.includes('lucide-react')) return 'icon-vendor';
+            if (id.includes('@radix-ui') || id.includes('cmdk') || id.includes('vaul')) return 'ui-vendor';
+            return 'vendor';
+          },
+        },
+      },
     },
     preview: {
       allowedHosts: true,
