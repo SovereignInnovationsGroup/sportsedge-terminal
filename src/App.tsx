@@ -1069,6 +1069,36 @@ type FootballTeamAsset = {
   aliases: string[];
 };
 
+const FOOTBALL_TEAM_ASSET_URL = "/api/assets/football-teams?active=true&limit=25000";
+let footballTeamAssetCache: { teams: FootballTeamAsset[]; fetchedAt: number } | null = null;
+let footballTeamAssetPrefetchPromise: Promise<FootballTeamAsset[]> | null = null;
+
+function cachedFootballTeamAssets(maxAgeMs = 5 * 60 * 1000) {
+  if (!footballTeamAssetCache) return [];
+  if (Date.now() - footballTeamAssetCache.fetchedAt > maxAgeMs) return [];
+  return footballTeamAssetCache.teams;
+}
+
+async function prefetchFootballTeamAssets() {
+  const cachedTeams = cachedFootballTeamAssets();
+  if (cachedTeams.length) return cachedTeams;
+  if (footballTeamAssetPrefetchPromise) return footballTeamAssetPrefetchPromise;
+  footballTeamAssetPrefetchPromise = fetch(FOOTBALL_TEAM_ASSET_URL, { cache: "no-store" })
+    .then(async (response) => {
+      const payload = await response.json();
+      if (!response.ok || !Array.isArray(payload.teams)) throw new Error(payload.detail || "team profiles prefetch failed");
+      const teams = payload.teams as FootballTeamAsset[];
+      footballTeamAssetCache = { teams, fetchedAt: Date.now() };
+      registerFootballTeamAssets(teams);
+      return teams;
+    })
+    .catch(() => [])
+    .finally(() => {
+      footballTeamAssetPrefetchPromise = null;
+    });
+  return footballTeamAssetPrefetchPromise;
+}
+
 const FOOTBALL_TEAM_ASSETS: FootballTeamAsset[] = [
   { slug: "arsenal", ticker: "ARS", fullName: "Arsenal FC", shortName: "Arsenal", country: "England", currentLeague: "Premier League", logoUrl: "https://resources.premierleague.com/premierleague/badges/70/t3.png", aliases: ["Arsenal", "Arsenal FC"] },
   { slug: "aston-villa", ticker: "AVL", fullName: "Aston Villa FC", shortName: "Aston Villa", country: "England", currentLeague: "Premier League", logoUrl: "https://resources.premierleague.com/premierleague/badges/70/t7.png", aliases: ["Aston Villa", "Aston Villa FC"] },
@@ -1819,6 +1849,13 @@ function SportsEdgeTopbar({
   const inFootballMode = active ? TERMINAL_FOOTBALL_MODE_VALUES.has(active) : false;
   const navItems = inFootballMode ? TERMINAL_FOOTBALL_NAV : TERMINAL_TOP_SPORTS;
 
+  useEffect(() => {
+    if (inFootballMode) {
+      void prefetchFootballLiquiditySnapshot();
+      void prefetchFootballTeamAssets();
+    }
+  }, [inFootballMode]);
+
   return (
     <header className="testboard-topbar global-terminal-topbar">
       <a className="testboard-brand" href="#dashboard" aria-label="SportsEdge dashboard">
@@ -1830,6 +1867,14 @@ function SportsEdgeTopbar({
             className={[active === sport.value ? "active" : "", "tone" in sport && sport.tone ? `nav-${sport.tone}` : ""].filter(Boolean).join(" ")}
             key={sport.value}
             type="button"
+            onFocus={() => {
+              if (sport.value === "liquidity" || sport.value === "football") void prefetchFootballLiquiditySnapshot();
+              if (sport.value === "profile-mockup" || sport.value === "football") void prefetchFootballTeamAssets();
+            }}
+            onMouseEnter={() => {
+              if (sport.value === "liquidity" || sport.value === "football") void prefetchFootballLiquiditySnapshot();
+              if (sport.value === "profile-mockup" || sport.value === "football") void prefetchFootballTeamAssets();
+            }}
             onClick={() => { window.location.hash = sport.route; }}
           >
             {sport.label}
@@ -2129,6 +2174,35 @@ type BackendPriceRow = {
   arbs?: Array<{ edgePct?: number; backExchange?: string; layExchange?: string; label?: string }>;
 };
 
+const FOOTBALL_LIQUIDITY_FAST_URL = "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=150";
+let footballLiquidityCache: { rows: BackendPriceRow[]; fetchedAt: number } | null = null;
+let footballLiquidityPrefetchPromise: Promise<BackendPriceRow[]> | null = null;
+
+function cachedFootballLiquidityRows(maxAgeMs = 30000) {
+  if (!footballLiquidityCache) return [];
+  if (Date.now() - footballLiquidityCache.fetchedAt > maxAgeMs) return [];
+  return footballLiquidityCache.rows;
+}
+
+async function prefetchFootballLiquiditySnapshot() {
+  const cachedRows = cachedFootballLiquidityRows();
+  if (cachedRows.length) return cachedRows;
+  if (footballLiquidityPrefetchPromise) return footballLiquidityPrefetchPromise;
+  footballLiquidityPrefetchPromise = fetch(FOOTBALL_LIQUIDITY_FAST_URL, { cache: "no-store" })
+    .then(async (response) => {
+      const payload = await response.json();
+      if (!response.ok || !Array.isArray(payload.rows)) throw new Error(payload.detail || "liquidity prefetch failed");
+      const rows = payload.rows as BackendPriceRow[];
+      footballLiquidityCache = { rows, fetchedAt: Date.now() };
+      return rows;
+    })
+    .catch(() => [])
+    .finally(() => {
+      footballLiquidityPrefetchPromise = null;
+    });
+  return footballLiquidityPrefetchPromise;
+}
+
 type ExchangeSportDiagnostic = {
   sport: string;
   events: number;
@@ -2241,6 +2315,17 @@ function summarizeBackendMatch(match?: BackendExchangeMatch) {
     laySize: primaryRunner?.lay?.amount || undefined,
     observedAt: match.observedAt
   };
+}
+
+function backendMatchLiquidity(row: BackendPriceRow | undefined | null, exchangeKey: string) {
+  if (!row) return 0;
+  const summary = summarizeBackendMatch(row.matches?.[exchangeKey]);
+  return Number(summary?.value || 0);
+}
+
+function formatBackendExchangeLiquidity(row: BackendPriceRow | undefined | null, exchangeKey: string) {
+  const value = backendMatchLiquidity(row, exchangeKey);
+  return value ? formatExchangeMoney(value, exchangeKey === "sx" ? "USD" : "GBP") : "-";
 }
 
 function normalizeSelectionKey(value?: string | null) {
@@ -10866,6 +10951,9 @@ type AgTestRow = {
   oddsApi: string[];
   bias: string;
   liquidity: string;
+  bfLiquidity: string;
+  mbLiquidity: string;
+  sxLiquidity: string;
   fresh: string;
 };
 
@@ -11040,6 +11128,9 @@ function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendPriceRow
         oddsApi: formatOddsApiStack(oddsApiRows),
         bias: rowHasMultiBettingExchange(backend) ? biasFromQuote(quote) : exchangeHasRoute ? "Single route" : oddsOnlyHasRoute ? "Odds-only" : "No route",
         liquidity: quote.liquidity || matched?.totalValue ? formatExchangeMoney(quote.liquidity || matched?.totalValue || 0, "GBP") : "-",
+        bfLiquidity: formatBackendExchangeLiquidity(backend, "betfair"),
+        mbLiquidity: formatBackendExchangeLiquidity(backend, "matchbook"),
+        sxLiquidity: formatBackendExchangeLiquidity(backend, "sx"),
         fresh: quote.updatedAt || sourceTimestampLabel(oddsApiRows) || "watch"
       };
     });
@@ -11064,6 +11155,9 @@ function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendPriceRow
         oddsApi: ["-"],
         bias: rowHasMultiBettingExchange(row) ? biasFromQuote(quote) : rowHasBettingExchange(row) ? "Single route" : "No route",
         liquidity: quote.liquidity || rowMatchedValue(row) ? formatExchangeMoney(quote.liquidity || rowMatchedValue(row), "GBP") : "-",
+        bfLiquidity: formatBackendExchangeLiquidity(row, "betfair"),
+        mbLiquidity: formatBackendExchangeLiquidity(row, "matchbook"),
+        sxLiquidity: formatBackendExchangeLiquidity(row, "sx"),
         fresh: quote.updatedAt || "watch"
       };
     });
@@ -11088,6 +11182,9 @@ function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendPriceRow
         oddsApi: formatOddsApiStack(eventRows),
         bias: "Odds-only",
         liquidity: "-",
+        bfLiquidity: "-",
+        mbLiquidity: "-",
+        sxLiquidity: "-",
         fresh: sourceTimestampLabel(eventRows) || "watch"
       };
     });
@@ -11113,6 +11210,9 @@ function filterAgTestRows(rows: AgTestRow[], query: string) {
       row.oddsApi.join(" "),
       row.bias,
       row.liquidity,
+      row.bfLiquidity,
+      row.mbLiquidity,
+      row.sxLiquidity,
       row.fresh
     ].join(" "));
     return terms.every((term) => haystack.includes(term));
@@ -11187,8 +11287,9 @@ function footballTeamAssetMatchesGroup(team: FootballTeamAsset, group: string) {
 }
 
 function FootballProfilesPage() {
-  const [teams, setTeams] = useState<FootballTeamAsset[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedTeams = cachedFootballTeamAssets();
+  const [teams, setTeams] = useState<FootballTeamAsset[]>(cachedTeams);
+  const [loading, setLoading] = useState(cachedTeams.length === 0);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [filterBucket, setFilterBucket] = useState("all");
@@ -11197,14 +11298,12 @@ function FootballProfilesPage() {
   useEffect(() => {
     let cancelled = false;
     async function loadTeams() {
-      setLoading(true);
+      if (!cachedFootballTeamAssets().length) setLoading(true);
       try {
-        const response = await fetch("/api/assets/football-teams?active=true&limit=25000", { cache: "no-store" });
-        const payload = await response.json();
-        if (!response.ok || !Array.isArray(payload.teams)) throw new Error(payload.detail || "team profiles failed");
+        const teams = await prefetchFootballTeamAssets();
+        if (!teams.length) throw new Error("team profiles failed");
         if (!cancelled) {
-          setTeams(payload.teams as FootballTeamAsset[]);
-          registerFootballTeamAssets(payload.teams as FootballTeamAsset[]);
+          setTeams(teams);
           setError("");
         }
       } catch (err) {
@@ -12396,12 +12495,13 @@ function AgTest2Page() {
 }
 
 function AgTestPage() {
+  const cachedLiquidityRows = cachedFootballLiquidityRows();
   const [fixtures, setFixtures] = useState<FootballFixture[]>([]);
-  const [backendRows, setBackendRows] = useState<BackendPriceRow[]>([]);
+  const [backendRows, setBackendRows] = useState<BackendPriceRow[]>(cachedLiquidityRows);
   const [oddsApiRows, setOddsApiRows] = useState<OddsApiDiagnosticRow[]>([]);
   const [oddsApiSummary, setOddsApiSummary] = useState<OddsApiDiagnosticResponse["counts"] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [initialSnapshotLoaded, setInitialSnapshotLoaded] = useState(false);
+  const [loading, setLoading] = useState(cachedLiquidityRows.length === 0);
+  const [initialSnapshotLoaded, setInitialSnapshotLoaded] = useState(cachedLiquidityRows.length > 0);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBucket, setFilterBucket] = useState("all");
@@ -12421,15 +12521,14 @@ function AgTestPage() {
     let hydrateTimer: number | null = null;
 
     async function loadRows() {
-      setLoading(true);
+      if (!cachedFootballLiquidityRows().length) setLoading(true);
       try {
-        const oddsResponse = await fetch("/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=150", { cache: "no-store" });
-        const oddsPayload = await oddsResponse.json();
-        if (!oddsResponse.ok || !Array.isArray(oddsPayload.rows)) throw new Error(oddsPayload.detail || "odds failed");
+        const fastRows = await prefetchFootballLiquiditySnapshot();
+        if (!fastRows.length) throw new Error("odds failed");
 
         if (!cancelled) {
           setBackendRows((currentRows) => mergeDisplayPriceRows([
-            ...(oddsPayload.rows as BackendPriceRow[]),
+            ...fastRows,
             ...currentRows
           ]).slice(0, 700));
           setInitialSnapshotLoaded(true);
@@ -12449,6 +12548,7 @@ function AgTestPage() {
             const oddsApiPayload = await oddsApiResponse.json().catch(() => ({}));
             if (!cancelled) {
               if (fullOddsResponse.ok && Array.isArray(fullOddsPayload.rows)) {
+                footballLiquidityCache = { rows: fullOddsPayload.rows as BackendPriceRow[], fetchedAt: Date.now() };
                 setBackendRows((currentRows) => mergeDisplayPriceRows([
                   ...(fullOddsPayload.rows as BackendPriceRow[]),
                   ...currentRows
@@ -12615,7 +12715,9 @@ function AgTestPage() {
     { field: "sx", headerName: "SX", minWidth: 210, flex: 0.9, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.sx} className="ag-price-stack" /> },
     { field: "oddsApi", headerName: "Odds-only", minWidth: 330, flex: 1.25, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.oddsApi} className="ag-price-stack oddsapi-stack" /> },
     { field: "bias", headerName: "Bias", width: 150 },
-    { field: "liquidity", headerName: "Liquidity", width: 140 },
+    { field: "bfLiquidity", headerName: "BF Vol", width: 108 },
+    { field: "mbLiquidity", headerName: "MB Vol", width: 108 },
+    { field: "sxLiquidity", headerName: "SX Vol", width: 108 },
     { field: "fresh", headerName: "Fresh", width: 118 }
   ], []);
 
