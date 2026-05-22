@@ -12418,11 +12418,12 @@ function AgTestPage() {
 
   useEffect(() => {
     let cancelled = false;
+    let hydrateTimer: number | null = null;
 
     async function loadRows() {
       setLoading(true);
       try {
-        const oddsResponse = await fetch("/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=500", { cache: "no-store" });
+        const oddsResponse = await fetch("/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=150", { cache: "no-store" });
         const oddsPayload = await oddsResponse.json();
         if (!oddsResponse.ok || !Array.isArray(oddsPayload.rows)) throw new Error(oddsPayload.detail || "odds failed");
 
@@ -12436,19 +12437,33 @@ function AgTestPage() {
           setLoading(false);
         }
 
-        const [fixtureResponse, oddsApiResponse] = await Promise.all([
-          fetch("/api/football/fixtures?days=4&limit=2000&timezone=Europe/London", { cache: "no-store" }),
-          fetch("/api/odds-api/diagnostics?sport=soccer&bookmakers=betfair,matchbook,smarkets,betdaq,bet365&eventLimit=20&scanPages=5&pageLimit=200&oddsLimit=1000", { cache: "no-store" })
-        ]);
-        const fixturePayload = await fixtureResponse.json().catch(() => ({}));
-        const oddsApiPayload = await oddsApiResponse.json().catch(() => ({}));
-        if (!cancelled) {
-          if (fixtureResponse.ok && Array.isArray(fixturePayload.fixtures)) setFixtures(fixturePayload.fixtures as FootballFixture[]);
-          if (oddsApiResponse.ok && Array.isArray(oddsApiPayload.rows)) {
-            setOddsApiRows(oddsApiPayload.rows as OddsApiDiagnosticRow[]);
-            setOddsApiSummary(oddsApiPayload.counts || null);
+        hydrateTimer = window.setTimeout(async () => {
+          try {
+            const [fullOddsResponse, fixtureResponse, oddsApiResponse] = await Promise.all([
+              fetch("/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=700", { cache: "no-store" }),
+              fetch("/api/football/fixtures?days=4&limit=2000&timezone=Europe/London", { cache: "no-store" }),
+              fetch("/api/odds-api/diagnostics?sport=soccer&bookmakers=betfair,matchbook,smarkets,betdaq,bet365&eventLimit=20&scanPages=5&pageLimit=200&oddsLimit=1000", { cache: "no-store" })
+            ]);
+            const fullOddsPayload = await fullOddsResponse.json().catch(() => ({}));
+            const fixturePayload = await fixtureResponse.json().catch(() => ({}));
+            const oddsApiPayload = await oddsApiResponse.json().catch(() => ({}));
+            if (!cancelled) {
+              if (fullOddsResponse.ok && Array.isArray(fullOddsPayload.rows)) {
+                setBackendRows((currentRows) => mergeDisplayPriceRows([
+                  ...(fullOddsPayload.rows as BackendPriceRow[]),
+                  ...currentRows
+                ]).slice(0, 700));
+              }
+              if (fixtureResponse.ok && Array.isArray(fixturePayload.fixtures)) setFixtures(fixturePayload.fixtures as FootballFixture[]);
+              if (oddsApiResponse.ok && Array.isArray(oddsApiPayload.rows)) {
+                setOddsApiRows(oddsApiPayload.rows as OddsApiDiagnosticRow[]);
+                setOddsApiSummary(oddsApiPayload.counts || null);
+              }
+            }
+          } catch {
+            // Keep the fast exchange snapshot visible if slower enrichment fails.
           }
-        }
+        }, 80);
       } catch (err) {
         if (!cancelled) {
           setInitialSnapshotLoaded(true);
@@ -12463,6 +12478,7 @@ function AgTestPage() {
     const timer = window.setInterval(loadRows, 30000);
     return () => {
       cancelled = true;
+      if (hydrateTimer) window.clearTimeout(hydrateTimer);
       window.clearInterval(timer);
     };
   }, []);
@@ -12679,7 +12695,7 @@ function AgTestPage() {
               <span>Fetching BF / MB / SX exchange snapshot</span>
             </div>
           )}
-          {initialSnapshotLoaded && rows.length === 0 && (
+          {initialSnapshotLoaded && !loading && rows.length === 0 && (
             <div className="agtest-empty-state">
               <strong>No liquidity rows for this filter</strong>
               <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
