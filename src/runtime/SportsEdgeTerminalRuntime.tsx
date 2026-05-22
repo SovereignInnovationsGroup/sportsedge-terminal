@@ -3732,7 +3732,7 @@ const FALLBACK_BLOG_ARTICLES = [
   { title: "Bias signals", excerpt: "Turning fragmented prices into a readable institutional market picture." }
 ];
 
-function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup" | "about" | "terms" | "privacy" }) {
+export function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup" | "about" | "terms" | "privacy" }) {
   const [accessOpen, setAccessOpen] = useState(section === "signup");
   const [blogPosts, setBlogPosts] = useState<AdminBlogPost[]>([]);
   const policyCopy = section === "terms"
@@ -3977,7 +3977,7 @@ function MarketingLandingPage({ section = "home" }: { section?: "home" | "signup
   );
 }
 
-function BlogPage() {
+export function BlogPage() {
   const [posts, setPosts] = useState<AdminBlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -4067,7 +4067,7 @@ function BlogPage() {
   );
 }
 
-function LoginScreen() {
+export function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -4272,7 +4272,7 @@ function LoginScreen() {
   );
 }
 
-function DashboardPage({ onLogout }: { onLogout?: () => void }) {
+export function DashboardPage({ onLogout }: { onLogout?: () => void }) {
   const [isSportsMenuOpen, setIsSportsMenuOpen] = useState(false);
   const [activeView, setActiveView] = useState<"markets" | "news" | "social" | "sport">(() => window.location.hash === "#social-news" ? "social" : window.location.hash === "#news" ? "news" : window.location.hash.startsWith("#sport") ? "sport" : "markets");
   const [selectedSport, setSelectedSport] = useState(() => sportFromHash());
@@ -5320,7 +5320,7 @@ function DashboardPage({ onLogout }: { onLogout?: () => void }) {
   );
 }
 
-function TestboardPage({ onLogout }: { onLogout?: () => void }) {
+export function TestboardPage({ onLogout }: { onLogout?: () => void }) {
   const [selectedSport, setSelectedSport] = useState(() => terminalSportFromHash(window.location.hash));
   const [isEntryDashboard, setIsEntryDashboard] = useState(() => !window.location.hash || window.location.hash === "#dashboard" || window.location.hash === "#testboard");
   const [isMatrixPage, setIsMatrixPage] = useState(() => window.location.hash === "#matrix");
@@ -8177,7 +8177,7 @@ function newsDisplayTimestamp(item: Pick<NewsItem, "published_at" | "discovered_
   return { date: null, source: "missing" as const };
 }
 
-function BloombergNewsFeedMockupPage() {
+export function BloombergNewsFeedMockupPage() {
   const [selectedId, setSelectedId] = useState("");
   const [items, setItems] = useState<NewsItem[]>([]);
   const [twitterRows, setTwitterRows] = useState<TwitterNewsRow[]>([]);
@@ -8791,7 +8791,7 @@ function BloombergProfileMockupPage() {
   );
 }
 
-function TodayDashboardMockupPage() {
+export function TodayDashboardMockupPage() {
   const [dashboardNews, setDashboardNews] = useState<NewsItem[]>([]);
   const sportRows = [
     ["Football", "42", "18", "GBP 8.42m", "12s", "Lineups, injuries", "+3"],
@@ -9069,7 +9069,7 @@ function FootballProfileShell({
   );
 }
 
-function TeamProfilePage({ slug }: { slug: string }) {
+export function TeamProfilePage({ slug }: { slug: string }) {
   const [profile, setProfile] = useState<FootballTeamProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -9381,7 +9381,7 @@ function TeamProfilePage({ slug }: { slug: string }) {
   );
 }
 
-function PlayerProfilePage({ id }: { id: string }) {
+export function PlayerProfilePage({ id }: { id: string }) {
   const [profile, setProfile] = useState<FootballPlayerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -9619,7 +9619,7 @@ function PlayerProfilePage({ id }: { id: string }) {
   );
 }
 
-function NewsPage() {
+export function NewsPage() {
   const [filters, setFilters] = useState<Filters>({
     q: "",
     sport: "all",
@@ -9938,7 +9938,7 @@ function NewsPage() {
   );
 }
 
-function SimpleNewsPage() {
+export function SimpleNewsPage() {
   const [sport, setSport] = useState("all");
   const [data, setData] = useState<NewsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -10052,7 +10052,7 @@ function SimpleNewsPage() {
   );
 }
 
-function StandaloneLiveNewsPage() {
+export function StandaloneLiveNewsPage() {
   const [sport, setSport] = useState("all");
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<NewsItem[]>([]);
@@ -10257,7 +10257,7 @@ function StandaloneLiveNewsPage() {
   );
 }
 
-function AdminConsolePage() {
+export function AdminConsolePage() {
   const [panel, setPanel] = useState<"overview" | "users" | "sessions" | "analytics" | "blog" | "newsSources">("overview");
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [sessions, setSessions] = useState<AdminSessionRow[]>([]);
@@ -10843,7 +10843,7 @@ function AdminNewsSourcesPanel() {
   );
 }
 
-function AdminNewsSourcesPage() {
+export function AdminNewsSourcesPage() {
   return (
     <main className="admin-news-shell admin-console-shell">
       <aside className="news-rail admin-console-rail">
@@ -11316,7 +11316,7 @@ function footballTeamAssetMatchesGroup(team: FootballTeamAsset, group: string) {
   return haystack.includes(normalizeSelectionKey(group));
 }
 
-function FootballProfilesPage() {
+export function FootballProfilesPage() {
   const cachedTeams = cachedFootballTeamAssets();
   const [teams, setTeams] = useState<FootballTeamAsset[]>(cachedTeams);
   const [loading, setLoading] = useState(cachedTeams.length === 0);
@@ -11656,7 +11656,7 @@ function SportSummaryDashboardPage({ sport }: { sport: string }) {
   );
 }
 
-function OddsApiDiagnosticsPage() {
+export function OddsApiDiagnosticsPage() {
   const [data, setData] = useState<OddsApiDiagnosticResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -12096,7 +12096,7 @@ function arbStatusClass(status: BetfairArbRow["status"]) {
   return status.toLowerCase().replace("_", "-");
 }
 
-function BetfairArbsPage() {
+export function BetfairArbsPage() {
   const [rows, setRows] = useState<BetfairArbRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -12388,7 +12388,7 @@ function ConsensusCell({ row }: { row: AgTest2EventRow }) {
   );
 }
 
-function AgTest2Page() {
+export function AgTest2Page() {
   const [data, setData] = useState<OddsApiDiagnosticResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -12531,7 +12531,7 @@ function AgTest2Page() {
   );
 }
 
-function AgTestPage() {
+export function AgTestPage() {
   const cachedLiquidityRows = cachedFootballLiquidityRows();
   const [fixtures, setFixtures] = useState<FootballFixture[]>([]);
   const [backendRows, setBackendRows] = useState<BackendPriceRow[]>(cachedLiquidityRows);
@@ -12874,7 +12874,7 @@ export default function App() {
   else if (hash === "#testboard") screen = hasSession ? <TestboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash === "#matrix" || hash === "#actual") screen = hasSession ? <TestboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash === "#old") screen = hasSession ? <DashboardPage onLogout={handleLogout} /> : <LoginScreen />;
-  else if (hash === "#legacy-news") screen = hasSession ? <DashboardPage onLogout={handleLogout} /> : <LoginScreen />;
+  else if (hash === "#old-news") screen = hasSession ? <DashboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash.startsWith("#sport")) screen = hasSession ? <DashboardPage onLogout={handleLogout} /> : <LoginScreen />;
   else if (hash === "#social-news") screen = hasSession ? <StandaloneLiveNewsPage /> : <LoginScreen />;
   else if (hash === "#login") screen = <LoginScreen />;
