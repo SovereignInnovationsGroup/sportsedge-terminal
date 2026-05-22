@@ -12575,7 +12575,7 @@ function AgTestPage() {
   return (
     <>
       <SportsEdgeTopbar
-        active="football"
+        active="liquidity"
         onSearchChange={setSearchQuery}
         searchPlaceholder="Filter table, open team/player, market..."
       />
