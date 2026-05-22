@@ -81,12 +81,19 @@ const TERMINAL_TOP_SPORTS = [
   { label: "Horse Racing", value: "horseracing", route: "#horseracing" },
   { label: "Tennis", value: "tennis", route: "#tennis" },
   { label: "Golf", value: "golf", route: "#golf" },
-  { label: "News", value: "news", route: "#news" },
-  { label: "Arbs", value: "arbs", route: "#arbs" },
+  { label: "News", value: "news", route: "#news" }
+] as const;
+
+const TERMINAL_FOOTBALL_NAV = [
+  { label: "Back", value: "all-sports", route: "#dashboard", tone: "back" },
+  { label: "Football", value: "football", route: "#football", tone: "sport" },
   { label: "Liquidity", value: "liquidity", route: "#liquidity" },
   { label: "Bias Matrix", value: "bias-matrix", route: "#bias-matrix" },
+  { label: "Arbs", value: "arbs", route: "#arbs" },
   { label: "Profiles", value: "profile-mockup", route: "#profile-mockup" }
 ] as const;
+
+const TERMINAL_FOOTBALL_MODE_VALUES = new Set(["football", "liquidity", "bias-matrix", "arbs", "profile-mockup"]);
 
 const TERMINAL_SPORT_VALUES = new Set(["football", "horseracing", "tennis", "golf"]);
 
@@ -1808,16 +1815,18 @@ function SportsEdgeTopbar({
   const loginId = sessionUser?.login_id || sessionUser?.email || "public";
   const membershipLevel = sessionUser?.subscription?.plan_name || sessionUser?.subscription?.level || sessionUser?.subscription?.status || "guest";
   const isAdmin = storedUserIsAdmin(sessionUser);
+  const inFootballMode = active ? TERMINAL_FOOTBALL_MODE_VALUES.has(active) : false;
+  const navItems = inFootballMode ? TERMINAL_FOOTBALL_NAV : TERMINAL_TOP_SPORTS;
 
   return (
     <header className="testboard-topbar global-terminal-topbar">
       <a className="testboard-brand" href="#dashboard" aria-label="SportsEdge dashboard">
         <img className="testboard-brand-logo" src={sportsEdgeMarketsLogo} alt="SportsEdge" />
       </a>
-      <nav className="testboard-nav" aria-label="SportsEdge navigation">
-        {TERMINAL_TOP_SPORTS.map((sport) => (
+      <nav className={`testboard-nav${inFootballMode ? " football-mode" : ""}`} aria-label={inFootballMode ? "Football navigation" : "SportsEdge navigation"}>
+        {navItems.map((sport) => (
           <button
-            className={active === sport.value ? "active" : ""}
+            className={[active === sport.value ? "active" : "", "tone" in sport && sport.tone ? `nav-${sport.tone}` : ""].filter(Boolean).join(" ")}
             key={sport.value}
             type="button"
             onClick={() => { window.location.hash = sport.route; }}

@@ -3335,6 +3335,10 @@ button {
   padding: 0 10px;
 }
 
+.testboard-nav.football-mode {
+  justify-content: flex-start;
+}
+
 .testboard-diag-nav {
   display: inline-flex;
   align-items: center;
@@ -3365,6 +3369,25 @@ button {
   border-color: rgba(96, 165, 250, 0.7);
   background: rgba(30, 64, 103, 0.42);
   color: var(--text);
+}
+
+.testboard-nav button.nav-back {
+  border-color: rgba(71, 85, 105, 0.78);
+  background: rgba(5, 8, 13, 0.72);
+  color: rgba(203, 213, 225, 0.9);
+}
+
+.testboard-nav button.nav-back::before {
+  content: "<";
+  margin-right: 6px;
+  color: var(--blue);
+}
+
+.testboard-nav button.nav-sport {
+  border-color: rgba(251, 191, 36, 0.48);
+  background: rgba(113, 63, 18, 0.22);
+  color: #fde68a;
+  cursor: default;
 }
 
 .testboard-search {
