@@ -84,7 +84,7 @@ const TERMINAL_TOP_SPORTS = [
   { label: "News", value: "news", route: "#news" },
   { label: "Arbs", value: "arbs", route: "#arbs" },
   { label: "AGTEST", value: "agtest", route: "#agtest-mockup" },
-  { label: "AGTEST2", value: "agtest2", route: "#agtest2" },
+  { label: "Bias Matrix", value: "bias-matrix", route: "#bias-matrix" },
   { label: "Profiles", value: "profile-mockup", route: "#profile-mockup" }
 ] as const;
 
@@ -1547,7 +1547,7 @@ const COMMAND_OPTIONS: CommandOption[] = [
   { label: "Bias Matrix", detail: "Open the football consensus matrix", route: "#matrix", keywords: ["matrix", "bias", "consensus", "prices"] },
   { label: "Arbs", detail: "Monitor Betfair exchange back and lay books", route: "#arbs", keywords: ["arb", "arbs", "arbitrage", "betfair", "back", "lay"] },
   { label: "AG test", detail: "Open the AG Grid football test board", route: "#agtest", keywords: ["ag", "agtest", "grid", "test"] },
-  { label: "AG test 2", detail: "Open the odds alignment pill matrix", route: "#agtest2", keywords: ["agtest2", "alignment", "bias", "odds", "unibet", "smarkets"] },
+  { label: "Bias Matrix", detail: "Open the odds alignment pill matrix", route: "#bias-matrix", keywords: ["agtest2", "alignment", "bias", "matrix", "odds", "unibet", "smarkets"] },
   { label: "Bloomberg mockup", detail: "Open the dense SportsEdge terminal mockup", route: "#bloomberg", keywords: ["bloomberg", "mockup", "terminal", "bb", "demo"] },
   { label: "Odds API diagnostics", detail: "Check provider fields and exchange classification", route: "#oddsapi", keywords: ["odds", "api", "diagnostics", "betfair", "matchbook", "smarkets", "betdaq", "bet365"] },
   { label: "Football markets", detail: "Open the football market board", route: "#agtest", keywords: ["football", "soccer", "markets"] },
@@ -11861,10 +11861,10 @@ function AgTest2Page() {
 
   return (
     <>
-      <SportsEdgeTopbar active="agtest2" onSearchChange={setQuery} searchPlaceholder="Filter alignment rows, fixture, source, bias..." />
+      <SportsEdgeTopbar active="bias-matrix" onSearchChange={setQuery} searchPlaceholder="Filter alignment rows, fixture, source, bias..." />
       <main className="agtest2-page">
-        <section className="agtest-subbar" aria-label="AGTEST2 odds alignment context">
-          <nav aria-label="AGTEST2 sections">
+        <section className="agtest-subbar" aria-label="Bias Matrix odds alignment context">
+          <nav aria-label="Bias Matrix sections">
             <button className="active" type="button">Odds Alignment</button>
             <button type="button" onClick={() => { window.location.hash = "#agtest"; }}>AGTEST</button>
             <button type="button" onClick={() => { window.location.hash = "#oddsapi"; }}>Diagnostics</button>
@@ -12246,7 +12246,7 @@ export default function App() {
   else if (hash === "#football-demo") screen = <FootballIntelligenceDemoPage />;
   else if (hash === "#oddsapi") screen = hasSession || previewDashboard ? <OddsApiDiagnosticsPage /> : <LoginScreen />;
   else if (hash === "#arbs") screen = hasSession || previewDashboard ? <BetfairArbsPage /> : <LoginScreen />;
-  else if (hash === "#agtest2") screen = hasSession || previewDashboard ? <AgTest2Page /> : <LoginScreen />;
+  else if (hash === "#bias-matrix" || hash === "#agtest2") screen = hasSession || previewDashboard ? <AgTest2Page /> : <LoginScreen />;
   else if (hash === "#agtest" || hash === "#football") screen = hasSession || previewDashboard ? <AgTestPage /> : <LoginScreen />;
   else if (previewDashboard && (hash === "#testboard" || hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash))) screen = <TestboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#login") screen = <LoginScreen />;
