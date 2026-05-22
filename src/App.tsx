@@ -77,13 +77,13 @@ const PRIORITY_SPORTS = [
 ];
 
 const TERMINAL_TOP_SPORTS = [
-  { label: "Football", value: "football", route: "#agtest" },
+  { label: "Football", value: "football", route: "#liquidity" },
   { label: "Horse Racing", value: "horseracing", route: "#horseracing" },
   { label: "Tennis", value: "tennis", route: "#tennis" },
   { label: "Golf", value: "golf", route: "#golf" },
   { label: "News", value: "news", route: "#news" },
   { label: "Arbs", value: "arbs", route: "#arbs" },
-  { label: "AGTEST", value: "agtest", route: "#agtest-mockup" },
+  { label: "Liquidity", value: "liquidity", route: "#liquidity" },
   { label: "Bias Matrix", value: "bias-matrix", route: "#bias-matrix" },
   { label: "Profiles", value: "profile-mockup", route: "#profile-mockup" }
 ] as const;
@@ -1546,11 +1546,11 @@ const COMMAND_OPTIONS: CommandOption[] = [
   { label: "Upcoming fixtures", detail: "Open today's market dashboard", route: "#dashboard", keywords: ["fixtures", "upcoming", "today", "matches", "games"] },
   { label: "Bias Matrix", detail: "Open the football consensus matrix", route: "#matrix", keywords: ["matrix", "bias", "consensus", "prices"] },
   { label: "Arbs", detail: "Monitor Betfair exchange back and lay books", route: "#arbs", keywords: ["arb", "arbs", "arbitrage", "betfair", "back", "lay"] },
-  { label: "AG test", detail: "Open the AG Grid football test board", route: "#agtest", keywords: ["ag", "agtest", "grid", "test"] },
+  { label: "Liquidity", detail: "Open the football exchange liquidity board", route: "#liquidity", keywords: ["ag", "agtest", "grid", "test", "liquidity", "prices"] },
   { label: "Bias Matrix", detail: "Open the odds alignment pill matrix", route: "#bias-matrix", keywords: ["agtest2", "alignment", "bias", "matrix", "odds", "unibet", "smarkets"] },
   { label: "Bloomberg mockup", detail: "Open the dense SportsEdge terminal mockup", route: "#bloomberg", keywords: ["bloomberg", "mockup", "terminal", "bb", "demo"] },
   { label: "Odds API diagnostics", detail: "Check provider fields and exchange classification", route: "#oddsapi", keywords: ["odds", "api", "diagnostics", "betfair", "matchbook", "smarkets", "betdaq", "bet365"] },
-  { label: "Football markets", detail: "Open the football market board", route: "#agtest", keywords: ["football", "soccer", "markets"] },
+  { label: "Football markets", detail: "Open the football market board", route: "#liquidity", keywords: ["football", "soccer", "markets", "liquidity"] },
   { label: "News", detail: "Open SportsEdge social news stream", route: "#social-news", keywords: ["news", "twitter", "social", "x"] },
   { label: "Actual exchange feeds", detail: "Open raw venue diagnostics", route: "#actual", keywords: ["actual", "exchange", "betfair", "matchbook", "feeds"] }
 ];
@@ -7869,9 +7869,9 @@ function AgtestBloombergMockupPage() {
 
   return (
     <>
-      <SportsEdgeTopbar active="agtest" searchPlaceholder="ARSENAL, EPL, PLAYER: SAKA, MATCH: ARS-TOT, NEWS, MATRIX..." />
+      <SportsEdgeTopbar active="liquidity" searchPlaceholder="ARSENAL, EPL, PLAYER: SAKA, MATCH: ARS-TOT, NEWS, MATRIX..." />
       <main className="agtest-page bb-demo-shell">
-        <section className="agtest-subbar bb-demo-subbar" aria-label="AGTEST mockup controls">
+        <section className="agtest-subbar bb-demo-subbar" aria-label="Liquidity mockup controls">
           <nav aria-label="Mockup screens">
             {(["monitor", "match", "diagnostics"] as const).map((key) => (
               <button className={screen === key ? "active" : ""} key={key} type="button" onClick={() => setScreen(key)}>
@@ -7880,7 +7880,7 @@ function AgtestBloombergMockupPage() {
             ))}
           </nav>
           <div>
-            <span>AGTEST layout demo</span>
+            <span>Liquidity layout demo</span>
             <span>SportsEdge-first</span>
             <span>WSS live</span>
           </div>
@@ -10011,7 +10011,7 @@ function StandaloneLiveNewsPage() {
   return (
     <>
       <SportsEdgeTopbar
-        active="football"
+        active="liquidity"
         onSearchChange={setQuery}
         searchPlaceholder="Search news, team, player, source..."
       />
@@ -11560,7 +11560,7 @@ function BetfairArbsPage() {
         <section className="agtest-subbar" aria-label="Betfair arb monitor context">
           <nav aria-label="Arbitrage sections">
             <button className="active" type="button">Betfair</button>
-            <button type="button" onClick={() => { window.location.hash = "#agtest"; }}>AGTEST</button>
+            <button type="button" onClick={() => { window.location.hash = "#liquidity"; }}>Liquidity</button>
             <button type="button" onClick={() => { window.location.hash = "#oddsapi"; }}>Odds API</button>
           </nav>
           <div>
@@ -11866,7 +11866,7 @@ function AgTest2Page() {
         <section className="agtest-subbar" aria-label="Bias Matrix odds alignment context">
           <nav aria-label="Bias Matrix sections">
             <button className="active" type="button">Odds Alignment</button>
-            <button type="button" onClick={() => { window.location.hash = "#agtest"; }}>AGTEST</button>
+            <button type="button" onClick={() => { window.location.hash = "#liquidity"; }}>Liquidity</button>
             <button type="button" onClick={() => { window.location.hash = "#oddsapi"; }}>Diagnostics</button>
           </nav>
           <div>
@@ -11980,7 +11980,7 @@ function AgTestPage() {
           setError("");
         }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "AG test failed");
+        if (!cancelled) setError(err instanceof Error ? err.message : "Liquidity board failed");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -12138,7 +12138,7 @@ function AgTestPage() {
         searchPlaceholder="Filter table, open team/player, market..."
       />
       <main className="agtest-page">
-        <section className="agtest-subbar" aria-label="AG test market context">
+        <section className="agtest-subbar" aria-label="Liquidity market context">
           <div className="agtest-filter-stack">
             <nav aria-label="Football region filters">
               {AGTEST_FOOTBALL_PRIMARY_FILTERS.map((filter) => (
@@ -12179,7 +12179,7 @@ function AgTestPage() {
             <span>{socketStatus === "live" ? "wss live" : loading ? "loading" : socketStatus}</span>
           </div>
         </section>
-        <section className="agtest-source-strip" aria-label="AGTEST source status">
+        <section className="agtest-source-strip" aria-label="Liquidity source status">
           <span>Exchange ladder: BF / MB / SX</span>
           <span>Odds-only: BF {oddsApiSummary?.byBookmaker?.betfair || 0}</span>
           <span>MB {oddsApiSummary?.byBookmaker?.matchbook || 0}</span>
@@ -12247,7 +12247,7 @@ export default function App() {
   else if (hash === "#oddsapi") screen = hasSession || previewDashboard ? <OddsApiDiagnosticsPage /> : <LoginScreen />;
   else if (hash === "#arbs") screen = hasSession || previewDashboard ? <BetfairArbsPage /> : <LoginScreen />;
   else if (hash === "#bias-matrix" || hash === "#agtest2") screen = hasSession || previewDashboard ? <AgTest2Page /> : <LoginScreen />;
-  else if (hash === "#agtest" || hash === "#football") screen = hasSession || previewDashboard ? <AgTestPage /> : <LoginScreen />;
+  else if (hash === "#liquidity" || hash === "#agtest" || hash === "#football") screen = hasSession || previewDashboard ? <AgTestPage /> : <LoginScreen />;
   else if (previewDashboard && (hash === "#testboard" || hash === "#matrix" || hash === "#actual" || isTerminalSportHash(hash))) screen = <TestboardPage onLogout={handleLogout} />;
   else if (previewDashboard && hash === "#login") screen = <LoginScreen />;
   else if (previewDashboard && (hash === "#old" || hash.startsWith("#sport"))) screen = <DashboardPage onLogout={handleLogout} />;
