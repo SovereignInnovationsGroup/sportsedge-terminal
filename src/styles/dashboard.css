@@ -7012,6 +7012,16 @@ button {
   color: #fca5a5;
 }
 
+.agtest2-odd.consensus {
+  border-color: rgba(251, 191, 36, 0.82);
+  background: rgba(113, 63, 18, 0.48);
+  color: #fde68a;
+}
+
+.agtest2-odd.consensus b {
+  color: #facc15;
+}
+
 .agtest2-odd.miss {
   border-color: rgba(51, 65, 85, 0.54);
   background: rgba(15, 23, 42, 0.32);

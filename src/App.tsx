@@ -11774,8 +11774,14 @@ function OddsSourceCell({ row, source, changedKeys }: { row: AgTest2EventRow; so
   );
 }
 
-function consensusLabel(consensus: Partial<Record<OddsOutcome, number>>) {
-  return ["home", "draw", "away"].map((outcome) => decimalOddsLabel(consensus[outcome as OddsOutcome])).join(" / ");
+function ConsensusCell({ row }: { row: AgTest2EventRow }) {
+  return (
+    <div className="agtest2-odds-set agtest2-consensus-set" title="Average consensus across visible source prices">
+      <OddsPill label="H" value={row.consensus.home} tone={row.bias === "Home consensus" ? "consensus" : ""} />
+      <OddsPill label="D" value={row.consensus.draw} tone={row.bias === "Draw pressure" ? "consensus" : ""} />
+      <OddsPill label="A" value={row.consensus.away} tone={row.bias === "Away consensus" ? "consensus" : ""} />
+    </div>
+  );
 }
 
 function AgTest2Page() {
@@ -11813,7 +11819,7 @@ function AgTest2Page() {
 
   useEffect(() => {
     loadRows();
-    const timer = window.setInterval(loadRows, 45000);
+    const timer = window.setInterval(loadRows, 5000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -11898,7 +11904,7 @@ function AgTest2Page() {
                   <td className="agtest2-fixture"><strong>{row.fixture}</strong><span>{row.league}</span></td>
                   <td><span className={`agtest2-status ${row.read}`}>{row.read}</span></td>
                   {AGTEST2_SOURCES.map((source) => <td key={`${row.id}-${source.key}`}><OddsSourceCell row={row} source={source} changedKeys={changedKeys} /></td>)}
-                  <td className="mono agtest2-consensus">{consensusLabel(row.consensus)}</td>
+                  <td className="agtest2-consensus"><ConsensusCell row={row} /></td>
                   <td className="mono agtest2-bias">{row.bias}</td>
                   <td className="agtest2-note">{row.note}</td>
                 </tr>
