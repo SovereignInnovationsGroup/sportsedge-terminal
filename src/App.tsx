@@ -11741,17 +11741,35 @@ function oddsPillClass(value: number | undefined, row: AgTest2EventRow, outcome:
   return "";
 }
 
-function OddsPill({ label, value, tone }: { label: string; value?: number; tone: string }) {
-  return <span className={`agtest2-odd ${tone}`}><b>{label}</b>{Number.isFinite(Number(value)) ? decimalOddsLabel(value) : "-"}</span>;
+function agTest2OddsKey(eventId: string, source: string, outcome: OddsOutcome) {
+  return `${eventId}:${source}:${outcome}`;
 }
 
-function OddsSourceCell({ row, source }: { row: AgTest2EventRow; source: typeof AGTEST2_SOURCES[number] }) {
+function flattenAgTest2Odds(rows: AgTest2EventRow[]) {
+  const values = new Map<string, number>();
+  rows.forEach((row) => {
+    AGTEST2_SOURCES.forEach((source) => {
+      (["home", "draw", "away"] as OddsOutcome[]).forEach((outcome) => {
+        const value = row.sourceOdds[source.key]?.[outcome];
+        if (Number.isFinite(Number(value))) values.set(agTest2OddsKey(row.id, source.key, outcome), Number(value));
+      });
+    });
+  });
+  return values;
+}
+
+function OddsPill({ label, value, tone, changed }: { label: string; value?: number; tone: string; changed?: boolean }) {
+  const classes = ["agtest2-odd", tone, changed ? "changed" : ""].filter(Boolean).join(" ");
+  return <span className={classes}><b>{label}</b>{Number.isFinite(Number(value)) ? decimalOddsLabel(value) : "-"}</span>;
+}
+
+function OddsSourceCell({ row, source, changedKeys }: { row: AgTest2EventRow; source: typeof AGTEST2_SOURCES[number]; changedKeys: Set<string> }) {
   const odds = row.sourceOdds[source.key] || {};
   return (
     <div className="agtest2-odds-set" title={source.label}>
-      <OddsPill label="H" value={odds.home} tone={oddsPillClass(odds.home, row, "home")} />
-      <OddsPill label="D" value={odds.draw} tone={oddsPillClass(odds.draw, row, "draw")} />
-      <OddsPill label="A" value={odds.away} tone={oddsPillClass(odds.away, row, "away")} />
+      <OddsPill label="H" value={odds.home} tone={oddsPillClass(odds.home, row, "home")} changed={changedKeys.has(agTest2OddsKey(row.id, source.key, "home"))} />
+      <OddsPill label="D" value={odds.draw} tone={oddsPillClass(odds.draw, row, "draw")} changed={changedKeys.has(agTest2OddsKey(row.id, source.key, "draw"))} />
+      <OddsPill label="A" value={odds.away} tone={oddsPillClass(odds.away, row, "away")} changed={changedKeys.has(agTest2OddsKey(row.id, source.key, "away"))} />
     </div>
   );
 }
@@ -11765,6 +11783,9 @@ function AgTest2Page() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
+  const [changedKeys, setChangedKeys] = useState<Set<string>>(new Set());
+  const previousOddsRef = useRef<Map<string, number> | null>(null);
+  const clearChangedTimerRef = useRef<number | null>(null);
 
   async function loadRows() {
     setLoading(true);
@@ -11797,6 +11818,28 @@ function AgTest2Page() {
   }, []);
 
   const allRows = useMemo(() => buildAgTest2Rows(data?.rows || []), [data]);
+  useEffect(() => {
+    const currentOdds = flattenAgTest2Odds(allRows);
+    const previousOdds = previousOddsRef.current;
+    if (previousOdds) {
+      const nextChanged = new Set<string>();
+      currentOdds.forEach((value, key) => {
+        const previous = previousOdds.get(key);
+        if (previous !== undefined && Math.abs(previous - value) > 0.0001) nextChanged.add(key);
+      });
+      if (nextChanged.size) {
+        setChangedKeys(nextChanged);
+        if (clearChangedTimerRef.current) window.clearTimeout(clearChangedTimerRef.current);
+        clearChangedTimerRef.current = window.setTimeout(() => setChangedKeys(new Set()), 2200);
+      }
+    }
+    previousOddsRef.current = currentOdds;
+  }, [allRows]);
+
+  useEffect(() => () => {
+    if (clearChangedTimerRef.current) window.clearTimeout(clearChangedTimerRef.current);
+  }, []);
+
   const rows = useMemo(() => {
     const terms = normalizeFixtureText(query).split(" ").filter(Boolean);
     if (!terms.length) return allRows;
@@ -11854,7 +11897,7 @@ function AgTest2Page() {
                   <td className="mono agtest2-time">{row.kickoff}</td>
                   <td className="agtest2-fixture"><strong>{row.fixture}</strong><span>{row.league}</span></td>
                   <td><span className={`agtest2-status ${row.read}`}>{row.read}</span></td>
-                  {AGTEST2_SOURCES.map((source) => <td key={`${row.id}-${source.key}`}><OddsSourceCell row={row} source={source} /></td>)}
+                  {AGTEST2_SOURCES.map((source) => <td key={`${row.id}-${source.key}`}><OddsSourceCell row={row} source={source} changedKeys={changedKeys} /></td>)}
                   <td className="mono agtest2-consensus">{consensusLabel(row.consensus)}</td>
                   <td className="mono agtest2-bias">{row.bias}</td>
                   <td className="agtest2-note">{row.note}</td>

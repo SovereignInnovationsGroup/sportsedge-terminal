@@ -7018,6 +7018,27 @@ button {
   color: rgba(100, 116, 139, 0.85);
 }
 
+.agtest2-odd.changed {
+  animation: agtest2-price-flash 2.2s ease-out;
+  border-color: rgba(96, 165, 250, 0.95);
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.38), 0 0 16px rgba(96, 165, 250, 0.3);
+}
+
+@keyframes agtest2-price-flash {
+  0% {
+    background: rgba(96, 165, 250, 0.72);
+    color: #f8fafc;
+    transform: translateY(-1px);
+  }
+  35% {
+    background: rgba(37, 99, 235, 0.44);
+    color: #f8fafc;
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
 .agtest2-legend {
   display: flex;
   align-items: center;
