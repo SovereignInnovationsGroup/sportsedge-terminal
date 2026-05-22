@@ -6645,6 +6645,47 @@ button {
   width: 100%;
 }
 
+.agtest-source-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.62);
+  background: #05080d;
+  padding: 0 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+
+.agtest-source-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.agtest-source-strip span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  border: 1px solid rgba(36, 50, 65, 0.82);
+  border-radius: 4px;
+  background: rgba(8, 16, 24, 0.92);
+  color: rgba(203, 213, 225, 0.86);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  padding: 0 7px;
+  text-transform: uppercase;
+}
+
+.agtest-source-strip span:first-child {
+  border-color: rgba(96, 165, 250, 0.45);
+  color: #bfdbfe;
+}
+
+.agtest-page .agtest-source-strip + .agtest-grid-wrap {
+  height: calc(100vh - 110px);
+}
+
 .agtest-empty-state {
   align-items: center;
   background: rgba(5, 8, 13, 0.92);

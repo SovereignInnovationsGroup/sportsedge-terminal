@@ -77,7 +77,7 @@ const PRIORITY_SPORTS = [
 ];
 
 const TERMINAL_TOP_SPORTS = [
-  { label: "Football", value: "football", route: "#liquidity" },
+  { label: "Football", value: "football", route: "#football" },
   { label: "Horse Racing", value: "horseracing", route: "#horseracing" },
   { label: "Tennis", value: "tennis", route: "#tennis" },
   { label: "Golf", value: "golf", route: "#golf" },
@@ -10982,10 +10982,12 @@ function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendPriceRow
   const displayRows = collapseRowsByFixture(mergeDisplayPriceRows(priceRows));
   const moneylineOddsRows = oddsRows.filter(isMoneylineOddsApiRow);
   const matchedOddsEventIds = new Set<string>();
+  const matchedBackendRowIds = new Set<string>();
   const baseRows = cleanFootballFixtures(fixtures)
     .map((fixture) => {
       const matched = findMarketRowForFootballFixture(fixture, displayRows);
       const backend = matched?.row;
+      if (backend) matchedBackendRowIds.add(stableDisplayRowKey(backend) || backend.id);
       const outcomes = tradeableOutcomeRows(backend).slice(0, 3);
       const quote = sportsEdgeMarketQuote(backend);
       const oddsApiRows = fixtureOddsApiRows(footballFixtureName(fixture), moneylineOddsRows);
@@ -11008,6 +11010,30 @@ function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendPriceRow
         bias: rowHasMultiBettingExchange(backend) ? biasFromQuote(quote) : exchangeHasRoute ? "Single route" : oddsOnlyHasRoute ? "Odds-only" : "No route",
         liquidity: quote.liquidity || matched?.totalValue ? formatExchangeMoney(quote.liquidity || matched?.totalValue || 0, "GBP") : "-",
         fresh: quote.updatedAt || sourceTimestampLabel(oddsApiRows) || "watch"
+      };
+    });
+
+  const backendOnlyRows = displayRows
+    .filter((row) => !matchedBackendRowIds.has(stableDisplayRowKey(row) || row.id))
+    .map((row) => {
+      const outcomes = tradeableOutcomeRows(row).slice(0, 3);
+      const quote = sportsEdgeMarketQuote(row);
+      return {
+        id: stableDisplayRowKey(row) || row.id,
+        startAt: row.startAt,
+        kickoff: displayStartTime(row),
+        match: displayEventName(row.name),
+        competition: row.competitionName || "Exchange football",
+        coverage: exchangeCoverage(row).map((exchange) => ({ label: exchange.label, available: exchange.isAvailable })),
+        oddsCoverage: oddsApiSourceCoverage([]),
+        outcomes: outcomes.length ? outcomes.map((outcome) => outcome.label) : ["Exchange market"],
+        betfair: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "bf")) : ["-"],
+        matchbook: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "mb")) : ["-"],
+        sx: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "sx")) : ["-"],
+        oddsApi: ["-"],
+        bias: rowHasMultiBettingExchange(row) ? biasFromQuote(quote) : rowHasBettingExchange(row) ? "Single route" : "No route",
+        liquidity: quote.liquidity || rowMatchedValue(row) ? formatExchangeMoney(quote.liquidity || rowMatchedValue(row), "GBP") : "-",
+        fresh: quote.updatedAt || "watch"
       };
     });
 
@@ -11035,7 +11061,7 @@ function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendPriceRow
       };
     });
 
-  return [...baseRows, ...oddsOnlyRows]
+  return [...baseRows, ...backendOnlyRows, ...oddsOnlyRows]
     .filter((row) => row.coverage.some((exchange) => exchange.available) || row.oddsCoverage.some((source) => source.available));
 }
 
@@ -12364,31 +12390,31 @@ function AgTestPage() {
     async function loadRows() {
       setLoading(true);
       try {
-        const [fixtureResponse, oddsResponse, oddsApiResponse] = await Promise.all([
-          fetch("/api/football/fixtures?days=4&limit=2000&timezone=Europe/London", { cache: "no-store" }),
-          fetch("/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=500", { cache: "no-store" }),
-          fetch("/api/odds-api/diagnostics?sport=soccer&bookmakers=betfair,matchbook,smarkets,betdaq,bet365&eventLimit=20&scanPages=5&pageLimit=200&oddsLimit=1000", { cache: "no-store" })
-        ]);
-        const fixturePayload = await fixtureResponse.json();
+        const oddsResponse = await fetch("/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=500", { cache: "no-store" });
         const oddsPayload = await oddsResponse.json();
-        const oddsApiPayload = await oddsApiResponse.json().catch(() => ({}));
-        if (!fixtureResponse.ok || !Array.isArray(fixturePayload.fixtures)) throw new Error(fixturePayload.detail || "fixtures failed");
         if (!oddsResponse.ok || !Array.isArray(oddsPayload.rows)) throw new Error(oddsPayload.detail || "odds failed");
 
         if (!cancelled) {
-          setFixtures(fixturePayload.fixtures as FootballFixture[]);
           setBackendRows((currentRows) => mergeDisplayPriceRows([
             ...(oddsPayload.rows as BackendPriceRow[]),
             ...currentRows
           ]).slice(0, 700));
+          setError("");
+          setLoading(false);
+        }
+
+        const [fixtureResponse, oddsApiResponse] = await Promise.all([
+          fetch("/api/football/fixtures?days=4&limit=2000&timezone=Europe/London", { cache: "no-store" }),
+          fetch("/api/odds-api/diagnostics?sport=soccer&bookmakers=betfair,matchbook,smarkets,betdaq,bet365&eventLimit=20&scanPages=5&pageLimit=200&oddsLimit=1000", { cache: "no-store" })
+        ]);
+        const fixturePayload = await fixtureResponse.json().catch(() => ({}));
+        const oddsApiPayload = await oddsApiResponse.json().catch(() => ({}));
+        if (!cancelled) {
+          if (fixtureResponse.ok && Array.isArray(fixturePayload.fixtures)) setFixtures(fixturePayload.fixtures as FootballFixture[]);
           if (oddsApiResponse.ok && Array.isArray(oddsApiPayload.rows)) {
             setOddsApiRows(oddsApiPayload.rows as OddsApiDiagnosticRow[]);
             setOddsApiSummary(oddsApiPayload.counts || null);
-          } else {
-            setOddsApiRows([]);
-            setOddsApiSummary(null);
           }
-          setError("");
         }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Liquidity board failed");
