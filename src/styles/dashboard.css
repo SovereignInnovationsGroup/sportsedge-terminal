@@ -7784,6 +7784,7 @@ button {
   font-weight: 900;
 }
 .bb-demo-news article {
+  align-items: start;
   display: grid;
   grid-template-columns: 42px 42px minmax(0, 1fr);
   gap: 7px;
@@ -7799,10 +7800,14 @@ button {
 }
 .bb-demo-news b { color: var(--amber); }
 .bb-demo-news p {
+  display: -webkit-box;
+  overflow: hidden;
   margin: 0;
   color: rgba(226, 232, 240, 0.9);
   font-size: 12px;
   line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 .bb-demo-match { padding: 10px; }
 .bb-demo-match-head {
