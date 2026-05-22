@@ -8790,7 +8790,7 @@ function TodayDashboardMockupPage() {
           </section>
 
           <aside className="bb-demo-news bb-profile-news-rail">
-            <div className="bb-demo-news-head"><strong>Intelligence</strong><span>TODAY</span></div>
+            <div className="bb-demo-news-head"><strong>News</strong><span>ALL SPORTSEDGE NEWS</span></div>
             {alerts.map((item) => <article key={`${item[0]}-${item[1]}`}><time>{item[0]}</time><b>{item[1]}</b><p>{item[2]}</p></article>)}
           </aside>
         </div>
