@@ -90,10 +90,10 @@ const TERMINAL_FOOTBALL_NAV = [
   { label: "Liquidity", value: "liquidity", route: "#liquidity" },
   { label: "Bias Matrix", value: "bias-matrix", route: "#bias-matrix" },
   { label: "Arbs", value: "arbs", route: "#arbs" },
-  { label: "Profiles", value: "profile-mockup", route: "#profile-mockup" }
+  { label: "Profiles", value: "football-profiles", route: "#football-profiles" }
 ] as const;
 
-const TERMINAL_FOOTBALL_MODE_VALUES = new Set(["football", "liquidity", "bias-matrix", "arbs", "profile-mockup"]);
+const TERMINAL_FOOTBALL_MODE_VALUES = new Set(["football", "liquidity", "bias-matrix", "arbs", "football-profiles"]);
 
 const TERMINAL_SPORT_VALUES = new Set(["football", "horseracing", "tennis", "golf"]);
 
@@ -1869,11 +1869,11 @@ function SportsEdgeTopbar({
             type="button"
             onFocus={() => {
               if (sport.value === "liquidity" || sport.value === "football") void prefetchFootballLiquiditySnapshot();
-              if (sport.value === "profile-mockup" || sport.value === "football") void prefetchFootballTeamAssets();
+              if (sport.value === "football-profiles" || sport.value === "football") void prefetchFootballTeamAssets();
             }}
             onMouseEnter={() => {
               if (sport.value === "liquidity" || sport.value === "football") void prefetchFootballLiquiditySnapshot();
-              if (sport.value === "profile-mockup" || sport.value === "football") void prefetchFootballTeamAssets();
+              if (sport.value === "football-profiles" || sport.value === "football") void prefetchFootballTeamAssets();
             }}
             onClick={() => { window.location.hash = sport.route; }}
           >
@@ -8687,7 +8687,7 @@ function BloombergProfileMockupPage() {
 
   return (
     <>
-      <SportsEdgeTopbar active="profile-mockup" searchPlaceholder="TEAM: ARSENAL, PLAYER: SAKA, NEWS, PROPS, DIAGNOSTICS..." />
+      <SportsEdgeTopbar active="football-profiles" searchPlaceholder="TEAM: ARSENAL, PLAYER: SAKA, NEWS, PROPS, DIAGNOSTICS..." />
       <main className="agtest-page bb-profile-page">
         <section className="agtest-subbar bb-demo-subbar" aria-label="Profile mockup controls">
           <nav aria-label="Profile type">
@@ -11376,7 +11376,7 @@ function FootballProfilesPage() {
 
   return (
     <>
-      <SportsEdgeTopbar active="profile-mockup" onSearchChange={setQuery} searchPlaceholder="Filter football teams, country, league..." />
+      <SportsEdgeTopbar active="football-profiles" onSearchChange={setQuery} searchPlaceholder="Filter football teams, country, league..." />
       <main className="football-profiles-page">
         <section className="agtest-subbar" aria-label="Football profile filters">
           <div className="agtest-filter-stack">
@@ -12860,7 +12860,7 @@ export default function App() {
   else if (hash === "#agtest-mockup" || hash === "#bloomberg-demo" || hash === "#bloomberg") screen = <AgtestBloombergMockupPage />;
   else if (hash === "#news" || hash === "#news-feed-mockup") screen = hasSession || previewDashboard ? <BloombergNewsFeedMockupPage /> : <LoginScreen />;
   else if (hash === "#dashboard" || hash === "#today-dashboard-mockup") screen = hasSession || previewDashboard ? <TodayDashboardMockupPage /> : <LoginScreen />;
-  else if (hash === "#profile-mockup" || hash === "#profiles") screen = hasSession || previewDashboard ? <FootballProfilesPage /> : <LoginScreen />;
+  else if (hash === "#football-profiles" || hash === "#profile-mockup" || hash === "#profiles") screen = hasSession || previewDashboard ? <FootballProfilesPage /> : <LoginScreen />;
   else if (hash === "#product-map") screen = <SportsEdgeProductMockupPage />;
   else if (hash === "#football-demo") screen = <FootballIntelligenceDemoPage />;
   else if (hash === "#oddsapi") screen = hasSession || previewDashboard ? <OddsApiDiagnosticsPage /> : <LoginScreen />;
