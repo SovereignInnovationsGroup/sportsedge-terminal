@@ -184,10 +184,10 @@ export default function BiasMatrix() {
       const params = new URLSearchParams({
         sport: "soccer",
         bookmakers: BIAS_MATRIX_SOURCES.map((source) => source.key).join(","),
-        eventLimit: "12",
-        scanPages: "2",
-        pageLimit: "120",
-        oddsLimit: "300"
+        eventLimit: "8",
+        scanPages: "1",
+        pageLimit: "80",
+        oddsLimit: "200"
       });
       const response = await fetch(`/api/odds-api/diagnostics?${params.toString()}`, { cache: "no-store" });
       const payload = await response.json();
