@@ -8677,6 +8677,7 @@ function BloombergProfileMockupPage() {
 }
 
 function TodayDashboardMockupPage() {
+  const [dashboardNews, setDashboardNews] = useState<NewsItem[]>([]);
   const sportRows = [
     ["Football", "42", "18", "GBP 8.42m", "12s", "Lineups, injuries", "+3"],
     ["Tennis", "31", "9", "GBP 2.18m", "18s", "Retirement watch", "+1"],
@@ -8701,6 +8702,28 @@ function TodayDashboardMockupPage() {
     ["10:19", "SOCIAL", "Basketball beat reporters flag questionable starters"]
   ];
 
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadDashboardNews() {
+      try {
+        const params = new URLSearchParams({ limit: "60" });
+        const response = await fetch(`/api/news?${params.toString()}`, { cache: "no-store", signal: controller.signal });
+        const payload = await response.json();
+        if (response.ok && Array.isArray(payload.items)) {
+          setDashboardNews(uniqueNewsItems(payload.items as NewsItem[]).slice(0, 60));
+        }
+      } catch {
+        if (!controller.signal.aborted) setDashboardNews([]);
+      }
+    }
+    loadDashboardNews();
+    const timer = window.setInterval(loadDashboardNews, 30000);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, []);
+
   return (
     <>
       <SportsEdgeTopbar active="today-demo" searchPlaceholder="TODAY, FOOTBALL, TENNIS, LIQUIDITY, NEWS, ALERTS..." />
@@ -8713,7 +8736,7 @@ function TodayDashboardMockupPage() {
           </nav>
           <div>
             <span>Client login view</span>
-            <span>Demo data</span>
+            <span>All news</span>
             <span>SportsEdge today</span>
           </div>
         </section>
@@ -8791,7 +8814,15 @@ function TodayDashboardMockupPage() {
 
           <aside className="bb-demo-news bb-profile-news-rail">
             <div className="bb-demo-news-head"><strong>News</strong><span>ALL SPORTSEDGE NEWS</span></div>
-            {alerts.map((item) => <article key={`${item[0]}-${item[1]}`}><time>{item[0]}</time><b>{item[1]}</b><p>{item[2]}</p></article>)}
+            {dashboardNews.length > 0
+              ? dashboardNews.slice(0, 40).map((item) => (
+                <article key={item.id || `${item.title}-${item.discovered_at || item.published_at}`}>
+                  <time>{terminalNewsTimeLabel(item)}</time>
+                  <b>{terminalNewsTag(item)}</b>
+                  <p>{terminalNewsHeadline(item)}</p>
+                </article>
+              ))
+              : alerts.map((item) => <article key={`${item[0]}-${item[1]}`}><time>{item[0]}</time><b>{item[1]}</b><p>{item[2]}</p></article>)}
           </aside>
         </div>
       </main>
