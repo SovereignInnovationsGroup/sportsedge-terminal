@@ -39,6 +39,8 @@ export type BackendPriceRow = {
   startAt: string | null;
   matches: Record<string, BackendExchangeMatch | undefined>;
   arbs?: Array<{ edgePct?: number; backExchange?: string; layExchange?: string; label?: string }>;
+  marketCount?: number;
+  aggregateLiquidityByExchange?: Record<string, number>;
 };
 
 export type FootballFixture = {
@@ -162,7 +164,34 @@ function backendRowStartTimeMs(row: BackendPriceRow) {
 }
 
 function stableDisplayRowKey(row: BackendPriceRow) {
-  return normalizeFixtureText(`${row.name} ${row.marketName || row.marketType || ""} ${row.startAt || ""}`);
+  const fixtureName = normalizeFixtureText(row.name)
+    .replace(/\bvs\b/g, " v ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalizeFixtureText(`${fixtureName} ${String(row.startAt || "").slice(0, 16)}`);
+}
+
+function marketSortRank(row: BackendPriceRow) {
+  const text = normalizeFixtureText(`${row.marketType || ""} ${row.marketName || ""}`);
+  if (text.includes("match odds") || text.includes("match result") || text.includes("one x two")) return 0;
+  if (text.includes("winner") || text.includes("moneyline")) return 1;
+  if (text.includes("handicap") || text.includes("spread")) return 4;
+  if (text.includes("correct score") || text.includes("exact score")) return 8;
+  return 5;
+}
+
+function clonePriceRow(row: BackendPriceRow): BackendPriceRow {
+  const aggregateLiquidityByExchange = Object.fromEntries(BETTING_EXCHANGE_COLUMNS.map((exchange) => [
+    exchange.backendKey,
+    matchLiquidity(row.matches?.[exchange.backendKey])
+  ]));
+  return {
+    ...row,
+    matches: { ...row.matches },
+    arbs: [...(row.arbs || [])],
+    marketCount: 1,
+    aggregateLiquidityByExchange
+  };
 }
 
 export function mergeDisplayPriceRows(rows: BackendPriceRow[]) {
@@ -171,13 +200,25 @@ export function mergeDisplayPriceRows(rows: BackendPriceRow[]) {
     const key = stableDisplayRowKey(row) || row.id;
     const existing = merged.get(key);
     if (!existing) {
-      merged.set(key, { ...row, matches: { ...row.matches }, arbs: [...(row.arbs || [])] });
+      merged.set(key, clonePriceRow(row));
       continue;
     }
-    existing.matches = { ...existing.matches, ...row.matches };
+    const nextAggregate = { ...(existing.aggregateLiquidityByExchange || {}) };
+    BETTING_EXCHANGE_COLUMNS.forEach((exchange) => {
+      nextAggregate[exchange.backendKey] = Number(nextAggregate[exchange.backendKey] || 0) + matchLiquidity(row.matches?.[exchange.backendKey]);
+    });
+    existing.aggregateLiquidityByExchange = nextAggregate;
+    existing.marketCount = Number(existing.marketCount || 1) + 1;
+    const incomingIsBetterDisplay = marketSortRank(row) < marketSortRank(existing);
+    existing.matches = incomingIsBetterDisplay ? { ...existing.matches, ...row.matches } : { ...row.matches, ...existing.matches };
     existing.arbs = [...(existing.arbs || []), ...(row.arbs || [])];
     if (backendRowStartTimeMs(row) < backendRowStartTimeMs(existing)) existing.startAt = row.startAt;
     if (row.name && (!existing.name || row.name.length < existing.name.length)) existing.name = row.name;
+    if (incomingIsBetterDisplay) {
+      existing.marketName = row.marketName;
+      existing.marketType = row.marketType;
+      existing.competitionName = row.competitionName || existing.competitionName;
+    }
   }
   return Array.from(merged.values()).sort((a, b) => backendRowStartTimeMs(a) - backendRowStartTimeMs(b) || String(a.name || "").localeCompare(String(b.name || "")));
 }
@@ -301,10 +342,15 @@ function matchLiquidity(match?: BackendExchangeMatch) {
 
 function rowMatchedValue(row?: BackendPriceRow) {
   if (!row) return 0;
+  if (row.aggregateLiquidityByExchange) {
+    return Object.values(row.aggregateLiquidityByExchange).reduce((sum, value) => sum + Number(value || 0), 0);
+  }
   return Object.values(row.matches || {}).reduce((sum, match) => sum + matchLiquidity(match), 0);
 }
 
 function formatBackendExchangeLiquidity(row: BackendPriceRow | undefined, exchange: string) {
+  const aggregateValue = Number(row?.aggregateLiquidityByExchange?.[exchange] || 0);
+  if (aggregateValue > 0) return formatExchangeMoney(aggregateValue, "GBP");
   const value = matchLiquidity(row?.matches?.[exchange]);
   return value > 0 ? formatExchangeMoney(value, "GBP") : "-";
 }
@@ -384,6 +430,7 @@ function findMarketRowForFootballFixture(fixture: FootballFixture, rows: Backend
 function agRowFromBackend(row: BackendPriceRow): AgTestRow {
   const outcomes = tradeableOutcomeRows(row);
   const liquidityValue = rowMatchedValue(row);
+  const marketCount = Number(row.marketCount || 1);
   return {
     id: stableDisplayRowKey(row) || row.id,
     startAt: row.startAt,
@@ -391,7 +438,7 @@ function agRowFromBackend(row: BackendPriceRow): AgTestRow {
     match: displayEventName(row.name),
     competition: row.competitionName || "Exchange football",
     coverage: exchangeCoverage(row),
-    outcomes: outcomes.length ? outcomes.map((outcome) => outcome.label) : ["Exchange market"],
+    outcomes: marketCount > 1 ? [`${marketCount} markets`] : outcomes.length ? outcomes.map((outcome) => outcome.label) : ["Exchange market"],
     betfair: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "betfair")) : ["-"],
     matchbook: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "matchbook")) : ["-"],
     sx: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "sx")) : ["-"],
@@ -435,7 +482,7 @@ export function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendP
     .filter((row) => !matchedBackendRowIds.has(stableDisplayRowKey(row) || row.id))
     .map(agRowFromBackend);
 
-  return [...fixtureRows, ...backendOnlyRows].filter((row) => row.coverage.some((exchange) => exchange.available));
+  return [...fixtureRows, ...backendOnlyRows];
 }
 
 export function filterAgTestRows(rows: AgTestRow[], query: string) {
