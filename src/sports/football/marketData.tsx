@@ -77,6 +77,7 @@ export type AgTestRow = {
   kickoff: string;
   match: string;
   competition: string;
+  country: string | null;
   coverage: Array<{ label: string; available: boolean }>;
   outcomes: string[];
   betfair: string[];
@@ -324,6 +325,22 @@ function footballFixtureCompetition(fixture: FootballFixture) {
   return [fixture.country, fixture.leagueName].filter(Boolean).join(" / ") || "Football";
 }
 
+function inferCountryFromCompetition(value: string | null | undefined) {
+  const text = normalizeFixtureText(value || "");
+  if (text.includes("english") || text.includes("england ")) return "England";
+  if (text.includes("scottish") || text.includes("scotland ")) return "Scotland";
+  if (text.includes("welsh") || text === "wales" || text.includes(" wales ")) return "Wales";
+  if (text.includes("northern ireland")) return "Northern Ireland";
+  if (text.includes("germany") || text.includes("bundesliga")) return "Germany";
+  if (text.includes("spain") || text.includes("la liga")) return "Spain";
+  if (text.includes("italy") || text.includes("serie a")) return "Italy";
+  if (text.includes("france") || text.includes("ligue 1")) return "France";
+  if (text.includes("netherlands") || text.includes("eredivisie")) return "Netherlands";
+  if (text.includes("portugal") || text.includes("primeira liga")) return "Portugal";
+  if (text.includes("turkey")) return "Turkey";
+  return null;
+}
+
 function formatFootballFixtureTime(fixture: FootballFixture) {
   if (!fixture.kickoffAt) return "-";
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid", hour12: false }).format(new Date(fixture.kickoffAt));
@@ -437,6 +454,7 @@ function agRowFromBackend(row: BackendPriceRow): AgTestRow {
     kickoff: displayStartTime(row),
     match: displayEventName(row.name),
     competition: row.competitionName || "Exchange football",
+    country: inferCountryFromCompetition(row.competitionName),
     coverage: exchangeCoverage(row),
     outcomes: marketCount > 1 ? [`${marketCount} markets`] : outcomes.length ? outcomes.map((outcome) => outcome.label) : ["Exchange market"],
     betfair: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "betfair")) : ["-"],
@@ -463,6 +481,7 @@ export function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendP
       kickoff: formatFootballFixtureTime(fixture),
       match: footballFixtureName(fixture),
       competition: footballFixtureCompetition(fixture),
+      country: fixture.country,
       coverage: exchangeCoverage(undefined),
       outcomes: ["Provider fixture"],
       betfair: ["-"],
@@ -475,7 +494,7 @@ export function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendP
       sxLiquidity: "-",
       fresh: "watch"
     };
-    return { ...base, id: fixture.id, startAt: fixture.kickoffAt, kickoff: formatFootballFixtureTime(fixture), match: footballFixtureName(fixture), competition: footballFixtureCompetition(fixture) };
+    return { ...base, id: fixture.id, startAt: fixture.kickoffAt, kickoff: formatFootballFixtureTime(fixture), match: footballFixtureName(fixture), competition: footballFixtureCompetition(fixture), country: fixture.country };
   });
 
   const backendOnlyRows = displayRows
@@ -493,6 +512,7 @@ export function filterAgTestRows(rows: AgTestRow[], query: string) {
       row.kickoff,
       row.match,
       row.competition,
+      row.country || "",
       row.coverage.filter((exchange) => exchange.available).map((exchange) => exchange.label).join(" "),
       row.outcomes.join(" "),
       row.betfair.join(" "),
@@ -510,7 +530,7 @@ export function filterAgTestRows(rows: AgTestRow[], query: string) {
 }
 
 export function agTestRowMatchesGroup(row: AgTestRow, group: string) {
-  return footballTextMatchesGroup(`${row.match} ${row.competition}`, null, group, row.startAt);
+  return footballTextMatchesGroup(`${row.match} ${row.competition}`, row.country, group, row.startAt);
 }
 
 export function AgStackCell({ values, className = "" }: { values?: string[]; className?: string }) {

@@ -77,6 +77,12 @@ const FILTER_LABELS = new Map(
 const COUNTRY_GROUPS: Record<string, string[]> = {
   uk: ["england", "scotland", "wales", "northern ireland"],
   english: ["england"],
+  "premier-league": ["england"],
+  championship: ["england"],
+  "league-one": ["england"],
+  "league-two": ["england"],
+  "fa-cup": ["england"],
+  "efl-cup": ["england"],
   scottish: ["scotland"],
   wales: ["wales"],
   "northern-ireland": ["northern ireland"],
@@ -88,6 +94,8 @@ const COUNTRY_GROUPS: Record<string, string[]> = {
   portugal: ["portugal"],
   turkey: ["turkey"]
 };
+
+const COUNTRY_ONLY_GROUPS = new Set(["uk", "english", "scottish", "wales", "northern-ireland", "germany", "spain", "italy", "france", "netherlands", "portugal", "turkey"]);
 
 const GROUP_TERMS: Record<string, string[]> = {
   uk: ["english", "england premier league", "england league", "england championship", "scotland", "scottish", "wales", "welsh", "northern ireland"],
@@ -147,8 +155,12 @@ export function footballTextMatchesGroup(text: string, country: string | null | 
   const normalizedCountry = normalizeFixtureText(country || "");
   const countryGroup = COUNTRY_GROUPS[group];
   const haystack = normalizeFixtureText(`${text} ${country || ""}`);
-  if (countryGroup && normalizedCountry) return countryGroup.includes(normalizedCountry);
   const terms = GROUP_TERMS[group] || [];
+  if (countryGroup && normalizedCountry) {
+    const countryMatches = countryGroup.includes(normalizedCountry);
+    if (COUNTRY_ONLY_GROUPS.has(group)) return countryMatches;
+    return countryMatches && (!terms.length || terms.some((term) => haystack.includes(normalizeFixtureText(term))));
+  }
   return terms.length ? terms.some((term) => haystack.includes(normalizeFixtureText(term))) : true;
 }
 
