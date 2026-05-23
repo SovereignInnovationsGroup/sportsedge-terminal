@@ -1,11 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
-import {
-  AGTEST_FOOTBALL_PRIMARY_FILTERS,
-  AGTEST_FOOTBALL_SECONDARY_FILTERS,
-  footballFilterBreadcrumb,
-  footballTextMatchesGroup
-} from "../football/filters";
+import { footballTextMatchesGroup } from "../football/filters";
 
 type BackendRunnerLevel = { odds: number; amount: number; level?: number };
 type BackendRunnerPrice = BackendRunnerLevel | null;
@@ -69,6 +64,18 @@ const DASHBOARD_EXCHANGES = [
   { key: "betfair", label: "Betfair" },
   { key: "matchbook", label: "Matchbook" }
 ] as const;
+const FOOTBALL_DASHBOARD_FILTERS = [
+  { label: "All", value: "all" },
+  { label: "Today", value: "today" },
+  { label: "Tomorrow", value: "tomorrow" },
+  { label: "UK", value: "uk" },
+  { label: "UK Today", value: "uk-today" },
+  { label: "UK Tomorrow", value: "uk-tomorrow" },
+  { label: "Europe", value: "european" },
+  { label: "UEFA", value: "uefa" },
+  { label: "International", value: "international" },
+  { label: "World", value: "world" }
+];
 
 function apiSportValue(value: string) {
   if (value === "horseracing" || value === "horse-racing") return "horseracing";
@@ -151,7 +158,7 @@ function normalizeEventName(value: string) {
     .toLowerCase()
     .replace(/&/g, " and ")
     .replace(/\bvs?\b/g, " v ")
-    .replace(/\bafc\b|\bfc\b|\bunited\b|\butd\b|\bhotspur\b/g, " ")
+    .replace(/\bafc\b|\bfc\b|\bcf\b|\bsc\b|\bunited\b|\butd\b|\bhotspur\b|\bwanderers\b|\bcounty\b|\balbion\b|\bhove\b/g, " ")
     .replace(/\bwolves\b/g, "wolverhampton")
     .replace(/\bbournemouth\b/g, "bourne mouth")
     .replace(/[^a-z0-9]+/g, " ")
@@ -160,8 +167,25 @@ function normalizeEventName(value: string) {
 }
 
 function eventKey(event: Pick<SportEventRow, "name" | "startAt">) {
-  const dateHour = String(event.startAt || "").slice(0, 16);
-  return `${dateHour}:${normalizeEventName(event.name)}`;
+  const date = String(event.startAt || "").slice(0, 10);
+  return `${date}:${normalizeEventName(event.name)}`;
+}
+
+function eventTokens(value: string) {
+  return normalizeEventName(value).split(" ").filter((token) => token.length > 2);
+}
+
+function sameFixtureDay(a: SportEventRow, b: SportEventRow) {
+  if (String(a.startAt || "").slice(0, 10) !== String(b.startAt || "").slice(0, 10)) return false;
+  const aTokens = new Set(eventTokens(a.name));
+  const bTokens = new Set(eventTokens(b.name));
+  if (!aTokens.size || !bTokens.size) return false;
+  let overlap = 0;
+  aTokens.forEach((token) => {
+    if (bTokens.has(token)) overlap += 1;
+  });
+  const smaller = Math.min(aTokens.size, bTokens.size);
+  return smaller >= 2 && overlap / smaller >= 0.75;
 }
 
 function exchangeOddsRowToEvent(row: BackendPriceRow, fallbackSport: string): SportEventRow | null {
@@ -192,7 +216,7 @@ function mergeSportEvents(entries: SportEventRow[]) {
   entries.forEach((entry) => {
     if (!entry) return;
     const key = eventKey(entry);
-    const existing = merged.get(key);
+    const existing = merged.get(key) || Array.from(merged.values()).find((candidate) => sameFixtureDay(candidate, entry));
     if (!existing) {
       merged.set(key, entry);
       return;
@@ -235,6 +259,16 @@ function footballFixtureToEvent(fixture: FootballFixtureRow): SportEventRow | nu
     latestSeenAt: fixture.updatedAt || fixture.syncedAt || null,
     exchanges: []
   };
+}
+
+function footballDashboardGroupMatches(event: SportEventRow, group: string) {
+  if (group === "uk-today") {
+    return footballTextMatchesGroup(`${event.name} ${event.competition || ""}`, event.country, "uk", event.startAt) && isTodayInMadrid(event.startAt);
+  }
+  if (group === "uk-tomorrow") {
+    return footballTextMatchesGroup(`${event.name} ${event.competition || ""}`, event.country, "uk", event.startAt) && isTomorrowInMadrid(event.startAt);
+  }
+  return footballTextMatchesGroup(`${event.name} ${event.competition || ""}`, event.country, group, event.startAt);
 }
 
 function newsTime(item: NewsItem) {
@@ -313,7 +347,6 @@ export function SportDashboard({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const isFootball = normalizedSport === "football";
-  const [filterBucket, setFilterBucket] = useState(isFootball ? "uk" : "all");
   const [marketGroup, setMarketGroup] = useState(isFootball ? "uk" : "all");
 
   useEffect(() => {
@@ -373,15 +406,9 @@ export function SportDashboard({
 
   const filteredEvents = useMemo(() => {
     if (!isFootball) return events;
-    return events.filter((event) => footballTextMatchesGroup(
-      `${event.name} ${event.competition || ""}`,
-      event.country,
-      marketGroup,
-      event.startAt
-    ));
+    return events.filter((event) => footballDashboardGroupMatches(event, marketGroup));
   }, [events, isFootball, marketGroup]);
 
-  const secondaryFilters = isFootball ? AGTEST_FOOTBALL_SECONDARY_FILTERS[filterBucket] || [] : [];
   const todayRows = useMemo(() => filteredEvents.filter((event) => isTodayInMadrid(event.startAt)).slice(0, 40), [filteredEvents]);
   const tomorrowRows = useMemo(() => filteredEvents.filter((event) => isTomorrowInMadrid(event.startAt)).slice(0, 40), [filteredEvents]);
   const topLiquidity = [...todayRows, ...tomorrowRows].sort((a, b) => b.liquidity - a.liquidity)[0];
@@ -397,39 +424,22 @@ export function SportDashboard({
       {isFootball && (
         <section className="agtest-subbar sport-summary-filterbar" aria-label="Football dashboard filters">
           <div className="agtest-filter-stack">
-            <nav aria-label="Football region filters">
-              {AGTEST_FOOTBALL_PRIMARY_FILTERS.map((filter) => (
+            <nav aria-label="Football dashboard filters">
+              {FOOTBALL_DASHBOARD_FILTERS.map((filter) => (
                 <button
-                  className={filterBucket === filter.value ? "active" : ""}
+                  className={marketGroup === filter.value ? "active" : ""}
                   key={filter.value}
                   type="button"
-                  onClick={() => {
-                    setFilterBucket(filter.value);
-                    setMarketGroup(filter.value);
-                  }}
+                  onClick={() => setMarketGroup(filter.value)}
                 >
                   {filter.label}
                 </button>
               ))}
             </nav>
-            {secondaryFilters.length > 0 && (
-              <nav className="agtest-filter-secondary" aria-label="Football league filters">
-                {secondaryFilters.map((filter) => (
-                  <button
-                    className={marketGroup === filter.value ? "active" : ""}
-                    key={filter.value}
-                    type="button"
-                    onClick={() => setMarketGroup(filter.value)}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
-              </nav>
-            )}
           </div>
           <div>
-            <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
-            <span>{filteredEvents.length}{marketGroup !== "all" ? ` / ${events.length}` : ""} markets</span>
+            <span>SportsEdge / Football / {FOOTBALL_DASHBOARD_FILTERS.find((filter) => filter.value === marketGroup)?.label || "All"}</span>
+            <span>{filteredEvents.length}{marketGroup !== "all" ? ` / ${events.length}` : ""} fixtures</span>
           </div>
         </section>
       )}
