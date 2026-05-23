@@ -86,6 +86,7 @@ const COUNTRY_GROUPS: Record<string, string[]> = {
   scottish: ["scotland"],
   wales: ["wales"],
   "northern-ireland": ["northern ireland"],
+  european: ["germany", "spain", "italy", "france", "netherlands", "portugal", "turkey", "belgium", "austria", "switzerland", "denmark", "norway", "sweden", "poland", "czech republic", "croatia", "serbia", "greece", "cyprus", "bulgaria", "romania", "ukraine", "latvia", "lithuania", "estonia", "slovakia", "slovenia", "hungary"],
   germany: ["germany"],
   spain: ["spain"],
   italy: ["italy"],
@@ -95,7 +96,7 @@ const COUNTRY_GROUPS: Record<string, string[]> = {
   turkey: ["turkey"]
 };
 
-const COUNTRY_ONLY_GROUPS = new Set(["uk", "english", "scottish", "wales", "northern-ireland", "germany", "spain", "italy", "france", "netherlands", "portugal", "turkey"]);
+const COUNTRY_ONLY_GROUPS = new Set(["uk", "english", "scottish", "wales", "northern-ireland", "european", "germany", "spain", "italy", "france", "netherlands", "portugal", "turkey"]);
 
 const GROUP_TERMS: Record<string, string[]> = {
   uk: ["english", "england premier league", "england league", "england championship", "scotland", "scottish", "wales", "welsh", "northern ireland"],
