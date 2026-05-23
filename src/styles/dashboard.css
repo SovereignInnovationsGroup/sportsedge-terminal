@@ -6675,6 +6675,10 @@ button {
   text-transform: uppercase;
 }
 
+.sport-summary-filterbar {
+  border-top: 1px solid rgba(36, 50, 65, 0.62);
+}
+
 .agtest-grid-wrap {
   height: calc(100vh - 82px);
   overflow: hidden;
@@ -7170,7 +7174,7 @@ button {
 }
 
 .sport-summary-page {
-  min-height: calc(100vh - 52px);
+  min-height: calc(100vh - 112px);
   background: #05080d;
   color: var(--text);
   overflow: hidden;
@@ -7239,7 +7243,7 @@ button {
 .sport-summary-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
-  height: calc(100vh - 174px);
+  height: calc(100vh - 234px);
   min-height: 0;
 }
 

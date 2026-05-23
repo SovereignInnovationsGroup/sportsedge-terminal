@@ -90,6 +90,11 @@ const COUNTRY_GROUPS: Record<string, string[]> = {
 };
 
 const GROUP_TERMS: Record<string, string[]> = {
+  uk: ["english", "england premier league", "england league", "england championship", "scotland", "scottish", "wales", "welsh", "northern ireland"],
+  english: ["english", "england premier league", "england league", "england championship"],
+  scottish: ["scotland", "scottish"],
+  wales: ["wales", "welsh"],
+  "northern-ireland": ["northern ireland"],
   european: ["europe", "germany", "spain", "italy", "france", "netherlands", "portugal", "turkey", "bundesliga", "la liga", "serie a", "ligue 1", "eredivisie"],
   uefa: ["uefa", "champions league", "europa league", "conference league", "nations league"],
   international: ["international", "world cup", "euro", "copa america", "afcon", "friendly", "friendlies"],
@@ -141,8 +146,8 @@ export function footballTextMatchesGroup(text: string, country: string | null | 
   if (group === "today" || group === "tomorrow") return true;
   const normalizedCountry = normalizeFixtureText(country || "");
   const countryGroup = COUNTRY_GROUPS[group];
-  if (countryGroup) return countryGroup.includes(normalizedCountry);
   const haystack = normalizeFixtureText(`${text} ${country || ""}`);
+  if (countryGroup && normalizedCountry) return countryGroup.includes(normalizedCountry);
   const terms = GROUP_TERMS[group] || [];
   return terms.length ? terms.some((term) => haystack.includes(normalizeFixtureText(term))) : true;
 }

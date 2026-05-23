@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
+import {
+  AGTEST_FOOTBALL_PRIMARY_FILTERS,
+  AGTEST_FOOTBALL_SECONDARY_FILTERS,
+  footballFilterBreadcrumb,
+  footballTextMatchesGroup
+} from "../football/filters";
 
 type BackendRunnerLevel = { odds: number; amount: number; level?: number };
 type BackendRunnerPrice = BackendRunnerLevel | null;
@@ -252,6 +258,9 @@ export function SportDashboard({
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const isFootball = normalizedSport === "football";
+  const [filterBucket, setFilterBucket] = useState(isFootball ? "uk" : "all");
+  const [marketGroup, setMarketGroup] = useState(isFootball ? "uk" : "all");
 
   useEffect(() => {
     let cancelled = false;
@@ -299,11 +308,22 @@ export function SportDashboard({
     };
   }, [normalizedSport]);
 
-  const todayRows = useMemo(() => events.filter((event) => isTodayInMadrid(event.startAt)).slice(0, 40), [events]);
-  const tomorrowRows = useMemo(() => events.filter((event) => isTomorrowInMadrid(event.startAt)).slice(0, 40), [events]);
+  const filteredEvents = useMemo(() => {
+    if (!isFootball) return events;
+    return events.filter((event) => footballTextMatchesGroup(
+      `${event.name} ${event.competition || ""}`,
+      null,
+      marketGroup,
+      event.startAt
+    ));
+  }, [events, isFootball, marketGroup]);
+
+  const secondaryFilters = isFootball ? AGTEST_FOOTBALL_SECONDARY_FILTERS[filterBucket] || [] : [];
+  const todayRows = useMemo(() => filteredEvents.filter((event) => isTodayInMadrid(event.startAt)).slice(0, 40), [filteredEvents]);
+  const tomorrowRows = useMemo(() => filteredEvents.filter((event) => isTomorrowInMadrid(event.startAt)).slice(0, 40), [filteredEvents]);
   const topLiquidity = [...todayRows, ...tomorrowRows].sort((a, b) => b.liquidity - a.liquidity)[0];
-  const venueCount = new Set(events.flatMap((event) => event.exchanges)).size;
-  const latestTick = events
+  const venueCount = new Set(filteredEvents.flatMap((event) => event.exchanges)).size;
+  const latestTick = filteredEvents
     .map((event) => event.latestSeenAt ? new Date(event.latestSeenAt).getTime() : 0)
     .filter((value) => Number.isFinite(value) && value > 0)
     .sort((a, b) => b - a)[0];
@@ -311,6 +331,45 @@ export function SportDashboard({
   return (
     <>
       <TerminalTopbar active={active} searchPlaceholder={`${label}: fixtures, news, liquidity...`} />
+      {isFootball && (
+        <section className="agtest-subbar sport-summary-filterbar" aria-label="Football dashboard filters">
+          <div className="agtest-filter-stack">
+            <nav aria-label="Football region filters">
+              {AGTEST_FOOTBALL_PRIMARY_FILTERS.map((filter) => (
+                <button
+                  className={filterBucket === filter.value ? "active" : ""}
+                  key={filter.value}
+                  type="button"
+                  onClick={() => {
+                    setFilterBucket(filter.value);
+                    setMarketGroup(filter.value);
+                  }}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </nav>
+            {secondaryFilters.length > 0 && (
+              <nav className="agtest-filter-secondary" aria-label="Football league filters">
+                {secondaryFilters.map((filter) => (
+                  <button
+                    className={marketGroup === filter.value ? "active" : ""}
+                    key={filter.value}
+                    type="button"
+                    onClick={() => setMarketGroup(filter.value)}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </nav>
+            )}
+          </div>
+          <div>
+            <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
+            <span>{filteredEvents.length}{marketGroup !== "all" ? ` / ${events.length}` : ""} markets</span>
+          </div>
+        </section>
+      )}
       <main className="sport-summary-page">
         <section className="sport-summary-hero">
           <div>
