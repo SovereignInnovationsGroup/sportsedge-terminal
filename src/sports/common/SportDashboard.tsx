@@ -46,11 +46,23 @@ type SportEventRow = {
   id: string;
   name: string;
   competition: string | null;
+  country?: string | null;
   startAt: string | null;
   liquidity: number;
   liquidityByExchange: Record<string, number>;
   latestSeenAt: string | null;
   exchanges: string[];
+};
+type FootballFixtureRow = {
+  id?: string;
+  providerFixtureId?: string;
+  country?: string | null;
+  leagueName?: string | null;
+  kickoffAt?: string | null;
+  syncedAt?: string | null;
+  updatedAt?: string | null;
+  home?: { name?: string | null };
+  away?: { name?: string | null };
 };
 
 const DASHBOARD_EXCHANGES = [
@@ -134,8 +146,22 @@ function rowMatchedValue(row: BackendPriceRow) {
   return DASHBOARD_EXCHANGES.reduce((sum, exchange) => sum + backendMatchLiquidity(row, exchange.key), 0);
 }
 
+function normalizeEventName(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/\bvs?\b/g, " v ")
+    .replace(/\bafc\b|\bfc\b|\bunited\b|\butd\b|\bhotspur\b/g, " ")
+    .replace(/\bwolves\b/g, "wolverhampton")
+    .replace(/\bbournemouth\b/g, "bourne mouth")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
 function eventKey(event: Pick<SportEventRow, "name" | "startAt">) {
-  return `${String(event.startAt || "").slice(0, 10)}:${event.name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()}`;
+  const dateHour = String(event.startAt || "").slice(0, 16);
+  return `${dateHour}:${normalizeEventName(event.name)}`;
 }
 
 function exchangeOddsRowToEvent(row: BackendPriceRow, fallbackSport: string): SportEventRow | null {
@@ -152,6 +178,7 @@ function exchangeOddsRowToEvent(row: BackendPriceRow, fallbackSport: string): Sp
     id: row.id,
     name: row.name || firstMatch?.name || `${displayLabel(fallbackSport)} market`,
     competition: row.competitionName || firstMatch?.competitionName || null,
+    country: null,
     startAt,
     liquidity: rowMatchedValue(row),
     liquidityByExchange: Object.fromEntries(DASHBOARD_EXCHANGES.map((exchange) => [exchange.key, backendMatchLiquidity(row, exchange.key)])),
@@ -160,10 +187,9 @@ function exchangeOddsRowToEvent(row: BackendPriceRow, fallbackSport: string): Sp
   };
 }
 
-function mergeEvents(rows: BackendPriceRow[], fallbackSport: string) {
+function mergeSportEvents(entries: SportEventRow[]) {
   const merged = new Map<string, SportEventRow>();
-  rows.forEach((row) => {
-    const entry = exchangeOddsRowToEvent(row, fallbackSport);
+  entries.forEach((entry) => {
     if (!entry) return;
     const key = eventKey(entry);
     const existing = merged.get(key);
@@ -176,6 +202,8 @@ function mergeEvents(rows: BackendPriceRow[], fallbackSport: string) {
       existing.liquidityByExchange[exchange.key] = Number(existing.liquidityByExchange[exchange.key] || 0) + Number(entry.liquidityByExchange[exchange.key] || 0);
     });
     existing.exchanges = Array.from(new Set([...existing.exchanges, ...entry.exchanges]));
+    existing.country = existing.country || entry.country || null;
+    existing.competition = existing.competition || entry.competition || null;
     const entryLatest = entry.latestSeenAt ? new Date(entry.latestSeenAt).getTime() : 0;
     const existingLatest = existing.latestSeenAt ? new Date(existing.latestSeenAt).getTime() : 0;
     if (entryLatest > existingLatest) existing.latestSeenAt = entry.latestSeenAt;
@@ -185,6 +213,28 @@ function mergeEvents(rows: BackendPriceRow[], fallbackSport: string) {
     if (Number.isFinite(startDiff) && startDiff !== 0) return startDiff;
     return b.liquidity - a.liquidity;
   });
+}
+
+function mergeEvents(rows: BackendPriceRow[], fallbackSport: string) {
+  return mergeSportEvents(rows.map((row) => exchangeOddsRowToEvent(row, fallbackSport)).filter(Boolean) as SportEventRow[]);
+}
+
+function footballFixtureToEvent(fixture: FootballFixtureRow): SportEventRow | null {
+  const home = fixture.home?.name;
+  const away = fixture.away?.name;
+  const startAt = fixture.kickoffAt || null;
+  if (!home || !away || !startAt) return null;
+  return {
+    id: String(fixture.id || fixture.providerFixtureId || `${home}-${away}-${startAt}`),
+    name: `${home} v ${away}`,
+    competition: fixture.leagueName || null,
+    country: fixture.country || null,
+    startAt,
+    liquidity: 0,
+    liquidityByExchange: Object.fromEntries(DASHBOARD_EXCHANGES.map((exchange) => [exchange.key, 0])),
+    latestSeenAt: fixture.updatedAt || fixture.syncedAt || null,
+    exchanges: []
+  };
 }
 
 function newsTime(item: NewsItem) {
@@ -229,7 +279,11 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
               <td className="mono positive">{madridEventTime(event.startAt)}</td>
               <td><strong>{event.name}</strong></td>
               <td>{event.competition || "-"}</td>
-              <td><span className="sport-summary-venue">{event.exchanges.join(" / ")}</span></td>
+              <td>
+                {event.exchanges.length > 0
+                  ? <span className="sport-summary-venue">{event.exchanges.join(" / ")}</span>
+                  : <span className="sport-summary-fixture-only">Fixture</span>}
+              </td>
               <td className="mono">{formatExchangeMoney(event.liquidityByExchange.betfair, "GBP")}</td>
               <td className="mono">{formatExchangeMoney(event.liquidityByExchange.matchbook, "GBP")}</td>
               <td className="mono">{formatExchangeMoney(event.liquidity, "GBP")}</td>
@@ -277,15 +331,24 @@ export function SportDashboard({
           sport: normalizedSport,
           limit: "30"
         });
-        const [oddsResponse, newsResponse] = await Promise.all([
+        const fixturesPromise = isFootball
+          ? fetch("/api/football/fixtures?days=2&limit=2000&timezone=Europe/London", { cache: "no-store" })
+          : Promise.resolve(null);
+        const [oddsResponse, newsResponse, fixturesResponse] = await Promise.all([
           fetch(`/api/exchange-odds?${oddsParams.toString()}`, { cache: "no-store" }),
-          fetch(`/api/news?${newsParams.toString()}`, { cache: "no-store" })
+          fetch(`/api/news?${newsParams.toString()}`, { cache: "no-store" }),
+          fixturesPromise
         ]);
         const oddsPayload = await oddsResponse.json().catch(() => ({}));
         const newsPayload = await newsResponse.json().catch(() => ({}));
+        const fixturesPayload = fixturesResponse ? await fixturesResponse.json().catch(() => ({})) : {};
         if (!oddsResponse.ok || !Array.isArray(oddsPayload.rows)) throw new Error(oddsPayload.detail || "fixtures failed");
         if (!cancelled) {
-          setEvents(mergeEvents(oddsPayload.rows as BackendPriceRow[], normalizedSport));
+          const exchangeEvents = mergeEvents(oddsPayload.rows as BackendPriceRow[], normalizedSport);
+          const fixtureEvents = Array.isArray(fixturesPayload.fixtures)
+            ? (fixturesPayload.fixtures as FootballFixtureRow[]).map(footballFixtureToEvent).filter(Boolean) as SportEventRow[]
+            : [];
+          setEvents(isFootball ? mergeSportEvents([...fixtureEvents, ...exchangeEvents]) : exchangeEvents);
           setNews(Array.isArray(newsPayload.items) ? newsPayload.items as NewsItem[] : []);
           setError("");
         }
@@ -306,13 +369,13 @@ export function SportDashboard({
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [normalizedSport]);
+  }, [normalizedSport, isFootball]);
 
   const filteredEvents = useMemo(() => {
     if (!isFootball) return events;
     return events.filter((event) => footballTextMatchesGroup(
       `${event.name} ${event.competition || ""}`,
-      null,
+      event.country,
       marketGroup,
       event.startAt
     ));
