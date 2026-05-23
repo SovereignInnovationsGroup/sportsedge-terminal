@@ -308,7 +308,7 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
           </tr>
         </thead>
         <tbody>
-          {rows.slice(0, 12).map((event) => (
+          {rows.map((event) => (
             <tr key={`${title}-${event.id}-${event.startAt}`}>
               <td className="mono positive">{madridEventTime(event.startAt)}</td>
               <td><strong>{event.name}</strong></td>
@@ -409,8 +409,8 @@ export function SportDashboard({
     return events.filter((event) => footballDashboardGroupMatches(event, marketGroup));
   }, [events, isFootball, marketGroup]);
 
-  const todayRows = useMemo(() => filteredEvents.filter((event) => isTodayInMadrid(event.startAt)).slice(0, 40), [filteredEvents]);
-  const tomorrowRows = useMemo(() => filteredEvents.filter((event) => isTomorrowInMadrid(event.startAt)).slice(0, 40), [filteredEvents]);
+  const todayRows = useMemo(() => filteredEvents.filter((event) => isTodayInMadrid(event.startAt)), [filteredEvents]);
+  const tomorrowRows = useMemo(() => filteredEvents.filter((event) => isTomorrowInMadrid(event.startAt)), [filteredEvents]);
   const topLiquidity = [...todayRows, ...tomorrowRows].sort((a, b) => b.liquidity - a.liquidity)[0];
   const venueCount = new Set(filteredEvents.flatMap((event) => event.exchanges)).size;
   const latestTick = filteredEvents
