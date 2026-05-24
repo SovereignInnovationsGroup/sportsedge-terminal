@@ -337,6 +337,7 @@ export function SportDashboard({
           exchanges: DASHBOARD_EXCHANGES.map((exchange) => exchange.key).join(","),
           limit: "400"
         });
+        if (isFootball) oddsParams.set("segment", "upcoming4");
         const newsParams = new URLSearchParams({
           sport: normalizedSport,
           limit: "30"
@@ -388,7 +389,7 @@ export function SportDashboard({
 
   const todayRows = useMemo(() => filteredEvents.filter((event) => isTodayLocal(event.startAt)), [filteredEvents]);
   const tomorrowRows = useMemo(() => filteredEvents.filter((event) => isTomorrowLocal(event.startAt)), [filteredEvents]);
-  const topLiquidity = [...todayRows, ...tomorrowRows].sort((a, b) => b.liquidity - a.liquidity)[0];
+  const todayLiquidity = todayRows.reduce((sum, event) => sum + event.liquidity, 0);
   const venueCount = new Set(filteredEvents.flatMap((event) => event.exchanges)).size;
   const latestTick = filteredEvents
     .map((event) => event.latestSeenAt ? new Date(event.latestSeenAt).getTime() : 0)
@@ -431,7 +432,7 @@ export function SportDashboard({
             <article><span>Today</span><strong>{todayRows.length}</strong></article>
             <article><span>Tomorrow</span><strong>{tomorrowRows.length}</strong></article>
             <article><span>Venues</span><strong>{venueCount || "-"}</strong></article>
-            <article><span>Top Liquidity</span><strong>{topLiquidity?.liquidity ? formatExchangeMoney(topLiquidity.liquidity, "GBP") : "-"}</strong></article>
+            <article><span>Today £ Now</span><strong>{todayLiquidity ? formatExchangeMoney(todayLiquidity, "GBP") : "-"}</strong></article>
             <article><span>Latest Tick</span><strong>{latestTick ? localEventTime(new Date(latestTick).toISOString()) : "-"}</strong></article>
           </div>
         </section>
