@@ -29,6 +29,7 @@ type BackendPriceRow = {
   competitionName?: string | null;
   startAt: string | null;
   matches?: Record<string, BackendExchangeMatch | undefined>;
+  aggregateLiquidityByExchange?: Record<string, number>;
 };
 type NewsItem = {
   id?: string;
@@ -118,6 +119,8 @@ function rowLatestObservedMs(row: BackendPriceRow) {
 }
 
 function backendMatchLiquidity(row: BackendPriceRow, exchangeKey: string) {
+  const aggregateValue = Number(row.aggregateLiquidityByExchange?.[exchangeKey] || 0);
+  if (aggregateValue > 0) return aggregateValue;
   const match = row.matches?.[exchangeKey];
   if (!match) return 0;
   return match.runners.reduce((sum, runner) => {
