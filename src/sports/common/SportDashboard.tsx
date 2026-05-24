@@ -265,6 +265,11 @@ function newsImpact(item: NewsItem) {
 }
 
 function FixtureTable({ title, rows, loading }: { title: string; rows: SportEventRow[]; loading: boolean }) {
+  function eventRowClass(event: SportEventRow) {
+    if (!eventHasPassed(event.startAt)) return "";
+    return event.liquidity > 0 ? "is-started-event" : "is-past-event";
+  }
+
   return (
     <section className="sport-summary-panel sport-summary-fixtures">
       <header>
@@ -286,7 +291,7 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
         </thead>
         <tbody>
           {rows.map((event) => (
-            <tr className={eventHasPassed(event.startAt) ? "is-past-event" : ""} key={`${title}-${event.id}-${event.startAt}`}>
+            <tr className={eventRowClass(event)} key={`${title}-${event.id}-${event.startAt}`}>
               <td className="mono positive">{localEventTime(event.startAt)}</td>
               <td><strong>{event.name}</strong></td>
               <td>{event.competition || "-"}</td>

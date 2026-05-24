@@ -7311,8 +7311,12 @@ button {
 }
 
 .sport-summary-fixtures tbody tr.is-past-event td {
-  opacity: 0.38;
-  text-decoration: line-through;
+  opacity: 0.42;
+}
+
+.sport-summary-fixtures tbody tr.is-started-event td {
+  background: rgba(15, 23, 42, 0.58);
+  color: rgba(226, 232, 240, 0.86);
 }
 
 .sport-summary-fixtures tbody tr.is-past-event .sport-summary-venue,
