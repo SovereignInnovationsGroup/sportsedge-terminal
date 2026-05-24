@@ -100,7 +100,8 @@ export const BETTING_EXCHANGE_COLUMNS = [
 
 type BettingExchangeColumn = typeof BETTING_EXCHANGE_COLUMNS[number];
 
-const FOOTBALL_LIQUIDITY_FAST_URL = "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=80";
+const FOOTBALL_LIQUIDITY_FAST_URL = "/api/markets/snapshot?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=80";
+const FOOTBALL_LIQUIDITY_FALLBACK_URL = "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=80";
 const FOOTBALL_LIQUIDITY_STORAGE_KEY = "sportsedge.footballLiquiditySnapshot.v1";
 let footballLiquidityCache: { rows: BackendPriceRow[]; fetchedAt: number } | null = null;
 let footballLiquidityPrefetchPromise: Promise<BackendPriceRow[]> | null = null;
@@ -140,15 +141,33 @@ export function cachedFootballLiquidityRows(maxAgeMs = 2 * 60 * 1000) {
   return stored.rows;
 }
 
+async function fetchBackendPriceRows(url: string) {
+  const response = await fetch(url, { cache: "no-store" });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !Array.isArray(payload.rows)) throw new Error(payload.detail || "liquidity fetch failed");
+  return payload.rows as BackendPriceRow[];
+}
+
+export async function fetchMarketSnapshotRows(url: string, fallbackUrl?: string) {
+  try {
+    const rows = await fetchBackendPriceRows(url);
+    if (rows.length || !fallbackUrl) return rows;
+  } catch {
+    if (!fallbackUrl) return [];
+  }
+  try {
+    return await fetchBackendPriceRows(fallbackUrl);
+  } catch {
+    return [];
+  }
+}
+
 export async function prefetchFootballLiquiditySnapshot() {
   const cachedRows = cachedFootballLiquidityRows();
   if (cachedRows.length) return cachedRows;
   if (footballLiquidityPrefetchPromise) return footballLiquidityPrefetchPromise;
-  footballLiquidityPrefetchPromise = fetch(FOOTBALL_LIQUIDITY_FAST_URL, { cache: "no-store" })
-    .then(async (response) => {
-      const payload = await response.json();
-      if (!response.ok || !Array.isArray(payload.rows)) throw new Error(payload.detail || "liquidity prefetch failed");
-      const rows = payload.rows as BackendPriceRow[];
+  footballLiquidityPrefetchPromise = fetchMarketSnapshotRows(FOOTBALL_LIQUIDITY_FAST_URL, FOOTBALL_LIQUIDITY_FALLBACK_URL)
+    .then((rows) => {
       storeFootballLiquidity(rows);
       return rows;
     })
@@ -307,6 +326,33 @@ export function mergeLivePriceRows(rows: BackendPriceRow[], channel: string, pay
   runner[side as "back" | "lay"] = { odds, amount, level: 1 };
   match.observedAt = new Date().toISOString();
   return mergeDisplayPriceRows(next).slice(0, maxRows);
+}
+
+function marketStateRowsFromPayload(payload: unknown) {
+  if (!payload || typeof payload !== "object") return [];
+  const record = payload as Record<string, unknown>;
+  if (Array.isArray(record.rows)) return record.rows as BackendPriceRow[];
+  if (record.row && typeof record.row === "object") return [record.row as BackendPriceRow];
+  if (record.match && typeof record.match === "object") {
+    const match = record.match as BackendExchangeMatch;
+    return [{
+      id: `${match.exchange}:${match.eventId}:${match.marketId}`,
+      name: match.name,
+      sportName: match.sportName,
+      competitionName: match.competitionName,
+      marketName: match.marketName,
+      marketType: match.marketType,
+      startAt: match.startAt,
+      matches: { [normalizeExchangeCode(match.exchange)]: match }
+    }];
+  }
+  return [];
+}
+
+export function mergeMarketStateRows(rows: BackendPriceRow[], payload: unknown, maxRows = 80) {
+  const incomingRows = marketStateRowsFromPayload(payload);
+  if (!incomingRows.length) return rows;
+  return mergeDisplayPriceRows([...incomingRows, ...rows]).slice(0, maxRows);
 }
 
 function displayStartTime(row: BackendPriceRow) {

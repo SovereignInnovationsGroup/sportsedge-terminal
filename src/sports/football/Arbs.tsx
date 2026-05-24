@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { eventHasPassed, formatExchangeMoney, localEventTime, normalizeFixtureText } from "../../core/format";
 import {
+  fetchMarketSnapshotRows,
   type BackendExchangeMatch,
   type BackendPriceRow,
   type BackendRunner,
@@ -323,12 +324,10 @@ export default function Arbs() {
         segment: "upcoming4",
         limit: "300"
       });
-      const response = await fetch(`/api/exchange-odds?${params.toString()}`, { cache: "no-store" });
-      const payload = await response.json();
-      if (!response.ok || !Array.isArray(payload.rows)) throw new Error(payload.detail || "Betfair arb scan failed");
-      setSourceMarkets(payload.rows.length);
-      setRows(buildArbRows((payload.rows as BackendPriceRow[]).filter((row) => !eventHasPassed(row.startAt))));
-      setLastRefresh(payload.generatedAt || new Date().toISOString());
+      const rows = await fetchMarketSnapshotRows(`/api/markets/snapshot?${params.toString()}`, `/api/exchange-odds?${params.toString()}`);
+      setSourceMarkets(rows.length);
+      setRows(buildArbRows((rows as BackendPriceRow[]).filter((row) => !eventHasPassed(row.startAt))));
+      setLastRefresh(new Date().toISOString());
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Betfair arb scan failed");

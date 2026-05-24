@@ -11,11 +11,12 @@ import {
   agTestRowMatchesGroup,
   buildAgTestRows,
   cachedFootballLiquidityRows,
-  exchangePriceChannel,
+  fetchMarketSnapshotRows,
   filterAgTestRows,
   isPrimaryTradingMarket,
   mergeDisplayPriceRows,
   mergeLivePriceRows,
+  mergeMarketStateRows,
   prefetchFootballLiquiditySnapshot,
   sportsEdgeWsUrl,
   storeFootballLiquidity,
@@ -69,16 +70,18 @@ export default function Liquidity() {
         hydrateTimer = window.setTimeout(async () => {
           try {
             const [fullOddsResponse, fixtureResponse] = await Promise.all([
-              fetch("/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=220", { cache: "no-store" }),
+              fetchMarketSnapshotRows(
+                "/api/markets/snapshot?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=220",
+                "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=220"
+              ),
               fetch("/api/football/fixtures?days=4&limit=2000&timezone=Europe/London", { cache: "no-store" })
             ]);
-            const fullOddsPayload = await fullOddsResponse.json().catch(() => ({}));
             const fixturePayload = await fixtureResponse.json().catch(() => ({}));
             if (!cancelled) {
-              if (fullOddsResponse.ok && Array.isArray(fullOddsPayload.rows)) {
-                storeFootballLiquidity(fullOddsPayload.rows as BackendPriceRow[]);
+              if (Array.isArray(fullOddsResponse)) {
+                storeFootballLiquidity(fullOddsResponse as BackendPriceRow[]);
                 setBackendRows((currentRows) => mergeDisplayPriceRows([
-                  ...(fullOddsPayload.rows as BackendPriceRow[]),
+                  ...(fullOddsResponse as BackendPriceRow[]),
                   ...currentRows
                 ]).slice(0, 700));
               }
@@ -119,13 +122,11 @@ export default function Liquidity() {
     }
 
     function subscribe(socket: WebSocket) {
-      BETTING_EXCHANGE_COLUMNS.forEach((exchange) => {
-        socket.send(JSON.stringify({
-          type: "subscribe",
-          channel: exchangePriceChannel(exchange),
-          filters: { sport: "football" }
-        }));
-      });
+      socket.send(JSON.stringify({
+        type: "subscribe",
+        channel: "markets.football",
+        filters: { sport: "football" }
+      }));
     }
 
     function flushPriceEvents() {
@@ -133,7 +134,9 @@ export default function Liquidity() {
       priceFlushTimerRef.current = null;
       if (!events.length) return;
       setBackendRows((currentRows) => mergeDisplayPriceRows(events.reduce(
-        (nextRows, item) => mergeLivePriceRows(nextRows, item.channel, item.payload, "football", true, 700),
+        (nextRows, item) => item.channel === "markets.football"
+          ? mergeMarketStateRows(nextRows, item.payload, 700)
+          : mergeLivePriceRows(nextRows, item.channel, item.payload, "football", true, 700),
         currentRows
       )).slice(0, 700));
     }
@@ -157,7 +160,7 @@ export default function Liquidity() {
         try {
           const message = JSON.parse(event.data);
           if (message?.type !== "event" || !message.payload) return;
-          if (!isPrimaryTradingMarket(message.payload, "football")) return;
+          if (String(message.channel || "") !== "markets.football" && !isPrimaryTradingMarket(message.payload, "football")) return;
           pendingPriceEventsRef.current.push({
             channel: String(message.channel || ""),
             payload: message.payload

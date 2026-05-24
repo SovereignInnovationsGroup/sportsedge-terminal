@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { eventHasPassed, localDateKey, localEventTime } from "../../core/format";
 import { footballTextMatchesGroup } from "../football/filters";
+import { fetchMarketSnapshotRows } from "../football/marketData";
 
 type BackendRunnerLevel = { odds: number; amount: number; level?: number };
 type BackendRunnerPrice = BackendRunnerLevel | null;
@@ -350,17 +351,18 @@ export function SportDashboard({
         const fixturesPromise = isFootball
           ? fetch("/api/football/fixtures?days=2&limit=2000&timezone=Europe/London", { cache: "no-store" })
           : Promise.resolve(null);
-        const [oddsResponse, newsResponse, fixturesResponse] = await Promise.all([
-          fetch(`/api/exchange-odds?${oddsParams.toString()}`, { cache: "no-store" }),
+        const marketSnapshotUrl = `/api/markets/snapshot?${oddsParams.toString()}`;
+        const exchangeFallbackUrl = `/api/exchange-odds?${oddsParams.toString()}`;
+        const [oddsRows, newsResponse, fixturesResponse] = await Promise.all([
+          fetchMarketSnapshotRows(marketSnapshotUrl, exchangeFallbackUrl),
           fetch(`/api/news?${newsParams.toString()}`, { cache: "no-store" }),
           fixturesPromise
         ]);
-        const oddsPayload = await oddsResponse.json().catch(() => ({}));
         const newsPayload = await newsResponse.json().catch(() => ({}));
         const fixturesPayload = fixturesResponse ? await fixturesResponse.json().catch(() => ({})) : {};
-        if (!oddsResponse.ok || !Array.isArray(oddsPayload.rows)) throw new Error(oddsPayload.detail || "fixtures failed");
+        if (!Array.isArray(oddsRows)) throw new Error("fixtures failed");
         if (!cancelled) {
-          const exchangeEvents = mergeEvents(oddsPayload.rows as BackendPriceRow[], normalizedSport);
+          const exchangeEvents = mergeEvents(oddsRows as BackendPriceRow[], normalizedSport);
           const fixtureEvents = Array.isArray(fixturesPayload.fixtures)
             ? (fixturesPayload.fixtures as FootballFixtureRow[]).map(footballFixtureToEvent).filter(Boolean) as SportEventRow[]
             : [];
