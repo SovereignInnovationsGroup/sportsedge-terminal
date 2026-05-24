@@ -7,6 +7,8 @@ const Marketing = lazy(() => import("../screens/Marketing"));
 const Blog = lazy(() => import("../screens/Blog"));
 const Login = lazy(() => import("../screens/Login"));
 const Dashboard = lazy(() => import("../screens/Dashboard"));
+const SettingsScreen = lazy(() => import("../screens/Settings"));
+const TerminalAbout = lazy(() => import("../screens/TerminalAbout"));
 const News = lazy(() => import("../screens/news/News"));
 const NewsConsole = lazy(() => import("../screens/news/NewsConsole"));
 const SimpleNews = lazy(() => import("../screens/news/SimpleNews"));
@@ -38,6 +40,8 @@ function screenForHash(hash: string) {
   if (hash === "#blog") return <Blog />;
   if (hash === "#login") return <Login />;
   if (hash === "#dashboard" || hash === "#today-dashboard-mockup") return requireSession(<Dashboard />);
+  if (hash === "#settings") return requireSession(<SettingsScreen />);
+  if (hash === "#terminal-about") return requireSession(<TerminalAbout />);
   if (hash === "#news" || hash === "#news-feed-mockup") return requireSession(<News />);
   if (hash === "#news-console") return requireSession(<NewsConsole />);
   if (hash === "#simple-news") return <SimpleNews />;

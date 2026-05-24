@@ -1,5 +1,6 @@
-import { LogOut, Search, Settings } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Info, LogOut, Search, Settings } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { APP_VERSION } from "../generated/version";
 
 const sportsEdgeMarketsLogo = "/images/sportsedge-markets-logo.png";
 
@@ -67,6 +68,8 @@ export function TerminalTopbar({
   const [query, setQuery] = useState("");
   const [clockNow, setClockNow] = useState(() => new Date());
   const [sessionUser] = useState(readStoredAuthUser);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement | null>(null);
   const inFootballMode = active ? FOOTBALL_MODE.has(active) : false;
   const navItems = inFootballMode ? FOOTBALL_NAV : TOP_NAV;
   const loginId = sessionUser?.login_id || sessionUser?.email || "public";
@@ -75,6 +78,21 @@ export function TerminalTopbar({
   useEffect(() => {
     const timer = window.setInterval(() => setClockNow(new Date()), 1000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    function closeOnOutsideClick(event: MouseEvent) {
+      if (!settingsRef.current?.contains(event.target as Node)) setSettingsOpen(false);
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setSettingsOpen(false);
+    }
+    window.addEventListener("mousedown", closeOnOutsideClick);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.removeEventListener("mousedown", closeOnOutsideClick);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
   }, []);
 
   useEffect(() => {
@@ -127,9 +145,34 @@ export function TerminalTopbar({
         <span>{loginId}</span>
         <strong>{membershipLevel}</strong>
       </div>
-      <button className="testboard-icon-button" type="button" aria-label="Settings">
-        <Settings size={16} />
-      </button>
+      <div className="testboard-settings" ref={settingsRef}>
+        <button
+          className="testboard-icon-button"
+          type="button"
+          aria-expanded={settingsOpen}
+          aria-haspopup="menu"
+          aria-label="Open settings menu"
+          onClick={() => setSettingsOpen((value) => !value)}
+        >
+          <Settings size={16} />
+        </button>
+        {settingsOpen && (
+          <div className="testboard-settings-menu" role="menu">
+            <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); window.location.hash = "#settings"; }}>
+              <Settings size={14} />
+              <span>Settings</span>
+            </button>
+            <button type="button" role="menuitem" onClick={() => { setSettingsOpen(false); window.location.hash = "#terminal-about"; }}>
+              <Info size={14} />
+              <span>About</span>
+            </button>
+            <div className="testboard-settings-version" aria-label={`SportsEdge version ${APP_VERSION}`}>
+              <span>Version</span>
+              <strong>{APP_VERSION}</strong>
+            </div>
+          </div>
+        )}
+      </div>
       <button className="testboard-icon-button" type="button" aria-label="Logout" onClick={logoutToLogin}>
         <LogOut size={16} />
       </button>

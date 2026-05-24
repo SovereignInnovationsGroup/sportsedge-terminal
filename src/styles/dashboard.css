@@ -3644,6 +3644,9 @@ button {
 }
 
 .testboard-settings-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   border: 0;
   border-bottom: 1px solid rgba(35, 50, 66, 0.72);
   background: transparent;
@@ -3682,6 +3685,76 @@ button {
 .testboard-settings-version strong {
   color: var(--blue);
   font-size: 11px;
+}
+
+.terminal-info-page {
+  min-height: calc(100vh - 52px);
+  padding: 64px 42px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.terminal-info-hero {
+  max-width: 980px;
+  margin-bottom: 34px;
+}
+
+.terminal-info-hero span,
+.terminal-info-grid article span {
+  color: var(--gold);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.terminal-info-hero h1 {
+  margin: 12px 0 8px;
+  color: var(--text);
+  font-size: clamp(42px, 5vw, 78px);
+  line-height: 0.95;
+}
+
+.terminal-info-hero p {
+  max-width: 760px;
+  color: var(--muted);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.terminal-info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.terminal-info-grid-wide {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.terminal-info-grid article {
+  min-height: 158px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  padding: 18px;
+}
+
+.terminal-info-grid article strong {
+  display: block;
+  margin: 16px 0 8px;
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.terminal-info-grid article p {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .football-region-strip {
