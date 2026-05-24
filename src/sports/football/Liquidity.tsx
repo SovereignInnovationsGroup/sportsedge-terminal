@@ -4,7 +4,6 @@ import { AllCommunityModule, ModuleRegistry, type ColDef } from "ag-grid-communi
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
-import { AGTEST_FOOTBALL_PRIMARY_FILTERS, AGTEST_FOOTBALL_SECONDARY_FILTERS, footballFilterBreadcrumb } from "./filters";
 import {
   AgStackCell,
   BETTING_EXCHANGE_COLUMNS,
@@ -27,6 +26,28 @@ import {
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
+const LIQUIDITY_DATE_FILTERS = [
+  { label: "All", value: "all" },
+  { label: "Today", value: "today" },
+  { label: "Tomorrow", value: "tomorrow" }
+];
+
+const LIQUIDITY_LOCATION_FILTERS = [
+  { label: "UK", value: "uk" },
+  { label: "Europe", value: "european" },
+  { label: "UEFA", value: "uefa" },
+  { label: "International", value: "international" },
+  { label: "World", value: "world" }
+];
+
+function liquidityBreadcrumb(dateScope: string, locationScope: string) {
+  const dateLabel = LIQUIDITY_DATE_FILTERS.find((filter) => filter.value === dateScope)?.label || "All";
+  const locationLabel = locationScope === "all"
+    ? ""
+    : LIQUIDITY_LOCATION_FILTERS.find((filter) => filter.value === locationScope)?.label || locationScope;
+  return ["SportsEdge", "Football", "Liquidity", dateLabel, locationLabel].filter(Boolean).join(" / ");
+}
+
 export default function Liquidity() {
   const cachedLiquidityRows = cachedFootballLiquidityRows();
   const [fixtures, setFixtures] = useState<FootballFixture[]>([]);
@@ -35,17 +56,18 @@ export default function Liquidity() {
   const [initialSnapshotLoaded, setInitialSnapshotLoaded] = useState(cachedLiquidityRows.length > 0);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterBucket, setFilterBucket] = useState("all");
-  const [marketGroup, setMarketGroup] = useState("all");
+  const [dateScope, setDateScope] = useState("all");
+  const [locationScope, setLocationScope] = useState("all");
   const [socketStatus, setSocketStatus] = useState<"offline" | "connecting" | "live" | "waiting">("offline");
   const reconnectTimerRef = useRef<number | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const pendingPriceEventsRef = useRef<Array<{ channel: string; payload: unknown }>>([]);
   const priceFlushTimerRef = useRef<number | null>(null);
   const allRows = useMemo(() => buildAgTestRows(fixtures, backendRows), [fixtures, backendRows]);
-  const groupedRows = useMemo(() => allRows.filter((row) => agTestRowMatchesGroup(row, marketGroup)), [allRows, marketGroup]);
+  const groupedRows = useMemo(() => allRows.filter((row) => (
+    agTestRowMatchesGroup(row, dateScope) && agTestRowMatchesGroup(row, locationScope)
+  )), [allRows, dateScope, locationScope]);
   const rows = useMemo(() => filterAgTestRows(groupedRows, searchQuery), [groupedRows, searchQuery]);
-  const secondaryFilters = AGTEST_FOOTBALL_SECONDARY_FILTERS[filterBucket] || [];
 
   useEffect(() => {
     let cancelled = false;
@@ -246,40 +268,32 @@ export default function Liquidity() {
         <section className="agtest-subbar" aria-label="Liquidity market context">
           <div className="agtest-filter-stack">
             <nav aria-label="Football liquidity filters">
-              {AGTEST_FOOTBALL_PRIMARY_FILTERS.map((filter) => (
+              {LIQUIDITY_DATE_FILTERS.map((filter) => (
                 <button
-                  className={filterBucket === filter.value ? "active" : ""}
+                  className={dateScope === filter.value ? "active" : ""}
                   key={filter.value}
                   type="button"
-                  onClick={() => {
-                    setFilterBucket(filter.value);
-                    setMarketGroup(filter.value);
-                  }}
+                  onClick={() => setDateScope(filter.value)}
                 >
                   {filter.label}
                 </button>
               ))}
-              <button type="button" onClick={() => { window.location.hash = "#bias-matrix"; }}>Bias Matrix</button>
-              {secondaryFilters.length > 0 && (
-                <>
-                  <span className="agtest-filter-crumb">/</span>
-                  {secondaryFilters.map((filter) => (
-                    <button
-                      className={marketGroup === filter.value ? "active" : ""}
-                      key={filter.value}
-                      type="button"
-                      onClick={() => setMarketGroup(filter.value)}
-                    >
-                      {filter.label}
-                    </button>
-                  ))}
-                </>
-              )}
+              <span className="agtest-filter-crumb">/</span>
+              {LIQUIDITY_LOCATION_FILTERS.map((filter) => (
+                <button
+                  className={locationScope === filter.value ? "active" : ""}
+                  key={filter.value}
+                  type="button"
+                  onClick={() => setLocationScope(locationScope === filter.value ? "all" : filter.value)}
+                >
+                  {filter.label}
+                </button>
+              ))}
             </nav>
           </div>
           <div>
-            <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
-            <span>{rows.length}{searchQuery.trim() || marketGroup !== "all" ? ` / ${allRows.length}` : ""} markets</span>
+            <span>{liquidityBreadcrumb(dateScope, locationScope)}</span>
+            <span>{rows.length}{searchQuery.trim() || dateScope !== "all" || locationScope !== "all" ? ` / ${allRows.length}` : ""} markets</span>
             <span>Available money now</span>
             <span>{socketStatus === "live" ? "wss live" : loading ? "loading" : socketStatus}</span>
           </div>
@@ -309,7 +323,7 @@ export default function Liquidity() {
           {initialSnapshotLoaded && !loading && rows.length === 0 && (
             <div className="agtest-empty-state">
               <strong>No liquidity rows for this filter</strong>
-              <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
+              <span>{liquidityBreadcrumb(dateScope, locationScope)}</span>
             </div>
           )}
         </section>

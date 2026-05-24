@@ -65,7 +65,8 @@ type FootballFixtureRow = {
 
 const DASHBOARD_EXCHANGES = [
   { key: "betfair", label: "Betfair" },
-  { key: "matchbook", label: "Matchbook" }
+  { key: "matchbook", label: "Matchbook" },
+  { key: "sx", label: "SX" }
 ] as const;
 const FOOTBALL_DASHBOARD_FILTERS = [
   { label: "All", value: "all" },
@@ -132,6 +133,12 @@ function backendMatchLiquidity(row: BackendPriceRow, exchangeKey: string) {
 
 function rowMatchedValue(row: BackendPriceRow) {
   return DASHBOARD_EXCHANGES.reduce((sum, exchange) => sum + backendMatchLiquidity(row, exchange.key), 0);
+}
+
+function liquiditySources(event: SportEventRow) {
+  return DASHBOARD_EXCHANGES
+    .filter((exchange) => Number(event.liquidityByExchange[exchange.key] || 0) > 0)
+    .map((exchange) => exchange.label);
 }
 
 function normalizeEventName(value: string) {
@@ -286,32 +293,37 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
             <th>Time</th>
             <th>Fixture</th>
             <th>Competition</th>
-            <th>Venues</th>
             <th>BF £ Now</th>
             <th>MB £ Now</th>
-            <th>Total</th>
+            <th>SX £ Now</th>
+            <th>Total £ Now</th>
+            <th>Liquidity Sources</th>
             <th>Latest</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((event) => (
-            <tr className={eventRowClass(event)} key={`${title}-${event.id}-${event.startAt}`}>
-              <td className="mono positive">{localEventTime(event.startAt)}</td>
-              <td><strong>{event.name}</strong></td>
-              <td>{event.competition || "-"}</td>
-              <td>
-                {event.exchanges.length > 0
-                  ? <span className="sport-summary-venue">{event.exchanges.join(" / ")}</span>
-                  : <span className="sport-summary-fixture-only">Fixture</span>}
-              </td>
-              <td className="mono">{formatExchangeMoney(event.liquidityByExchange.betfair, "GBP")}</td>
-              <td className="mono">{formatExchangeMoney(event.liquidityByExchange.matchbook, "GBP")}</td>
-              <td className="mono">{formatExchangeMoney(event.liquidity, "GBP")}</td>
-              <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "-"}</td>
-            </tr>
-          ))}
-          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={8}>No fixtures returned for this day.</td></tr>}
-          {loading && rows.length === 0 && <tr><td className="empty" colSpan={8}>Loading fixtures.</td></tr>}
+          {rows.map((event) => {
+            const sources = liquiditySources(event);
+            return (
+              <tr className={eventRowClass(event)} key={`${title}-${event.id}-${event.startAt}`}>
+                <td className="mono positive">{localEventTime(event.startAt)}</td>
+                <td><strong>{event.name}</strong></td>
+                <td>{event.competition || "-"}</td>
+                <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.betfair, "GBP")}</td>
+                <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.matchbook, "GBP")}</td>
+                <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.sx, "GBP")}</td>
+                <td className="mono liquidity-money total">{formatExchangeMoney(event.liquidity, "GBP")}</td>
+                <td>
+                  {sources.length > 0
+                    ? <span className="sport-summary-venue">{sources.join(" / ")}</span>
+                    : <span className="sport-summary-fixture-only">No exchange money</span>}
+                </td>
+                <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "-"}</td>
+              </tr>
+            );
+          })}
+          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={9}>No fixtures returned for this day.</td></tr>}
+          {loading && rows.length === 0 && <tr><td className="empty" colSpan={9}>Loading fixtures.</td></tr>}
         </tbody>
       </table>
     </section>
@@ -400,7 +412,7 @@ export function SportDashboard({
   const todayRows = useMemo(() => filteredEvents.filter((event) => isTodayLocal(event.startAt)), [filteredEvents]);
   const tomorrowRows = useMemo(() => filteredEvents.filter((event) => isTomorrowLocal(event.startAt)), [filteredEvents]);
   const todayLiquidity = todayRows.reduce((sum, event) => sum + event.liquidity, 0);
-  const venueCount = new Set(filteredEvents.flatMap((event) => event.exchanges)).size;
+  const exchangeCount = new Set(filteredEvents.flatMap((event) => liquiditySources(event))).size;
   const latestTick = filteredEvents
     .map((event) => event.latestSeenAt ? new Date(event.latestSeenAt).getTime() : 0)
     .filter((value) => Number.isFinite(value) && value > 0)
@@ -441,7 +453,7 @@ export function SportDashboard({
           <div className="sport-summary-kpis">
             <article><span>Today</span><strong>{todayRows.length}</strong></article>
             <article><span>Tomorrow</span><strong>{tomorrowRows.length}</strong></article>
-            <article><span>Venues</span><strong>{venueCount || "-"}</strong></article>
+            <article><span>Exchanges Live</span><strong>{exchangeCount || "-"}</strong></article>
             <article><span>Today £ Now</span><strong>{todayLiquidity ? formatExchangeMoney(todayLiquidity, "GBP") : "-"}</strong></article>
             <article><span>Latest Tick</span><strong>{latestTick ? localEventTime(new Date(latestTick).toISOString()) : "-"}</strong></article>
           </div>
