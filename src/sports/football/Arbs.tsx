@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
-import { formatExchangeMoney, normalizeFixtureText } from "../../core/format";
+import { eventHasPassed, formatExchangeMoney, localEventTime, normalizeFixtureText } from "../../core/format";
 import {
   type BackendExchangeMatch,
   type BackendPriceRow,
@@ -327,7 +327,7 @@ export default function Arbs() {
       const payload = await response.json();
       if (!response.ok || !Array.isArray(payload.rows)) throw new Error(payload.detail || "Betfair arb scan failed");
       setSourceMarkets(payload.rows.length);
-      setRows(buildArbRows(payload.rows as BackendPriceRow[]));
+      setRows(buildArbRows((payload.rows as BackendPriceRow[]).filter((row) => !eventHasPassed(row.startAt))));
       setLastRefresh(payload.generatedAt || new Date().toISOString());
       setError("");
     } catch (err) {
@@ -360,13 +360,7 @@ export default function Arbs() {
 
   const executableRows = filteredRows.filter((row) => row.status === "EXECUTABLE_ARB");
   const anomalyRows = filteredRows.filter((row) => row.status === "ANOMALY");
-  const freshest = lastRefresh ? new Intl.DateTimeFormat("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    timeZone: "Europe/Madrid",
-    hour12: false
-  }).format(new Date(lastRefresh)) : "-";
+  const freshest = lastRefresh ? localEventTime(lastRefresh, { second: "2-digit" }) : "-";
 
   return (
     <>
@@ -422,7 +416,7 @@ export default function Arbs() {
             <tbody>
               {filteredRows.map((row) => (
                 <tr className={row.status === "EXECUTABLE_ARB" ? "is-executable" : row.status === "ANOMALY" ? "is-anomaly" : ""} key={row.id}>
-                  <td className="mono">{row.startAt ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid", hour12: false }).format(new Date(row.startAt)) : "-"}</td>
+                  <td className="mono">{row.startAt ? localEventTime(row.startAt, { day: "2-digit", month: "short" }) : "-"}</td>
                   <td><strong>{row.fixture}</strong><span>{row.competition}</span></td>
                   <td>{row.market}</td>
                   <td><span className={`arb-type ${arbStatusClass(row.status)}`}>{arbTypeLabel(row.type)}</span></td>

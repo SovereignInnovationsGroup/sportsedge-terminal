@@ -80,8 +80,6 @@ export type NewsResponse = {
   }>;
 };
 
-const NEWS_DISPLAY_TIME_ZONE = "Europe/Madrid";
-
 export function apiSportValue(value: string) {
   if (value === "horseracing") return "horse_racing";
   return value;
@@ -200,14 +198,14 @@ export function terminalNewsTimeLabel(item: Pick<NewsItem, "published_at" | "dis
   if (!date) return "--";
   const rawDeltaSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
   const deltaSeconds = Math.max(0, rawDeltaSeconds);
-  const clock = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: NEWS_DISPLAY_TIME_ZONE }).format(date);
+  const clock = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
   if (source === "scheduled" || rawDeltaSeconds < -30) return `sch / ${clock}`;
   if (deltaSeconds < 60) return `${deltaSeconds}s / ${clock}`;
   const deltaMinutes = Math.floor(deltaSeconds / 60);
   if (deltaMinutes < 60) return `${deltaMinutes}m / ${clock}`;
   const deltaHours = Math.floor(deltaMinutes / 60);
   if (deltaHours < 24) return `${deltaHours}h / ${clock}`;
-  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: NEWS_DISPLAY_TIME_ZONE }).format(date);
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
 }
 
 export function terminalNewsTag(item: NewsItem) {

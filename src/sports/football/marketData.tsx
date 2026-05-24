@@ -1,4 +1,4 @@
-import { formatExchangeMoney, normalizeFixtureText } from "../../core/format";
+import { eventHasPassed, formatExchangeMoney, localEventTime, normalizeFixtureText } from "../../core/format";
 import { sportsEdgeWsUrl } from "../../core/news";
 import { footballTextMatchesGroup } from "./filters";
 
@@ -310,7 +310,7 @@ export function mergeLivePriceRows(rows: BackendPriceRow[], channel: string, pay
 
 function displayStartTime(row: BackendPriceRow) {
   if (!row.startAt) return "-";
-  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/Madrid" }).format(new Date(row.startAt));
+  return localEventTime(row.startAt, { day: "2-digit", month: "short" });
 }
 
 function displayEventName(name: string) {
@@ -343,7 +343,7 @@ function inferCountryFromCompetition(value: string | null | undefined) {
 
 function formatFootballFixtureTime(fixture: FootballFixture) {
   if (!fixture.kickoffAt) return "-";
-  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid", hour12: false }).format(new Date(fixture.kickoffAt));
+  return localEventTime(fixture.kickoffAt, { day: "2-digit", month: "short" });
 }
 
 function exchangeCoverage(row?: BackendPriceRow) {
@@ -378,7 +378,7 @@ function formatFresh(row?: BackendPriceRow) {
     .filter((value) => Number.isFinite(value) && value > 0)
     .sort((a, b) => b - a)[0];
   if (!latest) return "watch";
-  return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: "Europe/Madrid" }).format(new Date(latest));
+  return localEventTime(new Date(latest).toISOString(), { second: "2-digit" });
 }
 
 type OutcomeRow = {
@@ -470,9 +470,9 @@ function agRowFromBackend(row: BackendPriceRow): AgTestRow {
 }
 
 export function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendPriceRow[]) {
-  const displayRows = mergeDisplayPriceRows(priceRows);
+  const displayRows = mergeDisplayPriceRows(priceRows).filter((row) => !eventHasPassed(row.startAt));
   const matchedBackendRowIds = new Set<string>();
-  const fixtureRows = cleanFootballFixtures(fixtures).map((fixture) => {
+  const fixtureRows = cleanFootballFixtures(fixtures).filter((fixture) => !eventHasPassed(fixture.kickoffAt)).map((fixture) => {
     const backend = findMarketRowForFootballFixture(fixture, displayRows);
     if (backend) matchedBackendRowIds.add(stableDisplayRowKey(backend) || backend.id);
     const base = backend ? agRowFromBackend(backend) : {

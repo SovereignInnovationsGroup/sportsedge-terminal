@@ -103,7 +103,7 @@ export default function Profiles() {
       <main className="football-profiles-page">
         <section className="agtest-subbar" aria-label="Football profile filters">
           <div className="agtest-filter-stack">
-            <nav aria-label="Football profile regions">
+            <nav aria-label="Football profile filters">
               {AGTEST_FOOTBALL_PRIMARY_FILTERS.filter((filter) => !["today", "tomorrow"].includes(filter.value)).map((filter) => (
                 <button
                   className={filterBucket === filter.value ? "active" : ""}
@@ -117,21 +117,22 @@ export default function Profiles() {
                   {filter.label}
                 </button>
               ))}
+              {secondaryFilters.length > 0 && (
+                <>
+                  <span className="agtest-filter-crumb">/</span>
+                  {secondaryFilters.map((filter) => (
+                    <button
+                      className={marketGroup === filter.value ? "active" : ""}
+                      key={filter.value}
+                      type="button"
+                      onClick={() => setMarketGroup(filter.value)}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </>
+              )}
             </nav>
-            {secondaryFilters.length > 0 && (
-              <nav className="agtest-filter-secondary" aria-label="Football profile league filters">
-                {secondaryFilters.map((filter) => (
-                  <button
-                    className={marketGroup === filter.value ? "active" : ""}
-                    key={filter.value}
-                    type="button"
-                    onClick={() => setMarketGroup(filter.value)}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
-              </nav>
-            )}
           </div>
           <div>
             <span>{filteredTeams.length} / {teams.length} teams</span>

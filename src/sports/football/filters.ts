@@ -1,4 +1,4 @@
-import { normalizeFixtureText } from "../../core/format";
+import { localDateKey, normalizeFixtureText } from "../../core/format";
 
 export type FootballGridFilter = { label: string; value: string };
 
@@ -133,20 +133,13 @@ const GROUP_TERMS: Record<string, string[]> = {
   "club-world-cup": ["club world cup", "fifa club world cup"]
 };
 
-function madridDateKey(value: Date | string | null | undefined) {
-  if (!value) return "";
-  const date = value instanceof Date ? value : new Date(String(value).includes("T") ? value : String(value).replace(" ", "T"));
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
-}
-
 export function footballDateGroupMatches(startAt: string | null, group: string) {
   if (group !== "today" && group !== "tomorrow") return true;
-  const today = madridDateKey(new Date());
+  const today = localDateKey(new Date());
   const tomorrowDate = new Date();
   tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const target = group === "today" ? today : madridDateKey(tomorrowDate);
-  return madridDateKey(startAt) === target;
+  const target = group === "today" ? today : localDateKey(tomorrowDate);
+  return localDateKey(startAt) === target;
 }
 
 export function footballTextMatchesGroup(text: string, country: string | null | undefined, group: string, startAt?: string | null) {

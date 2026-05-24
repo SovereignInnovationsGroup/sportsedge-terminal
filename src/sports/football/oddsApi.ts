@@ -55,12 +55,6 @@ export function groupOddsApiRowsByEvent(rows: OddsApiDiagnosticRow[]) {
 
 export function oddsDiagnosticTime(value: number | null | undefined) {
   if (!value) return "-";
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Europe/Madrid",
-    hour12: false
-  }).format(new Date(value * 1000));
+  return localEventTime(new Date(value * 1000).toISOString(), { day: "2-digit", month: "short" });
 }
+import { localEventTime } from "../../core/format";

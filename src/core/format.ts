@@ -32,6 +32,42 @@ export function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
+export function parseEventDate(value: Date | string | null | undefined) {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  const raw = String(value).trim();
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
+  const hasExplicitZone = /(?:z|[+-]\d{2}:?\d{2})$/i.test(normalized);
+  const date = new Date(hasExplicitZone ? normalized : `${normalized}Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function localDateKey(value: Date | string | null | undefined) {
+  const date = parseEventDate(value);
+  if (!date) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
+}
+
+export function localEventTime(value: Date | string | null | undefined, options: Intl.DateTimeFormatOptions = {}) {
+  const date = parseEventDate(value);
+  if (!date) return "TBD";
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    ...options
+  }).format(date);
+}
+
+export function eventHasPassed(value: Date | string | null | undefined, now = new Date()) {
+  const date = parseEventDate(value);
+  return Boolean(date && date.getTime() < now.getTime());
+}
+
 export function formatExchangeMoney(value: number, currency = "GBP") {
   const symbol = currency === "GBP" ? "£" : "$";
   if (value >= 1_000_000) return `${symbol}${(value / 1_000_000).toFixed(2)}m`;

@@ -52,8 +52,6 @@ type NewsStory = {
   body: string;
 };
 
-const NEWS_DISPLAY_TIME_ZONE = "Europe/Madrid";
-
 const NEWS_FEED_SPORT_FILTERS = [
   ["all", "All"],
   ["football", "Football"],
@@ -92,8 +90,7 @@ function compactTimeLabel(value: Date | null) {
   const clock = new Intl.DateTimeFormat("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
-    timeZone: NEWS_DISPLAY_TIME_ZONE
+    hour12: false
   }).format(value);
   if (rawDeltaSeconds < -30) return `sch / ${clock}`;
   if (deltaSeconds < 60) return `${deltaSeconds}s / ${clock}`;
@@ -106,8 +103,7 @@ function compactTimeLabel(value: Date | null) {
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
-    timeZone: NEWS_DISPLAY_TIME_ZONE
+    hour12: false
   }).format(value);
 }
 
@@ -121,12 +117,11 @@ function exactTimeLabel(item: Pick<NewsItem | TwitterNewsRow, "published_at" | "
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
-    timeZone: NEWS_DISPLAY_TIME_ZONE
+    hour12: false
   });
   return [
-    publishedAt ? `published ${formatter.format(publishedAt)} ES` : "",
-    discoveredAt ? `discovered ${formatter.format(discoveredAt)} ES` : ""
+    publishedAt ? `published ${formatter.format(publishedAt)}` : "",
+    discoveredAt ? `discovered ${formatter.format(discoveredAt)}` : ""
   ].filter(Boolean).join(" / ");
 }
 

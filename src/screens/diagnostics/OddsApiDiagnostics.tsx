@@ -1,18 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
-import { formatDate, normalizeFixtureText } from "../../core/format";
+import { formatDate, localEventTime, normalizeFixtureText } from "../../core/format";
 import { type OddsApiDiagnosticResponse } from "../../sports/football/oddsApi";
 
 function oddsDiagnosticTime(value: number | null | undefined) {
   if (!value) return "-";
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Europe/Madrid",
-    hour12: false
-  }).format(new Date(value * 1000));
+  return localEventTime(new Date(value * 1000).toISOString(), { day: "2-digit", month: "short" });
 }
 
 export default function OddsApiDiagnostics() {

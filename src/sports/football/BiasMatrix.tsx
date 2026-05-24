@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
-import { normalizeFixtureText } from "../../core/format";
+import { eventHasPassed, normalizeFixtureText } from "../../core/format";
 import {
   decimalOddsLabel,
   groupOddsApiRowsByEvent,
@@ -208,7 +208,7 @@ export default function BiasMatrix() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const allRows = useMemo(() => buildBiasMatrixRows(data?.rows || []), [data]);
+  const allRows = useMemo(() => buildBiasMatrixRows(data?.rows || []).filter((row) => !eventHasPassed(row.startTime ? new Date(row.startTime * 1000).toISOString() : null)), [data]);
 
   useEffect(() => {
     const currentOdds = flattenBiasMatrixOdds(allRows);

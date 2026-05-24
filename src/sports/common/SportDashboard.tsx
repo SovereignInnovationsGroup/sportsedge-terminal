@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
+import { eventHasPassed, localDateKey, localEventTime } from "../../core/format";
 import { footballTextMatchesGroup } from "../football/filters";
 
 type BackendRunnerLevel = { odds: number; amount: number; level?: number };
@@ -96,38 +97,14 @@ function formatExchangeMoney(value: number, currency = "GBP") {
   return `${symbol}${Math.round(value).toLocaleString("en-GB")}`;
 }
 
-function madridEventTime(value: string | null | undefined) {
-  if (!value) return "TBD";
-  const date = new Date(String(value).includes("T") ? value : String(value).replace(" ", "T"));
-  if (Number.isNaN(date.getTime())) return "TBD";
-  return new Intl.DateTimeFormat("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "Europe/Madrid"
-  }).format(date);
+function isTodayLocal(value: string | null | undefined) {
+  return Boolean(value) && localDateKey(value) === localDateKey(new Date());
 }
 
-function madridDateKey(value: Date | string | null | undefined) {
-  if (!value) return "";
-  const date = value instanceof Date ? value : new Date(String(value).includes("T") ? value : String(value).replace(" ", "T"));
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("en-CA", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    timeZone: "Europe/Madrid"
-  }).format(date);
-}
-
-function isTodayInMadrid(value: string | null | undefined) {
-  return Boolean(value) && madridDateKey(value) === madridDateKey(new Date());
-}
-
-function isTomorrowInMadrid(value: string | null | undefined) {
+function isTomorrowLocal(value: string | null | undefined) {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  return Boolean(value) && madridDateKey(value) === madridDateKey(tomorrow);
+  return Boolean(value) && localDateKey(value) === localDateKey(tomorrow);
 }
 
 function rowLatestObservedMs(row: BackendPriceRow) {
@@ -263,16 +240,16 @@ function footballFixtureToEvent(fixture: FootballFixtureRow): SportEventRow | nu
 
 function footballDashboardGroupMatches(event: SportEventRow, group: string) {
   if (group === "uk-today") {
-    return footballTextMatchesGroup(`${event.name} ${event.competition || ""}`, event.country, "uk", event.startAt) && isTodayInMadrid(event.startAt);
+    return footballTextMatchesGroup(`${event.name} ${event.competition || ""}`, event.country, "uk", event.startAt) && isTodayLocal(event.startAt);
   }
   if (group === "uk-tomorrow") {
-    return footballTextMatchesGroup(`${event.name} ${event.competition || ""}`, event.country, "uk", event.startAt) && isTomorrowInMadrid(event.startAt);
+    return footballTextMatchesGroup(`${event.name} ${event.competition || ""}`, event.country, "uk", event.startAt) && isTomorrowLocal(event.startAt);
   }
   return footballTextMatchesGroup(`${event.name} ${event.competition || ""}`, event.country, group, event.startAt);
 }
 
 function newsTime(item: NewsItem) {
-  return madridEventTime(item.published_at || item.discovered_at || null);
+  return localEventTime(item.published_at || item.discovered_at || null);
 }
 
 function newsTag(item: NewsItem) {
@@ -309,8 +286,8 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
         </thead>
         <tbody>
           {rows.map((event) => (
-            <tr key={`${title}-${event.id}-${event.startAt}`}>
-              <td className="mono positive">{madridEventTime(event.startAt)}</td>
+            <tr className={eventHasPassed(event.startAt) ? "is-past-event" : ""} key={`${title}-${event.id}-${event.startAt}`}>
+              <td className="mono positive">{localEventTime(event.startAt)}</td>
               <td><strong>{event.name}</strong></td>
               <td>{event.competition || "-"}</td>
               <td>
@@ -321,7 +298,7 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
               <td className="mono">{formatExchangeMoney(event.liquidityByExchange.betfair, "GBP")}</td>
               <td className="mono">{formatExchangeMoney(event.liquidityByExchange.matchbook, "GBP")}</td>
               <td className="mono">{formatExchangeMoney(event.liquidity, "GBP")}</td>
-              <td className="mono">{event.latestSeenAt ? madridEventTime(event.latestSeenAt) : "-"}</td>
+              <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "-"}</td>
             </tr>
           ))}
           {!loading && rows.length === 0 && <tr><td className="empty" colSpan={8}>No fixtures returned for this day.</td></tr>}
@@ -409,8 +386,8 @@ export function SportDashboard({
     return events.filter((event) => footballDashboardGroupMatches(event, marketGroup));
   }, [events, isFootball, marketGroup]);
 
-  const todayRows = useMemo(() => filteredEvents.filter((event) => isTodayInMadrid(event.startAt)), [filteredEvents]);
-  const tomorrowRows = useMemo(() => filteredEvents.filter((event) => isTomorrowInMadrid(event.startAt)), [filteredEvents]);
+  const todayRows = useMemo(() => filteredEvents.filter((event) => isTodayLocal(event.startAt)), [filteredEvents]);
+  const tomorrowRows = useMemo(() => filteredEvents.filter((event) => isTomorrowLocal(event.startAt)), [filteredEvents]);
   const topLiquidity = [...todayRows, ...tomorrowRows].sort((a, b) => b.liquidity - a.liquidity)[0];
   const venueCount = new Set(filteredEvents.flatMap((event) => event.exchanges)).size;
   const latestTick = filteredEvents
@@ -455,7 +432,7 @@ export function SportDashboard({
             <article><span>Tomorrow</span><strong>{tomorrowRows.length}</strong></article>
             <article><span>Venues</span><strong>{venueCount || "-"}</strong></article>
             <article><span>Top Liquidity</span><strong>{topLiquidity?.liquidity ? formatExchangeMoney(topLiquidity.liquidity, "GBP") : "-"}</strong></article>
-            <article><span>Latest Tick</span><strong>{latestTick ? madridEventTime(new Date(latestTick).toISOString()) : "-"}</strong></article>
+            <article><span>Latest Tick</span><strong>{latestTick ? localEventTime(new Date(latestTick).toISOString()) : "-"}</strong></article>
           </div>
         </section>
         {error && <div className="agtest-error">{error}</div>}

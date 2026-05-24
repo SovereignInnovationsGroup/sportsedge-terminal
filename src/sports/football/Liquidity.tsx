@@ -242,7 +242,7 @@ export default function Liquidity() {
       <main className="agtest-page">
         <section className="agtest-subbar" aria-label="Liquidity market context">
           <div className="agtest-filter-stack">
-            <nav aria-label="Football region filters">
+            <nav aria-label="Football liquidity filters">
               {AGTEST_FOOTBALL_PRIMARY_FILTERS.map((filter) => (
                 <button
                   className={filterBucket === filter.value ? "active" : ""}
@@ -257,21 +257,22 @@ export default function Liquidity() {
                 </button>
               ))}
               <button type="button" onClick={() => { window.location.hash = "#bias-matrix"; }}>Bias Matrix</button>
+              {secondaryFilters.length > 0 && (
+                <>
+                  <span className="agtest-filter-crumb">/</span>
+                  {secondaryFilters.map((filter) => (
+                    <button
+                      className={marketGroup === filter.value ? "active" : ""}
+                      key={filter.value}
+                      type="button"
+                      onClick={() => setMarketGroup(filter.value)}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </>
+              )}
             </nav>
-            {secondaryFilters.length > 0 && (
-              <nav className="agtest-filter-secondary" aria-label="Football league filters">
-                {secondaryFilters.map((filter) => (
-                  <button
-                    className={marketGroup === filter.value ? "active" : ""}
-                    key={filter.value}
-                    type="button"
-                    onClick={() => setMarketGroup(filter.value)}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
-              </nav>
-            )}
           </div>
           <div>
             <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
