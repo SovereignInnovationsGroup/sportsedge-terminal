@@ -33,6 +33,7 @@ const LIQUIDITY_DATE_FILTERS = [
 ];
 
 const LIQUIDITY_LOCATION_FILTERS = [
+  { label: "All", value: "all" },
   { label: "UK", value: "uk" },
   { label: "Europe", value: "european" },
   { label: "UEFA", value: "uefa" },
@@ -284,7 +285,7 @@ export default function Liquidity() {
                   className={locationScope === filter.value ? "active" : ""}
                   key={filter.value}
                   type="button"
-                  onClick={() => setLocationScope(locationScope === filter.value ? "all" : filter.value)}
+                  onClick={() => setLocationScope(filter.value)}
                 >
                   {filter.label}
                 </button>
