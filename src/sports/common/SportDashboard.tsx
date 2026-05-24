@@ -278,8 +278,8 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
             <th>Fixture</th>
             <th>Competition</th>
             <th>Venues</th>
-            <th>BF Vol</th>
-            <th>MB Vol</th>
+            <th>BF £ Now</th>
+            <th>MB £ Now</th>
             <th>Total</th>
             <th>Latest</th>
           </tr>

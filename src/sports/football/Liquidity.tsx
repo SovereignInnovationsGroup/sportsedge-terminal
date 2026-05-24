@@ -226,9 +226,9 @@ export default function Liquidity() {
     { field: "matchbook", headerName: "Matchbook", minWidth: 250, flex: 1.1, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.matchbook} className="ag-price-stack" /> },
     { field: "sx", headerName: "SX", minWidth: 210, flex: 0.9, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.sx} className="ag-price-stack" /> },
     { field: "bias", headerName: "Bias", width: 150 },
-    { field: "bfLiquidity", headerName: "BF Vol", width: 108 },
-    { field: "mbLiquidity", headerName: "MB Vol", width: 108 },
-    { field: "sxLiquidity", headerName: "SX Vol", width: 108 },
+    { field: "bfLiquidity", headerName: "BF £ Now", width: 118 },
+    { field: "mbLiquidity", headerName: "MB £ Now", width: 118 },
+    { field: "sxLiquidity", headerName: "SX £ Now", width: 118 },
     { field: "fresh", headerName: "Fresh", width: 118 }
   ], []);
 
@@ -277,12 +277,12 @@ export default function Liquidity() {
           <div>
             <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
             <span>{rows.length}{searchQuery.trim() || marketGroup !== "all" ? ` / ${allRows.length}` : ""} markets</span>
-            <span>BF / MB / SX exchange ladder</span>
+            <span>Available money now</span>
             <span>{socketStatus === "live" ? "wss live" : loading ? "loading" : socketStatus}</span>
           </div>
         </section>
         <section className="agtest-source-strip" aria-label="Liquidity source status">
-          <span>Exchange ladder: BF / MB / SX</span>
+          <span>Available now: BF / MB / SX</span>
         </section>
         <section className="agtest-grid-wrap ag-theme-quartz-dark">
           <AgGridReact

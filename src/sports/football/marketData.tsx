@@ -42,7 +42,6 @@ export type BackendPriceRow = {
   arbs?: Array<{ edgePct?: number; backExchange?: string; layExchange?: string; label?: string }>;
   marketCount?: number;
   aggregateLiquidityByExchange?: Record<string, number>;
-  aggregateVolumeByExchange?: Record<string, number>;
 };
 
 export type FootballFixture = {
@@ -188,17 +187,12 @@ function clonePriceRow(row: BackendPriceRow): BackendPriceRow {
     exchange.backendKey,
     matchLiquidity(row.matches?.[exchange.backendKey])
   ]));
-  const aggregateVolumeByExchange = Object.fromEntries(BETTING_EXCHANGE_COLUMNS.map((exchange) => [
-    exchange.backendKey,
-    backendMatchVolume(row.matches?.[exchange.backendKey])
-  ]));
   return {
     ...row,
     matches: { ...row.matches },
     arbs: [...(row.arbs || [])],
     marketCount: 1,
-    aggregateLiquidityByExchange,
-    aggregateVolumeByExchange
+    aggregateLiquidityByExchange
   };
 }
 
@@ -212,16 +206,10 @@ export function mergeDisplayPriceRows(rows: BackendPriceRow[]) {
       continue;
     }
     const nextAggregate = { ...(existing.aggregateLiquidityByExchange || {}) };
-    const nextVolumeAggregate = { ...(existing.aggregateVolumeByExchange || {}) };
     BETTING_EXCHANGE_COLUMNS.forEach((exchange) => {
       nextAggregate[exchange.backendKey] = Number(nextAggregate[exchange.backendKey] || 0) + matchLiquidity(row.matches?.[exchange.backendKey]);
-      nextVolumeAggregate[exchange.backendKey] = Math.max(
-        Number(nextVolumeAggregate[exchange.backendKey] || 0),
-        backendMatchVolume(row.matches?.[exchange.backendKey])
-      );
     });
     existing.aggregateLiquidityByExchange = nextAggregate;
-    existing.aggregateVolumeByExchange = nextVolumeAggregate;
     existing.marketCount = Number(existing.marketCount || 1) + 1;
     const incomingIsBetterDisplay = marketSortRank(row) < marketSortRank(existing);
     existing.matches = incomingIsBetterDisplay ? { ...existing.matches, ...row.matches } : { ...row.matches, ...existing.matches };
@@ -370,10 +358,6 @@ function matchLiquidity(match?: BackendExchangeMatch) {
   return (match?.runners || []).reduce((sum, runner) => sum + Number(runner.back?.amount || 0) + Number(runner.lay?.amount || 0), 0);
 }
 
-function backendMatchVolume(match?: BackendExchangeMatch) {
-  return Number(match?.volume || 0);
-}
-
 function rowMatchedValue(row?: BackendPriceRow) {
   if (!row) return 0;
   if (row.aggregateLiquidityByExchange) {
@@ -383,10 +367,6 @@ function rowMatchedValue(row?: BackendPriceRow) {
 }
 
 function formatBackendExchangeLiquidity(row: BackendPriceRow | undefined, exchange: string) {
-  const aggregateVolume = Number(row?.aggregateVolumeByExchange?.[exchange] || 0);
-  if (aggregateVolume > 0) return formatExchangeMoney(aggregateVolume, "GBP");
-  const matchVolume = backendMatchVolume(row?.matches?.[exchange]);
-  if (matchVolume > 0) return formatExchangeMoney(matchVolume, "GBP");
   const aggregateValue = Number(row?.aggregateLiquidityByExchange?.[exchange] || 0);
   const value = aggregateValue > 0 ? aggregateValue : matchLiquidity(row?.matches?.[exchange]);
   return value > 0 ? formatExchangeMoney(value, "GBP") : "-";
