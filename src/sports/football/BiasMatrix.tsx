@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
-import { eventHasPassed, normalizeFixtureText } from "../../core/format";
+import { eventHasPassed, localEventTime, normalizeFixtureText } from "../../core/format";
 import { FootballScopeFilter } from "./FootballScopeFilter";
 import { footballScopeMatches } from "./filters";
+import { fetchMarketSnapshotRows, type BackendPriceRow } from "./marketData";
 import {
   decimalOddsLabel,
   groupOddsApiRowsByEvent,
@@ -37,6 +38,39 @@ const BIAS_MATRIX_SOURCES = [
 
 const BIAS_MATRIX_OUTCOMES: OddsOutcome[] = ["home", "draw", "away"];
 
+function biasRead(sourceOdds: Record<string, Partial<Record<OddsOutcome, number>>>) {
+  const consensus: Partial<Record<OddsOutcome, number>> = {};
+  BIAS_MATRIX_OUTCOMES.forEach((outcome) => {
+    const prices = BIAS_MATRIX_SOURCES
+      .map((source) => sourceOdds[source.key]?.[outcome])
+      .filter((value): value is number => Number.isFinite(Number(value)));
+    if (prices.length) consensus[outcome] = prices.reduce((sum, value) => sum + value, 0) / prices.length;
+  });
+
+  const sourceCount = BIAS_MATRIX_SOURCES.filter((source) => Object.keys(sourceOdds[source.key] || {}).length > 0).length;
+  const outcomeSpreads = BIAS_MATRIX_OUTCOMES.map((outcome) => {
+    const prices = BIAS_MATRIX_SOURCES
+      .map((source) => sourceOdds[source.key]?.[outcome])
+      .filter((value): value is number => Number.isFinite(Number(value)));
+    if (prices.length < 2) return 0;
+    return (Math.max(...prices) - Math.min(...prices)) / Math.max(...prices);
+  });
+
+  const maxSpread = Math.max(...outcomeSpreads, 0);
+  const read: BiasMatrixRow["read"] = sourceCount < 3 ? "sparse" : maxSpread > 0.08 ? "split" : "aligned";
+  const shortestOutcome = BIAS_MATRIX_OUTCOMES
+    .filter((outcome) => Number.isFinite(Number(consensus[outcome])))
+    .sort((a, b) => Number(consensus[a]) - Number(consensus[b]))[0];
+  const bias = shortestOutcome === "home" ? "Home consensus" : shortestOutcome === "away" ? "Away consensus" : shortestOutcome === "draw" ? "Draw pressure" : "No read";
+  const note = read === "aligned"
+    ? "Sources broadly aligned"
+    : read === "split"
+      ? "Book/exchange spread worth watching"
+      : "Limited source count";
+
+  return { consensus, read, bias, note };
+}
+
 function oddsOutcomeFromRow(row: OddsApiDiagnosticRow): OddsOutcome | null {
   const market = String(row.market || "").toLowerCase();
   const selection = normalizeFixtureText(row.selection || "");
@@ -62,34 +96,7 @@ function buildBiasMatrixRows(rows: OddsApiDiagnosticRow[]): BiasMatrixRow[] {
       if (!current || odds > current) sourceOdds[source][outcome] = odds;
     });
 
-    const consensus: Partial<Record<OddsOutcome, number>> = {};
-    BIAS_MATRIX_OUTCOMES.forEach((outcome) => {
-      const prices = BIAS_MATRIX_SOURCES
-        .map((source) => sourceOdds[source.key]?.[outcome])
-        .filter((value): value is number => Number.isFinite(Number(value)));
-      if (prices.length) consensus[outcome] = prices.reduce((sum, value) => sum + value, 0) / prices.length;
-    });
-
-    const sourceCount = BIAS_MATRIX_SOURCES.filter((source) => Object.keys(sourceOdds[source.key] || {}).length > 0).length;
-    const outcomeSpreads = BIAS_MATRIX_OUTCOMES.map((outcome) => {
-      const prices = BIAS_MATRIX_SOURCES
-        .map((source) => sourceOdds[source.key]?.[outcome])
-        .filter((value): value is number => Number.isFinite(Number(value)));
-      if (prices.length < 2) return 0;
-      return (Math.max(...prices) - Math.min(...prices)) / Math.max(...prices);
-    });
-
-    const maxSpread = Math.max(...outcomeSpreads, 0);
-    const read: BiasMatrixRow["read"] = sourceCount < 3 ? "sparse" : maxSpread > 0.08 ? "split" : "aligned";
-    const shortestOutcome = BIAS_MATRIX_OUTCOMES
-      .filter((outcome) => Number.isFinite(Number(consensus[outcome])))
-      .sort((a, b) => Number(consensus[a]) - Number(consensus[b]))[0];
-    const bias = shortestOutcome === "home" ? "Home consensus" : shortestOutcome === "away" ? "Away consensus" : shortestOutcome === "draw" ? "Draw pressure" : "No read";
-    const note = read === "aligned"
-      ? "Sources broadly aligned"
-      : read === "split"
-        ? "Book/exchange spread worth watching"
-        : "Limited source count";
+    const { consensus, read, bias, note } = biasRead(sourceOdds);
 
     return {
       id: eventId,
@@ -102,6 +109,49 @@ function buildBiasMatrixRows(rows: OddsApiDiagnosticRow[]): BiasMatrixRow[] {
       consensus,
       bias,
       note
+    };
+  }).filter((row) => BIAS_MATRIX_SOURCES.some((source) => Object.keys(row.sourceOdds[source.key] || {}).length > 0))
+    .sort((a, b) => (a.startTime || 0) - (b.startTime || 0));
+}
+
+function outcomeFromRunner(row: BackendPriceRow, runnerName: string): OddsOutcome | null {
+  const runner = normalizeFixtureText(runnerName);
+  if (runner === "draw" || runner.includes(" the draw")) return "draw";
+  const [homeRaw, awayRaw] = String(row.name || "").split(/\s+(?:v|vs)\s+/i);
+  const home = normalizeFixtureText(homeRaw || "");
+  const away = normalizeFixtureText(awayRaw || "");
+  if (home && (runner === home || runner.includes(home) || home.includes(runner))) return "home";
+  if (away && (runner === away || runner.includes(away) || away.includes(runner))) return "away";
+  return null;
+}
+
+function buildBiasMatrixRowsFromMarkets(rows: BackendPriceRow[]): BiasMatrixRow[] {
+  return rows.map((row) => {
+    const sourceOdds: Record<string, Partial<Record<OddsOutcome, number>>> = {};
+    BIAS_MATRIX_SOURCES.forEach((source) => {
+      const match = row.matches?.[source.key];
+      if (!match) return;
+      (match.runners || []).forEach((runner) => {
+        const outcome = outcomeFromRunner(row, runner.name);
+        const odds = Number(runner.back?.odds || runner.lay?.odds || 0);
+        if (!outcome || !Number.isFinite(odds) || odds <= 1) return;
+        sourceOdds[source.key] = sourceOdds[source.key] || {};
+        sourceOdds[source.key][outcome] = odds;
+      });
+    });
+    const { consensus, read, bias, note } = biasRead(sourceOdds);
+    const startAt = row.startAt || null;
+    return {
+      id: row.id,
+      startTime: startAt ? Math.floor(new Date(startAt).getTime() / 1000) : null,
+      kickoff: startAt ? localEventTime(startAt, { day: "2-digit", month: "short" }) : "-",
+      fixture: row.name,
+      league: row.competitionName || "Football",
+      read,
+      sourceOdds,
+      consensus,
+      bias,
+      note: row.isDemo ? "Demo SportsEdge market snapshot" : note
     };
   }).filter((row) => BIAS_MATRIX_SOURCES.some((source) => Object.keys(row.sourceOdds[source.key] || {}).length > 0))
     .sort((a, b) => (a.startTime || 0) - (b.startTime || 0));
@@ -173,6 +223,7 @@ function ConsensusCell({ row }: { row: BiasMatrixRow }) {
 
 export default function BiasMatrix() {
   const [data, setData] = useState<OddsApiDiagnosticResponse | null>(null);
+  const [fallbackRows, setFallbackRows] = useState<BiasMatrixRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
@@ -197,10 +248,25 @@ export default function BiasMatrix() {
       const payload = await response.json();
       if (!response.ok || !Array.isArray(payload.rows)) throw new Error(payload.detail || "odds alignment failed");
       setData(payload as OddsApiDiagnosticResponse);
+      setFallbackRows([]);
       setError("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "odds alignment failed");
-      setData(null);
+      try {
+        const params = new URLSearchParams({
+          sport: "football",
+          exchanges: "betfair,matchbook,smarkets,betdaq,sx",
+          segment: "upcoming4",
+          limit: "80"
+        });
+        const rows = await fetchMarketSnapshotRows(`/api/markets/snapshot?${params.toString()}`, `/api/exchange-odds?${params.toString()}`);
+        setFallbackRows(buildBiasMatrixRowsFromMarkets(rows as BackendPriceRow[]));
+        setData(null);
+        setError("");
+      } catch {
+        setFallbackRows([]);
+        setData(null);
+        setError(err instanceof Error ? err.message : "odds alignment failed");
+      }
     } finally {
       setLoading(false);
     }
@@ -212,7 +278,10 @@ export default function BiasMatrix() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const allRows = useMemo(() => buildBiasMatrixRows(data?.rows || []).filter((row) => !eventHasPassed(row.startTime ? new Date(row.startTime * 1000).toISOString() : null)), [data]);
+  const allRows = useMemo(() => {
+    const sourceRows = fallbackRows.length ? fallbackRows : buildBiasMatrixRows(data?.rows || []);
+    return sourceRows.filter((row) => !eventHasPassed(row.startTime ? new Date(row.startTime * 1000).toISOString() : null));
+  }, [data, fallbackRows]);
 
   useEffect(() => {
     const currentOdds = flattenBiasMatrixOdds(allRows);
@@ -269,7 +338,7 @@ export default function BiasMatrix() {
           meta={[
             `${rows.length}${query.trim() || dateScope !== "all" || locationScope !== "all" ? ` / ${allRows.length}` : ""} fixtures`,
             "MB / BF / SM / BD / UNI",
-            loading ? "loading" : "odds-only bias"
+            loading ? "loading" : fallbackRows.length ? "market snapshot fallback" : "odds-only bias"
           ]}
           ariaLabel="Bias Matrix football filters"
         />
@@ -281,7 +350,7 @@ export default function BiasMatrix() {
           <article><span>Anchor</span><strong>Unibet</strong></article>
           <article><span>B365</span><strong>0</strong></article>
         </section>
-        {error && <div className="agtest-error">{error}</div>}
+        {error && !fallbackRows.length && <div className="agtest-error">{error}</div>}
         <section className="agtest2-table-wrap">
           <table className="agtest2-table">
             <thead>

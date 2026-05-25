@@ -125,6 +125,21 @@ function rowMatchedValue(row: BackendPriceRow) {
   return DASHBOARD_EXCHANGES.reduce((sum, exchange) => sum + backendMatchLiquidity(row, exchange.key), 0);
 }
 
+function ExchangeCoverageCell({ event }: { event: SportEventRow }) {
+  return (
+    <div className="exchange-coverage sport-summary-coverage">
+      {DASHBOARD_EXCHANGES.map((exchange) => (
+        <span
+          className={Number(event.liquidityByExchange[exchange.key] || 0) > 0 ? "available" : ""}
+          key={exchange.key}
+        >
+          {exchange.label.slice(0, 2)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function normalizeEventName(value: string) {
   return value
     .toLowerCase()
@@ -267,6 +282,7 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
             <th>Time</th>
             <th>Fixture</th>
             <th>Competition</th>
+            <th>Coverage</th>
             <th>BF £ Now</th>
             <th>MB £ Now</th>
             <th>SM £ Now</th>
@@ -282,6 +298,7 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
               <td className="mono positive">{localEventTime(event.startAt)}</td>
               <td><strong>{event.name}</strong></td>
               <td>{event.competition || "-"}</td>
+              <td><ExchangeCoverageCell event={event} /></td>
               <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.betfair, "GBP")}</td>
               <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.matchbook, "GBP")}</td>
               <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.smarkets, "GBP")}</td>
@@ -291,8 +308,8 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
               <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "-"}</td>
             </tr>
           ))}
-          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={10}>No fixtures returned for this day.</td></tr>}
-          {loading && rows.length === 0 && <tr><td className="empty" colSpan={10}>Loading fixtures.</td></tr>}
+          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={11}>No fixtures returned for this day.</td></tr>}
+          {loading && rows.length === 0 && <tr><td className="empty" colSpan={11}>Loading fixtures.</td></tr>}
         </tbody>
       </table>
     </section>
