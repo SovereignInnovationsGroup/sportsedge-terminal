@@ -84,11 +84,14 @@ const SIGNAL_MARKETS: SignalMarket[] = [
 ];
 
 const TAPE_ITEMS = [
-  "ARS/CHE: home-side money flow refreshed across 6 venues",
-  "MCI/NEW: sharp pressure confirmed, confidence lifted",
-  "LIV/TOT: market still split, no execution bias promoted",
-  "PSG/LYO: injury news linked to home momentum",
-  "ARS/CHE: liquidity band remains deep after flow spike"
+  { marketId: "ars-che", code: "ARS/CHE", text: "home-side money flow refreshed across 6 venues" },
+  { marketId: "mci-new", code: "MCI/NEW", text: "sharp pressure confirmed, confidence lifted" },
+  { marketId: "liv-tot", code: "LIV/TOT", text: "market still split, no execution bias promoted" },
+  { marketId: "psg-lyo", code: "PSG/LYO", text: "injury news linked to home momentum" },
+  { marketId: "ars-che", code: "ARS/CHE", text: "liquidity band remains deep after flow spike" },
+  { marketId: "mci-new", code: "MCI/NEW", text: "signal promoted to execution watchlist" },
+  { marketId: "liv-tot", code: "LIV/TOT", text: "news bias conflicts with market pressure" },
+  { marketId: "psg-lyo", code: "PSG/LYO", text: "confidence upgraded after source freshness recovered" }
 ];
 
 function wave(seed: number, tick: number, width = 7) {
@@ -134,6 +137,7 @@ export default function SignalDemo() {
   const selected = rows.find((row) => row.id === selectedId) || rows[0];
   const lead = selected.lead;
   const liveTape = [...TAPE_ITEMS.slice(tick % TAPE_ITEMS.length), ...TAPE_ITEMS.slice(0, tick % TAPE_ITEMS.length)];
+  const selectedTape = liveTape.filter((item) => item.marketId === selected.id);
 
   return (
     <>
@@ -156,6 +160,23 @@ export default function SignalDemo() {
             <div><span>Live Inputs</span><strong>{selected.coverage} venues</strong></div>
             <div><span>Freshness</span><strong>{Math.max(1, 5 - (tick % 5))}s</strong></div>
             <div><span>Signal State</span><strong>{selected.alert}</strong></div>
+          </div>
+        </section>
+
+        <section className="signal-live-strip" aria-label="Global signal ticker">
+          <strong><Activity size={14} /> Signal Ticker</strong>
+          <div>
+            {liveTape.slice(0, 6).map((item, index) => (
+              <button
+                className={index === 0 ? "hot" : ""}
+                key={`${item.code}-${item.text}-${index}`}
+                type="button"
+                onClick={() => setSelectedId(item.marketId)}
+              >
+                <span>{item.code}</span>
+                {item.text}
+              </button>
+            ))}
           </div>
         </section>
 
@@ -263,14 +284,14 @@ export default function SignalDemo() {
             <section className="signal-demo-panel signal-tape">
               <header className="signal-panel-head">
                 <div>
-                  <span>Live tape</span>
-                  <strong>What makes it feel alive</strong>
+                  <span>{selected.fixture}</span>
+                  <strong>Selected transcript</strong>
                 </div>
               </header>
-              {liveTape.slice(0, 5).map((item, index) => (
-                <div className={index === 0 ? "signal-tape-item hot" : "signal-tape-item"} key={`${item}-${index}`}>
+              {selectedTape.slice(0, 5).map((item, index) => (
+                <div className={index === 0 ? "signal-tape-item hot" : "signal-tape-item"} key={`${item.code}-${item.text}-${index}`}>
                   <i />
-                  <span>{item}</span>
+                  <span>{item.code}: {item.text}</span>
                 </div>
               ))}
             </section>
