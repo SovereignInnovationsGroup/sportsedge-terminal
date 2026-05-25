@@ -314,7 +314,8 @@ export default function LiquidityCompactDemo() {
     {
       field: "coverage",
       headerName: "Cvg",
-      width: 112,
+      width: 150,
+      minWidth: 144,
       cellRenderer: ({ data }: { data?: CompactLiquidityRow }) => (
         <div className="exchange-coverage ag-coverage compact">
           {(data?.coverage || []).map((exchange) => (
