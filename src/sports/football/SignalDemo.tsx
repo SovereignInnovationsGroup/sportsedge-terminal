@@ -253,6 +253,7 @@ function flowLabel(value: number) {
 function SignalDemoExperience({ tickerMode = false }: { tickerMode?: boolean }) {
   const [tick, setTick] = useState(0);
   const [selectedId, setSelectedId] = useState(SIGNAL_MARKETS[0].id);
+  const [tickerVisible, setTickerVisible] = useState(true);
   const marketSlate = tickerMode ? TICKER_SIGNAL_MARKETS : SIGNAL_MARKETS;
 
   useEffect(() => {
@@ -284,8 +285,11 @@ function SignalDemoExperience({ tickerMode = false }: { tickerMode?: boolean }) 
         active={tickerMode ? "signal-ticker-demo" : "signal-demo"}
         searchPlaceholder="Demo: SportsEdge signals, money flow, bias, execution..."
         demoMode
+        tickerVisible={tickerMode ? tickerVisible : undefined}
+        onTickerToggle={tickerMode ? () => setTickerVisible((value) => !value) : undefined}
+        tickerLabel="Football ticker"
       />
-      {tickerMode && (
+      {tickerMode && tickerVisible && (
         <section className="signal-live-strip" aria-label="Global signal ticker">
           <div className="signal-ticker-track">
             {tickerTape.map((item, index) => (

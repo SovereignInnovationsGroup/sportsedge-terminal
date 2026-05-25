@@ -61,12 +61,18 @@ export function TerminalTopbar({
   active,
   searchPlaceholder = "Search sport, market, fixture, exchange...",
   onSearchChange,
-  demoMode = false
+  demoMode = false,
+  tickerVisible,
+  onTickerToggle,
+  tickerLabel = "Ticker"
 }: {
   active?: string;
   searchPlaceholder?: string;
   onSearchChange?: (query: string) => void;
   demoMode?: boolean;
+  tickerVisible?: boolean;
+  onTickerToggle?: () => void;
+  tickerLabel?: string;
 }) {
   const [query, setQuery] = useState("");
   const [clockNow, setClockNow] = useState(() => new Date());
@@ -144,6 +150,16 @@ export function TerminalTopbar({
         />
         <kbd>/</kbd>
       </label>
+      {onTickerToggle && (
+        <button
+          className={`testboard-ticker-toggle${tickerVisible ? " active" : ""}`}
+          type="button"
+          aria-pressed={Boolean(tickerVisible)}
+          onClick={onTickerToggle}
+        >
+          {tickerVisible ? "Hide" : "Show"} {tickerLabel}
+        </button>
+      )}
       {demoMode && (
         <div className="testboard-demo-disclosure" ref={demoRef}>
           <button

@@ -4298,6 +4298,33 @@ button {
   margin-left: 10px;
 }
 
+.testboard-ticker-toggle {
+  height: 28px;
+  border: 1px solid rgba(96, 165, 250, 0.46);
+  border-radius: 6px;
+  background: rgba(30, 64, 103, 0.24);
+  color: rgba(191, 219, 254, 0.96);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  margin-left: 10px;
+  padding: 0 9px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.testboard-ticker-toggle.active {
+  border-color: rgba(38, 166, 154, 0.54);
+  background: rgba(38, 166, 154, 0.14);
+  color: var(--green);
+}
+
+.testboard-ticker-toggle:hover,
+.testboard-ticker-toggle:focus-visible {
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.12);
+}
+
 .testboard-demo-pill {
   height: 28px;
   border: 1px solid rgba(251, 191, 36, 0.72);
