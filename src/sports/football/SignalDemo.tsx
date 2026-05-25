@@ -356,18 +356,19 @@ function SignalDemoExperience({
                     <strong>{market.fixture}<small>{market.competition}</small></strong>
                     {inlineScales ? (
                       <div className="signal-row-scales">
-                        {market.outcomes.map((outcome) => (
-                          <div className={`signal-row-scale ${outcome.direction}`} key={outcome.key}>
-                            <header>
-                              <strong>{outcome.label}</strong>
-                              <span>{signed(outcome.bias)}</span>
-                              <em>{Math.round(outcome.confidence)}%</em>
-                            </header>
-                            <div className="signal-row-meter">
-                              <span style={{ width: `${outcome.flow}%` }} />
-                            </div>
-                          </div>
-                        ))}
+                        <b>{market.lead.label}</b>
+                        <i>{signed(market.lead.bias)}</i>
+                        <em>{Math.round(market.lead.confidence)}%</em>
+                        <div className="signal-row-meter" aria-hidden="true">
+                          {market.outcomes.map((outcome) => (
+                            <span
+                              className={outcome.direction}
+                              key={outcome.key}
+                              style={{ flexGrow: Math.max(12, outcome.flow) }}
+                            />
+                          ))}
+                        </div>
+                        <small>{market.alert}</small>
                       </div>
                     ) : inlineIndicators ? (
                       <div className="signal-row-inline">

@@ -193,15 +193,33 @@ type CrossVenueQuote = {
   match: BackendExchangeMatch;
 };
 
+type CrossVenueMatch = {
+  exchange: string;
+  match: BackendExchangeMatch;
+};
+
 function buildCrossVenueRows(row: BackendPriceRow) {
   const matches = ACTIVE_ARB_EXCHANGES
     .map((exchange) => ({ exchange: exchange.key, match: matchForExchange(row, exchange.key) }))
-    .filter((item): item is { exchange: string; match: BackendExchangeMatch } => Boolean(item.match?.runners?.length));
+    .filter((item): item is CrossVenueMatch => Boolean(item.match?.runners?.length));
   if (matches.length < 2) return [];
 
+  const scans: CrossVenueMatch[][] = [];
+  for (let left = 0; left < matches.length; left += 1) {
+    for (let right = left + 1; right < matches.length; right += 1) {
+      scans.push([matches[left], matches[right]]);
+    }
+  }
+  if (matches.length > 2) scans.push(matches);
+
+  return scans.flatMap((scan) => buildCrossVenueRowsForMatches(row, scan));
+}
+
+function buildCrossVenueRowsForMatches(row: BackendPriceRow, matches: CrossVenueMatch[]) {
   const output: ArbRow[] = [];
   const runnerMap = new Map<string, CrossVenueQuote[]>();
   const sourceCoverage = matches.map((item) => exchangeLabel(item.exchange)).join(" / ");
+  const scopeKey = matches.map((item) => item.exchange).join("-");
   const firstMatch = matches[0].match;
   const startAt = firstMatch.startAt || row.startAt;
   const observedTimes = matches
@@ -246,7 +264,7 @@ function buildCrossVenueRows(row: BackendPriceRow) {
       const currenciesMatch = sameCurrency([backs[0].exchange, lays[0].exchange]);
       const executable = currenciesMatch && isFresh && execution.executableStake >= MIN_EXECUTABLE_STAKE && execution.maxProfit > 0;
       output.push({
-        id: `${row.id}:${outcome}:${backs[0].exchange}-${lays[0].exchange}:cross`,
+        id: `${row.id}:${scopeKey}:${outcome}:${backs[0].exchange}-${lays[0].exchange}:cross`,
         fixture: firstMatch.name || row.name,
         competition: firstMatch.competitionName || row.competitionName || "",
         market: firstMatch.marketName || row.marketName || "Market",
@@ -289,7 +307,7 @@ function buildCrossVenueRows(row: BackendPriceRow) {
       const maxProfit = Number.isFinite(minReturn) && minReturn > 0 ? minReturn - executableStake : 0;
       const executable = currenciesMatch && isFresh && executableStake >= MIN_EXECUTABLE_STAKE && maxProfit > 0;
       output.push({
-        id: `${row.id}:cross-back-book`,
+        id: `${row.id}:${scopeKey}:cross-back-book`,
         fixture: firstMatch.name || row.name,
         competition: firstMatch.competitionName || row.competitionName || "",
         market: firstMatch.marketName || row.marketName || "Market",
@@ -320,6 +338,43 @@ function buildCrossVenueRows(row: BackendPriceRow) {
         sourceCoverage
       });
     }
+
+    if (!output.length) {
+      const exchanges = Array.from(new Set(bestBacks.map((quote) => quote.exchange)));
+      const minReturn = Math.min(...bestBacks.map((quote) => quote.amount * quote.odds));
+      const executableStake = Number.isFinite(minReturn) && minReturn > 0 ? minReturn * (bookPct / 100) : 0;
+      output.push({
+        id: `${row.id}:${scopeKey}:cross-venue-watch`,
+        fixture: firstMatch.name || row.name,
+        competition: firstMatch.competitionName || row.competitionName || "",
+        market: firstMatch.marketName || row.marketName || "Market",
+        startAt,
+        observedAt: firstMatch.observedAt,
+        type: "watch",
+        status: "WATCH",
+        edgePct: 100 - bookPct,
+        roiPct: 0,
+        backBookPct: bookPct,
+        layBookPct: null,
+        usableLiquidity: executableStake,
+        validRunners: bestBacks.length,
+        expectedRunners: null,
+        missingRunners: null,
+        marketComplete: true,
+        staleMs,
+        executable: false,
+        executableStake: 0,
+        maxProfit: 0,
+        maxLoss: 0,
+        reason: !isFresh ? `stale ${arbFreshnessLabel(staleMs)}` : "cross-venue checked, no arb",
+        bestBack: `${bookPct.toFixed(2)}%`,
+        bestLay: "-",
+        outcomes: bestBacks.map((quote) => `${quote.runner.name}: ${exchangeLabel(quote.exchange)} ${quote.odds.toFixed(2)}`).join(" | "),
+        liquidity: bestBacks.reduce((sum, quote) => sum + quote.amount, 0),
+        venuePair: exchanges.map(exchangeLabel).join(" / "),
+        sourceCoverage
+      });
+    }
   }
 
   return output;
@@ -329,7 +384,8 @@ function buildArbRows(rows: BackendPriceRow[]) {
   const output: ArbRow[] = [];
 
   for (const row of rows) {
-    output.push(...buildCrossVenueRows(row));
+    const crossVenueRows = buildCrossVenueRows(row);
+    output.push(...crossVenueRows);
     const match = row.matches?.betfair;
     if (!match || !match.runners?.length) continue;
     const marketName = match.marketName || row.marketName || "Market";
@@ -447,23 +503,6 @@ function buildArbRows(rows: BackendPriceRow[]) {
       }
     }
 
-    if (!hasSignal && output.length < 120) {
-      const backMiss = backBookPct == null ? Number.POSITIVE_INFINITY : Math.abs(100 - backBookPct);
-      const layMiss = layBookPct == null ? Number.POSITIVE_INFINITY : Math.abs(100 - layBookPct);
-      output.push({
-        id: `${match.marketId}:watch`,
-        ...base,
-        type: "watch",
-        status: "WATCH",
-        edgePct: -Math.min(backMiss, layMiss),
-        roiPct: 0,
-        usableLiquidity: 0,
-        executableStake: 0,
-        maxProfit: 0,
-        maxLoss: 0,
-        reason: base.reason
-      });
-    }
   }
 
   return output.sort((a, b) => {
@@ -479,7 +518,7 @@ function arbTypeLabel(type: ArbRow["type"]) {
   if (type === "crossed_runner") return "Crossed runner";
   if (type === "cross_venue_book") return "Venue book";
   if (type === "cross_venue_runner") return "Venue runner";
-  return "Watch";
+  return "No arb";
 }
 
 function arbStatusClass(status: ArbRow["status"]) {
@@ -500,6 +539,13 @@ function arbStatusTone(row: ArbRow) {
   if (risk === "is-blocked") return "blocked";
   if (risk === "is-anomaly") return "anomaly";
   return "watch";
+}
+
+function arbDisplayStatus(row: ArbRow) {
+  const risk = arbRiskClass(row);
+  if (risk === "is-blocked") return "NO TRADE";
+  if (row.status === "WATCH") return "NO ARB";
+  return row.status;
 }
 
 export default function Arbs() {
@@ -596,6 +642,15 @@ export default function Arbs() {
           <span className="watch">Blue: watched market, no arb</span>
         </section>
 
+        <section className={executableRows.length ? "arbs-state-banner live" : "arbs-state-banner flat"}>
+          <strong>{executableRows.length ? `${executableRows.length} executable candidate${executableRows.length === 1 ? "" : "s"}` : "No executable arbs right now"}</strong>
+          <span>
+            {executableRows.length
+              ? "Green rows passed the current same-currency, freshness and minimum-size checks. Recheck price before ticket submit."
+              : "Negative arb % means no risk-free cross. Red rows are no-trade diagnostics, usually stale, same-venue only, cross-currency, fee-sensitive or too thin."}
+          </span>
+        </section>
+
         <section className="arbs-table-wrap">
           {error && <div className="agtest-error">{error}</div>}
           <table className="arbs-table">
@@ -629,8 +684,8 @@ export default function Arbs() {
                   <td><strong>{row.fixture}</strong><span>{row.competition}</span></td>
                   <td>{row.market}</td>
                   <td><strong>{row.venuePair}</strong><span>{row.sourceCoverage}</span></td>
-                  <td><span className={`arb-type ${arbStatusClass(row.status)} ${row.type}`}>{arbTypeLabel(row.type)}</span></td>
-                  <td className={`arb-status-cell ${arbStatusTone(row)}`}><strong>{row.status}</strong><span>{row.reason}</span></td>
+                  <td><span className={`arb-type ${arbStatusClass(row.status)} ${arbRiskClass(row).replace("is-", "")} ${row.type}`}>{arbTypeLabel(row.type)}</span></td>
+                  <td className={`arb-status-cell ${arbStatusTone(row)}`}><strong>{arbDisplayStatus(row)}</strong><span>{row.reason}</span></td>
                   <td className={row.status === "EXECUTABLE_ARB" ? "mono positive" : "mono"}>{row.edgePct > 0 ? `+${row.edgePct.toFixed(2)}%` : `${row.edgePct.toFixed(2)}%`}</td>
                   <td className={row.status === "EXECUTABLE_ARB" ? "mono positive" : "mono"}>{row.roiPct ? `${row.roiPct.toFixed(2)}%` : "-"}</td>
                   <td className="mono">{row.bestBack}</td>
