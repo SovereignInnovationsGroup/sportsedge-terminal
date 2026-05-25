@@ -26,6 +26,7 @@ type BiasMatrixRow = {
   consensus: Partial<Record<OddsOutcome, number>>;
   bias: string;
   note: string;
+  isDemo?: boolean;
 };
 
 const BIAS_MATRIX_SOURCES = [
@@ -151,10 +152,46 @@ function buildBiasMatrixRowsFromMarkets(rows: BackendPriceRow[]): BiasMatrixRow[
       sourceOdds,
       consensus,
       bias,
-      note: row.isDemo ? "Demo SportsEdge market snapshot" : note
+      note: row.isDemo ? "Hybrid demo market snapshot" : note,
+      isDemo: Boolean(row.isDemo || Object.values(row.matches || {}).some((match) => match?.isDemo))
     };
   }).filter((row) => BIAS_MATRIX_SOURCES.some((source) => Object.keys(row.sourceOdds[source.key] || {}).length > 0))
     .sort((a, b) => (a.startTime || 0) - (b.startTime || 0));
+}
+
+function biasRowKey(row: BiasMatrixRow) {
+  const date = row.startTime ? new Date(row.startTime * 1000).toISOString().slice(0, 10) : "";
+  return normalizeFixtureText(`${date} ${row.fixture}`);
+}
+
+function mergeBiasRows(primaryRows: BiasMatrixRow[], supportRows: BiasMatrixRow[]) {
+  const merged = new Map<string, BiasMatrixRow>();
+  primaryRows.forEach((row) => merged.set(biasRowKey(row) || row.id, {
+    ...row,
+    sourceOdds: { ...row.sourceOdds },
+    consensus: { ...row.consensus }
+  }));
+  supportRows.forEach((row) => {
+    const key = biasRowKey(row) || row.id;
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, row);
+      return;
+    }
+    BIAS_MATRIX_SOURCES.forEach((source) => {
+      existing.sourceOdds[source.key] = {
+        ...(row.sourceOdds[source.key] || {}),
+        ...(existing.sourceOdds[source.key] || {})
+      };
+    });
+    const { consensus, read, bias, note } = biasRead(existing.sourceOdds);
+    existing.consensus = consensus;
+    existing.read = read;
+    existing.bias = bias;
+    existing.isDemo = Boolean(existing.isDemo || row.isDemo);
+    existing.note = existing.isDemo ? "Hybrid demo market snapshot" : note;
+  });
+  return Array.from(merged.values()).sort((a, b) => (a.startTime || 0) - (b.startTime || 0));
 }
 
 function oddsPillClass(value: number | undefined, row: BiasMatrixRow, outcome: OddsOutcome) {
@@ -244,11 +281,21 @@ export default function BiasMatrix() {
         pageLimit: "80",
         oddsLimit: "200"
       });
-      const response = await fetch(`/api/odds-api/diagnostics?${params.toString()}`, { cache: "no-store" });
+      const marketParams = new URLSearchParams({
+        sport: "football",
+        exchanges: "betfair,matchbook,smarkets,betdaq,sx",
+        segment: "upcoming4",
+        limit: "120",
+        demo: "hybrid"
+      });
+      const [response, marketRows] = await Promise.all([
+        fetch(`/api/odds-api/diagnostics?${params.toString()}`, { cache: "no-store" }),
+        fetchMarketSnapshotRows(`/api/markets/snapshot?${marketParams.toString()}`, `/api/exchange-odds?${marketParams.toString()}`)
+      ]);
       const payload = await response.json();
       if (!response.ok || !Array.isArray(payload.rows)) throw new Error(payload.detail || "odds alignment failed");
       setData(payload as OddsApiDiagnosticResponse);
-      setFallbackRows([]);
+      setFallbackRows(buildBiasMatrixRowsFromMarkets(marketRows as BackendPriceRow[]));
       setError("");
     } catch (err) {
       try {
@@ -256,7 +303,8 @@ export default function BiasMatrix() {
           sport: "football",
           exchanges: "betfair,matchbook,smarkets,betdaq,sx",
           segment: "upcoming4",
-          limit: "80"
+          limit: "120",
+          demo: "hybrid"
         });
         const rows = await fetchMarketSnapshotRows(`/api/markets/snapshot?${params.toString()}`, `/api/exchange-odds?${params.toString()}`);
         setFallbackRows(buildBiasMatrixRowsFromMarkets(rows as BackendPriceRow[]));
@@ -279,7 +327,8 @@ export default function BiasMatrix() {
   }, []);
 
   const allRows = useMemo(() => {
-    const sourceRows = fallbackRows.length ? fallbackRows : buildBiasMatrixRows(data?.rows || []);
+    const oddsRows = buildBiasMatrixRows(data?.rows || []);
+    const sourceRows = mergeBiasRows(oddsRows, fallbackRows);
     return sourceRows.filter((row) => !eventHasPassed(row.startTime ? new Date(row.startTime * 1000).toISOString() : null));
   }, [data, fallbackRows]);
 
@@ -325,10 +374,11 @@ export default function BiasMatrix() {
   const split = allRows.filter((row) => row.read === "split").length;
   const sparse = allRows.filter((row) => row.read === "sparse").length;
   const bookmakerCounts = data?.counts.byBookmaker || {};
+  const hasDemoRows = allRows.some((row) => row.isDemo);
 
   return (
     <>
-      <TerminalTopbar active="bias-matrix" onSearchChange={setQuery} searchPlaceholder="Filter alignment rows, fixture, source, bias..." />
+      <TerminalTopbar active="bias-matrix" onSearchChange={setQuery} searchPlaceholder="Filter alignment rows, fixture, source, bias..." demoMode={hasDemoRows} />
       <main className="agtest2-page">
         <FootballScopeFilter
           dateScope={dateScope}
@@ -338,7 +388,7 @@ export default function BiasMatrix() {
           meta={[
             `${rows.length}${query.trim() || dateScope !== "all" || locationScope !== "all" ? ` / ${allRows.length}` : ""} fixtures`,
             "MB / BF / SM / BD / UNI",
-            loading ? "loading" : fallbackRows.length ? "market snapshot fallback" : "odds-only bias"
+            loading ? "loading" : hasDemoRows ? "hybrid demo bias" : fallbackRows.length ? "market snapshot support" : "odds-only bias"
           ]}
           ariaLabel="Bias Matrix football filters"
         />
