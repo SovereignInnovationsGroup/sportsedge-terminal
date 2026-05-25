@@ -27,6 +27,26 @@ import {
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
+const LIQUIDITY_COLUMN_STATE_KEY = "sportsedge.footballLiquidityColumnState.v1";
+
+function readLiquidityColumnState() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LIQUIDITY_COLUMN_STATE_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLiquidityColumnState(api: { getColumnState?: () => unknown[] }) {
+  if (typeof api.getColumnState !== "function") return;
+  try {
+    window.localStorage.setItem(LIQUIDITY_COLUMN_STATE_KEY, JSON.stringify(api.getColumnState()));
+  } catch {
+    // Column state is a convenience preference only.
+  }
+}
+
 export default function Liquidity() {
   const cachedLiquidityRows = cachedFootballLiquidityRows();
   const [fixtures, setFixtures] = useState<FootballFixture[]>([]);
@@ -200,12 +220,12 @@ export default function Liquidity() {
   }, []);
 
   const columnDefs = useMemo<ColDef<AgTestRow>[]>(() => [
-    { field: "kickoff", headerName: "Time", width: 128, pinned: "left" },
+    { field: "kickoff", headerName: "Time", width: 82, minWidth: 74, pinned: "left" },
     {
       field: "match",
       headerName: "Fixture",
-      minWidth: 300,
-      flex: 1.25,
+      minWidth: 250,
+      flex: 1,
       pinned: "left",
       cellRenderer: ({ data }: { data?: AgTestRow }) => (
         <div className="ag-fixture-cell">
@@ -217,7 +237,7 @@ export default function Liquidity() {
     {
       field: "coverage",
       headerName: "Coverage",
-      width: 152,
+      width: 188,
       cellRenderer: ({ data }: { data?: AgTestRow }) => (
         <div className="exchange-coverage ag-coverage">
           {(data?.coverage || []).map((exchange) => (
@@ -226,19 +246,19 @@ export default function Liquidity() {
         </div>
       )
     },
-    { field: "outcomes", headerName: "Outcomes", minWidth: 190, flex: 0.8, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.outcomes} /> },
-    { field: "betfair", headerName: "BF", minWidth: 168, flex: 0.78, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betfair} className="ag-price-stack" /> },
-    { field: "matchbook", headerName: "MB", minWidth: 168, flex: 0.78, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.matchbook} className="ag-price-stack" /> },
-    { field: "smarkets", headerName: "SM", minWidth: 168, flex: 0.78, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.smarkets} className="ag-price-stack" /> },
-    { field: "betdaq", headerName: "BD", minWidth: 168, flex: 0.78, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betdaq} className="ag-price-stack" /> },
-    { field: "sx", headerName: "SX", minWidth: 160, flex: 0.72, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.sx} className="ag-price-stack" /> },
-    { field: "bias", headerName: "Bias", width: 118 },
-    { field: "bfLiquidity", headerName: "BF £", width: 92 },
-    { field: "mbLiquidity", headerName: "MB £", width: 92 },
-    { field: "smLiquidity", headerName: "SM £", width: 92 },
-    { field: "bdLiquidity", headerName: "BD £", width: 92 },
-    { field: "sxLiquidity", headerName: "SX £", width: 92 },
-    { field: "fresh", headerName: "Fresh", width: 92 }
+    { field: "outcomes", headerName: "Outcomes", minWidth: 150, flex: 0.55, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.outcomes} /> },
+    { field: "betfair", headerName: "BF", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betfair} className="ag-price-stack" /> },
+    { field: "matchbook", headerName: "MB", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.matchbook} className="ag-price-stack" /> },
+    { field: "smarkets", headerName: "SM", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.smarkets} className="ag-price-stack" /> },
+    { field: "betdaq", headerName: "BD", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betdaq} className="ag-price-stack" /> },
+    { field: "sx", headerName: "SX", minWidth: 122, flex: 0.45, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.sx} className="ag-price-stack" /> },
+    { field: "bias", headerName: "Bias", width: 92 },
+    { field: "bfLiquidity", headerName: "BF £", width: 76 },
+    { field: "mbLiquidity", headerName: "MB £", width: 76 },
+    { field: "smLiquidity", headerName: "SM £", width: 76 },
+    { field: "bdLiquidity", headerName: "BD £", width: 76 },
+    { field: "sxLiquidity", headerName: "SX £", width: 76 },
+    { field: "fresh", headerName: "Fresh", width: 76 }
   ], []);
 
   return (
@@ -269,6 +289,18 @@ export default function Liquidity() {
           <AgGridReact
             rowData={rows}
             columnDefs={columnDefs}
+            onGridReady={(event) => {
+              const state = readLiquidityColumnState();
+              if (state.length) event.api.applyColumnState({ state, applyOrder: true });
+            }}
+            onColumnMoved={(event) => {
+              if (event.finished) saveLiquidityColumnState(event.api);
+            }}
+            onColumnPinned={(event) => saveLiquidityColumnState(event.api)}
+            onColumnResized={(event) => {
+              if (event.finished) saveLiquidityColumnState(event.api);
+            }}
+            onColumnVisible={(event) => saveLiquidityColumnState(event.api)}
             loading={!initialSnapshotLoaded && rows.length === 0}
             overlayNoRowsTemplate="<span></span>"
             overlayLoadingTemplate="<span></span>"
