@@ -250,7 +250,15 @@ function flowLabel(value: number) {
   return "Outflow";
 }
 
-function SignalDemoExperience({ tickerMode = false, inlineIndicators = false }: { tickerMode?: boolean; inlineIndicators?: boolean }) {
+function SignalDemoExperience({
+  tickerMode = false,
+  inlineIndicators = false,
+  inlineScales = false
+}: {
+  tickerMode?: boolean;
+  inlineIndicators?: boolean;
+  inlineScales?: boolean;
+}) {
   const [tick, setTick] = useState(0);
   const [selectedId, setSelectedId] = useState(SIGNAL_MARKETS[0].id);
   const [tickerVisible, setTickerVisible] = useState(true);
@@ -282,7 +290,7 @@ function SignalDemoExperience({ tickerMode = false, inlineIndicators = false }: 
   return (
     <>
       <TerminalTopbar
-        active={inlineIndicators ? "signal-ticker-v2" : tickerMode ? "signal-ticker-demo" : "signal-demo"}
+        active={inlineScales ? "signal-ticker-v3" : inlineIndicators ? "signal-ticker-v2" : tickerMode ? "signal-ticker-demo" : "signal-demo"}
         searchPlaceholder="Demo: SportsEdge signals, money flow, bias, execution..."
         demoMode
         tickerVisible={tickerMode ? tickerVisible : undefined}
@@ -346,7 +354,22 @@ function SignalDemoExperience({ tickerMode = false, inlineIndicators = false }: 
                   >
                     <span>{market.kickoff}</span>
                     <strong>{market.fixture}<small>{market.competition}</small></strong>
-                    {inlineIndicators ? (
+                    {inlineScales ? (
+                      <div className="signal-row-scales">
+                        {market.outcomes.map((outcome) => (
+                          <div className={`signal-row-scale ${outcome.direction}`} key={outcome.key}>
+                            <header>
+                              <strong>{outcome.label}</strong>
+                              <span>{signed(outcome.bias)}</span>
+                              <em>{Math.round(outcome.confidence)}%</em>
+                            </header>
+                            <div className="signal-row-meter">
+                              <span style={{ width: `${outcome.flow}%` }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : inlineIndicators ? (
                       <div className="signal-row-inline">
                         <b>{market.lead.label}</b>
                         <i>{signed(market.lead.bias)}</i>
@@ -468,6 +491,10 @@ export function SignalTickerDemo() {
 
 export function SignalTickerV2Demo() {
   return <SignalDemoExperience tickerMode inlineIndicators />;
+}
+
+export function SignalTickerV3Demo() {
+  return <SignalDemoExperience tickerMode inlineScales />;
 }
 
 export default function SignalDemo() {

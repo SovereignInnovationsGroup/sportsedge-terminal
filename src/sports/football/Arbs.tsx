@@ -486,6 +486,22 @@ function arbStatusClass(status: ArbRow["status"]) {
   return status.toLowerCase().replace("_", "-");
 }
 
+function arbRiskClass(row: ArbRow) {
+  const reason = row.reason.toLowerCase();
+  if (row.status === "EXECUTABLE_ARB") return "is-executable";
+  if (reason.includes("cross-currency") || reason.includes("stale")) return "is-blocked";
+  if (row.status === "ANOMALY") return "is-anomaly";
+  return "is-watch";
+}
+
+function arbStatusTone(row: ArbRow) {
+  const risk = arbRiskClass(row);
+  if (risk === "is-executable") return "executable";
+  if (risk === "is-blocked") return "blocked";
+  if (risk === "is-anomaly") return "anomaly";
+  return "watch";
+}
+
 export default function Arbs() {
   const [rows, setRows] = useState<ArbRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -543,6 +559,7 @@ export default function Arbs() {
 
   const executableRows = filteredRows.filter((row) => row.status === "EXECUTABLE_ARB");
   const anomalyRows = filteredRows.filter((row) => row.status === "ANOMALY");
+  const blockedRows = filteredRows.filter((row) => arbRiskClass(row) === "is-blocked");
   const freshest = lastRefresh ? localEventTime(lastRefresh, { second: "2-digit" }) : "-";
 
   return (
@@ -566,10 +583,17 @@ export default function Arbs() {
         />
 
         <section className="arbs-summary">
-          <article><span>Executable</span><strong>{executableRows.length}</strong></article>
-          <article><span>Anomalies</span><strong>{anomalyRows.length}</strong></article>
-          <article><span>Best ROI</span><strong>{executableRows[0] ? `${executableRows[0].roiPct.toFixed(2)}%` : "-"}</strong></article>
+          <article className="arb-summary-executable"><span>Executable</span><strong>{executableRows.length}</strong></article>
+          <article className="arb-summary-anomaly"><span>Anomalies</span><strong>{anomalyRows.length}</strong></article>
+          <article className="arb-summary-blocked"><span>Blocked</span><strong>{blockedRows.length}</strong></article>
           <article><span>Markets watched</span><strong>{rows.length}</strong></article>
+        </section>
+
+        <section className="arbs-colour-key" aria-label="Arbitrage colour key">
+          <span className="exec">Green: live executable candidate</span>
+          <span className="warn">Amber: theoretical anomaly / review</span>
+          <span className="blocked">Red: blocked by stale data, fees or currency</span>
+          <span className="watch">Blue: watched market, no arb</span>
         </section>
 
         <section className="arbs-table-wrap">
@@ -600,13 +624,13 @@ export default function Arbs() {
             </thead>
             <tbody>
               {filteredRows.map((row) => (
-                <tr className={row.status === "EXECUTABLE_ARB" ? "is-executable" : row.status === "ANOMALY" ? "is-anomaly" : ""} key={row.id}>
+                <tr className={arbRiskClass(row)} key={row.id}>
                   <td className="mono">{row.startAt ? localEventTime(row.startAt, { day: "2-digit", month: "short" }) : "-"}</td>
                   <td><strong>{row.fixture}</strong><span>{row.competition}</span></td>
                   <td>{row.market}</td>
                   <td><strong>{row.venuePair}</strong><span>{row.sourceCoverage}</span></td>
-                  <td><span className={`arb-type ${arbStatusClass(row.status)}`}>{arbTypeLabel(row.type)}</span></td>
-                  <td><strong>{row.status}</strong><span>{row.reason}</span></td>
+                  <td><span className={`arb-type ${arbStatusClass(row.status)} ${row.type}`}>{arbTypeLabel(row.type)}</span></td>
+                  <td className={`arb-status-cell ${arbStatusTone(row)}`}><strong>{row.status}</strong><span>{row.reason}</span></td>
                   <td className={row.status === "EXECUTABLE_ARB" ? "mono positive" : "mono"}>{row.edgePct > 0 ? `+${row.edgePct.toFixed(2)}%` : `${row.edgePct.toFixed(2)}%`}</td>
                   <td className={row.status === "EXECUTABLE_ARB" ? "mono positive" : "mono"}>{row.roiPct ? `${row.roiPct.toFixed(2)}%` : "-"}</td>
                   <td className="mono">{row.bestBack}</td>

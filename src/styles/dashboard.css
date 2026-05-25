@@ -3459,6 +3459,82 @@ button {
   color: var(--green);
 }
 
+.signal-row-scales {
+  display: grid;
+  grid-column: 3 / -1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.signal-row-scale {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid rgba(45, 212, 191, 0.16);
+  border-radius: 5px;
+  background: rgba(15, 23, 42, 0.42);
+  padding: 7px 8px;
+}
+
+.signal-row-scale.outflow {
+  border-color: rgba(248, 113, 113, 0.18);
+}
+
+.signal-row-scale header {
+  display: grid;
+  grid-template-columns: minmax(72px, 1fr) auto auto;
+  gap: 7px;
+  align-items: center;
+  min-width: 0;
+}
+
+.signal-row-scale strong,
+.signal-row-scale span,
+.signal-row-scale em {
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signal-row-scale strong {
+  color: var(--text);
+}
+
+.signal-row-scale span {
+  color: var(--green);
+}
+
+.signal-row-scale.outflow span {
+  color: var(--red);
+}
+
+.signal-row-scale.flat span {
+  color: var(--amber);
+}
+
+.signal-row-scale em {
+  color: var(--muted);
+}
+
+.signal-row-meter {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(71, 85, 105, 0.38);
+}
+
+.signal-row-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--teal), var(--amber));
+}
+
 .signal-outcome-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -8836,6 +8912,18 @@ button {
   padding: 10px 14px;
 }
 
+.arbs-summary article.arb-summary-executable {
+  background: rgba(22, 101, 52, 0.16);
+}
+
+.arbs-summary article.arb-summary-anomaly {
+  background: rgba(120, 82, 8, 0.18);
+}
+
+.arbs-summary article.arb-summary-blocked {
+  background: rgba(127, 29, 29, 0.18);
+}
+
 .arbs-summary span,
 .arbs-table th {
   color: var(--muted);
@@ -8851,8 +8939,52 @@ button {
   font-weight: 950;
 }
 
+.arbs-colour-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.62);
+  background: #05080d;
+  padding: 8px 12px;
+}
+
+.arbs-colour-key span {
+  border: 1px solid rgba(71, 85, 105, 0.78);
+  border-radius: 5px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  padding: 5px 8px;
+  text-transform: uppercase;
+}
+
+.arbs-colour-key .exec {
+  border-color: rgba(74, 222, 128, 0.62);
+  background: rgba(22, 101, 52, 0.22);
+  color: var(--green);
+}
+
+.arbs-colour-key .warn {
+  border-color: rgba(251, 191, 36, 0.62);
+  background: rgba(120, 82, 8, 0.22);
+  color: var(--amber);
+}
+
+.arbs-colour-key .blocked {
+  border-color: rgba(248, 113, 113, 0.62);
+  background: rgba(127, 29, 29, 0.22);
+  color: #ff7a86;
+}
+
+.arbs-colour-key .watch {
+  border-color: rgba(96, 165, 250, 0.58);
+  background: rgba(30, 64, 175, 0.16);
+  color: var(--blue);
+}
+
 .arbs-table-wrap {
-  height: calc(100vh - 170px);
+  height: calc(100vh - 204px);
   overflow: auto;
   background: #05080d;
 }
@@ -8889,10 +9021,21 @@ button {
 
 .arbs-table tbody tr.is-executable {
   box-shadow: inset 3px 0 0 var(--green);
+  background: rgba(22, 101, 52, 0.12);
 }
 
 .arbs-table tbody tr.is-anomaly {
   box-shadow: inset 3px 0 0 var(--amber);
+  background: rgba(120, 82, 8, 0.1);
+}
+
+.arbs-table tbody tr.is-blocked {
+  box-shadow: inset 3px 0 0 #ff5f6d;
+  background: rgba(127, 29, 29, 0.12);
+}
+
+.arbs-table tbody tr.is-watch {
+  box-shadow: inset 3px 0 0 rgba(96, 165, 250, 0.48);
 }
 
 .arbs-table td strong,
@@ -8937,6 +9080,32 @@ button {
   border-color: rgba(251, 191, 36, 0.72);
   background: rgba(120, 82, 8, 0.28);
   color: var(--amber) !important;
+}
+
+.arb-type.cross_venue_book,
+.arb-type.cross_venue_runner {
+  border-color: rgba(96, 165, 250, 0.72);
+  background: rgba(30, 64, 175, 0.22);
+  color: var(--blue) !important;
+}
+
+.arb-status-cell.executable strong,
+.arb-status-cell.executable span {
+  color: var(--green);
+}
+
+.arb-status-cell.anomaly strong,
+.arb-status-cell.anomaly span {
+  color: var(--amber);
+}
+
+.arb-status-cell.blocked strong,
+.arb-status-cell.blocked span {
+  color: #ff7a86;
+}
+
+.arb-status-cell.watch strong {
+  color: var(--blue);
 }
 
 .arbs-validation {
