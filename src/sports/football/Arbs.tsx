@@ -43,6 +43,32 @@ type ArbRow = {
   sourceCoverage: string;
 };
 
+type ArbHistorySummary = {
+  active: number;
+  executable: number;
+  blocked: number;
+  vanished: number;
+  seenToday: number;
+  bestEdgePct: number;
+};
+
+type ArbHistoryEvent = {
+  id: string;
+  fixture: string;
+  status: "EXECUTABLE" | "BLOCKED";
+  edgePct: number;
+  venuePair: string;
+  reason: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  durationMs: number;
+};
+
+type ArbHistory = {
+  summary: ArbHistorySummary;
+  events: ArbHistoryEvent[];
+};
+
 const ARB_FRESH_MS = 2000;
 const MIN_EXECUTABLE_STAKE = 10;
 const ARB_EXCHANGES = [
@@ -550,6 +576,7 @@ function arbDisplayStatus(row: ArbRow) {
 
 export default function Arbs() {
   const [rows, setRows] = useState<ArbRow[]>([]);
+  const [history, setHistory] = useState<ArbHistory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
@@ -579,10 +606,29 @@ export default function Arbs() {
     }
   }
 
+  async function loadHistory() {
+    try {
+      const response = await fetch("/api/arbs/history?sport=football&limit=80&sinceMs=86400000", { headers: { accept: "application/json" } });
+      if (!response.ok) return;
+      const payload = await response.json();
+      setHistory({
+        summary: payload.summary || { active: 0, executable: 0, blocked: 0, vanished: 0, seenToday: 0, bestEdgePct: 0 },
+        events: Array.isArray(payload.events) ? payload.events : []
+      });
+    } catch {
+      setHistory(null);
+    }
+  }
+
   useEffect(() => {
     loadArbs();
-    const timer = window.setInterval(loadArbs, 15000);
-    return () => window.clearInterval(timer);
+    loadHistory();
+    const scanTimer = window.setInterval(loadArbs, 15000);
+    const historyTimer = window.setInterval(loadHistory, 30000);
+    return () => {
+      window.clearInterval(scanTimer);
+      window.clearInterval(historyTimer);
+    };
   }, []);
 
   const filteredRows = useMemo(() => {
@@ -633,6 +679,30 @@ export default function Arbs() {
           <article className="arb-summary-anomaly"><span>Anomalies</span><strong>{anomalyRows.length}</strong></article>
           <article className="arb-summary-blocked"><span>Blocked</span><strong>{blockedRows.length}</strong></article>
           <article><span>Markets watched</span><strong>{rows.length}</strong></article>
+        </section>
+
+        <section className="arbs-monitor-memory" aria-label="Arbitrage monitor memory">
+          <article>
+            <span>Monitor live</span>
+            <strong>{history ? history.summary.active : "-"}</strong>
+          </article>
+          <article>
+            <span>Seen 24h</span>
+            <strong>{history ? history.summary.seenToday : "-"}</strong>
+          </article>
+          <article>
+            <span>Executable seen</span>
+            <strong>{history ? history.summary.executable : "-"}</strong>
+          </article>
+          <article>
+            <span>Recently vanished</span>
+            <strong>{history ? history.summary.vanished : "-"}</strong>
+          </article>
+          <article className="wide">
+            <span>Latest monitor event</span>
+            <strong>{history?.events[0] ? `${history.events[0].venuePair} ${history.events[0].edgePct > 0 ? "+" : ""}${history.events[0].edgePct.toFixed(2)}%` : "Waiting for monitor"}</strong>
+            <em>{history?.events[0] ? `${history.events[0].fixture} / ${history.events[0].reason}` : "Server-side arb monitor records events even when this screen is closed."}</em>
+          </article>
         </section>
 
         <section className="arbs-colour-key" aria-label="Arbitrage colour key">

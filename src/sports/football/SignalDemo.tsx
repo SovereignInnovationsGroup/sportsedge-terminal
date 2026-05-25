@@ -359,13 +359,15 @@ function SignalDemoExperience({
                         <b>{market.lead.label}</b>
                         <i>{signed(market.lead.bias)}</i>
                         <em>{Math.round(market.lead.confidence)}%</em>
-                        <div className="signal-row-meter" aria-hidden="true">
+                        <div className="signal-row-meter" aria-label="Home, draw and away signal pressure">
                           {market.outcomes.map((outcome) => (
                             <span
                               className={outcome.direction}
                               key={outcome.key}
                               style={{ flexGrow: Math.max(12, outcome.flow) }}
-                            />
+                            >
+                              {outcome.label}
+                            </span>
                           ))}
                         </div>
                         <small>{market.alert}</small>
