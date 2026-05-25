@@ -6877,6 +6877,60 @@ button {
   height: calc(100vh - 110px);
 }
 
+.liquidity-hover-card {
+  position: fixed;
+  z-index: 2000;
+  width: min(370px, calc(100vw - 24px));
+  max-height: 220px;
+  border: 1px solid rgba(96, 165, 250, 0.42);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(12, 18, 25, 0.98), rgba(4, 8, 13, 0.98)),
+    radial-gradient(circle at 16% 0%, rgba(96, 165, 250, 0.18), transparent 18rem);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(148, 163, 184, 0.08);
+  color: var(--text);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.liquidity-hover-card strong {
+  display: block;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.78);
+  background: rgba(7, 16, 25, 0.94);
+  color: #bfdbfe;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  padding: 9px 11px;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.liquidity-hover-card div {
+  display: grid;
+  max-height: 178px;
+  overflow: auto;
+  padding: 7px 0;
+}
+
+.liquidity-hover-card span {
+  border-bottom: 1px solid rgba(36, 50, 65, 0.42);
+  color: rgba(226, 232, 240, 0.94);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.35;
+  padding: 6px 11px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.liquidity-hover-card span:last-child {
+  border-bottom: 0;
+}
+
 .agtest-empty-state {
   align-items: center;
   background: rgba(5, 8, 13, 0.92);
@@ -7500,7 +7554,9 @@ button {
 
 .sport-summary-news article {
   border-bottom: 1px solid rgba(36, 50, 65, 0.52);
-  padding: 10px 12px;
+  max-height: 102px;
+  padding: 8px 12px;
+  overflow: hidden;
 }
 
 .sport-summary-news article div {
@@ -7519,18 +7575,27 @@ button {
 }
 
 .sport-summary-news h3 {
-  margin: 6px 0 5px;
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 5px 0 4px;
   color: var(--text);
   font-size: 13px;
   line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .sport-summary-news p,
 .sport-summary-empty {
+  display: -webkit-box;
+  overflow: hidden;
   margin: 0;
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .football-profiles-page {

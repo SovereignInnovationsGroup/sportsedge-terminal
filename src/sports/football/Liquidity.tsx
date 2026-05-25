@@ -58,6 +58,7 @@ export default function Liquidity() {
   const [dateScope, setDateScope] = useState("all");
   const [locationScope, setLocationScope] = useState("all");
   const [socketStatus, setSocketStatus] = useState<"offline" | "connecting" | "live" | "waiting">("offline");
+  const [hoverDetails, setHoverDetails] = useState<{ x: number; y: number; title: string; lines: string[] } | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const pendingPriceEventsRef = useRef<Array<{ channel: string; payload: unknown }>>([]);
@@ -261,6 +262,36 @@ export default function Liquidity() {
     { field: "fresh", headerName: "Fresh", width: 76 }
   ], []);
 
+  function showCellDetails(event: { event?: Event; colDef?: ColDef<AgTestRow>; data?: AgTestRow }) {
+    const pointerEvent = event.event as MouseEvent | undefined;
+    const field = event.colDef?.field as keyof AgTestRow | undefined;
+    if (!pointerEvent || !field || !event.data) return;
+    if (!["outcomes", "betfair", "matchbook", "smarkets", "betdaq", "sx"].includes(String(field))) {
+      setHoverDetails(null);
+      return;
+    }
+    const rawValue = event.data[field];
+    const lines = Array.isArray(rawValue) ? rawValue.filter((line) => line && line !== "-") : [];
+    if (!lines.length) {
+      setHoverDetails(null);
+      return;
+    }
+    const titles: Partial<Record<keyof AgTestRow, string>> = {
+      outcomes: "Outcomes",
+      betfair: "Betfair ladder",
+      matchbook: "Matchbook ladder",
+      smarkets: "Smarkets ladder",
+      betdaq: "Betdaq ladder",
+      sx: "SX ladder"
+    };
+    setHoverDetails({
+      x: Math.min(pointerEvent.clientX + 18, window.innerWidth - 390),
+      y: Math.min(pointerEvent.clientY + 18, window.innerHeight - 230),
+      title: `${titles[field] || String(field)} / ${event.data.match}`,
+      lines
+    });
+  }
+
   return (
     <>
       <TerminalTopbar
@@ -305,6 +336,9 @@ export default function Liquidity() {
             loading={!initialSnapshotLoaded && rows.length === 0}
             overlayNoRowsTemplate="<span></span>"
             overlayLoadingTemplate="<span></span>"
+            onCellMouseOver={showCellDetails}
+            onCellMouseMove={showCellDetails}
+            onCellMouseOut={() => setHoverDetails(null)}
             rowHeight={36}
             headerHeight={34}
             animateRows
@@ -325,6 +359,20 @@ export default function Liquidity() {
           )}
         </section>
         {error && <div className="agtest-error">{error}</div>}
+        {hoverDetails && (
+          <aside
+            className="liquidity-hover-card"
+            style={{ left: hoverDetails.x, top: hoverDetails.y }}
+            aria-label="Full market cell details"
+          >
+            <strong>{hoverDetails.title}</strong>
+            <div>
+              {hoverDetails.lines.map((line, index) => (
+                <span key={`${line}-${index}`}>{line}</span>
+              ))}
+            </div>
+          </aside>
+        )}
       </main>
     </>
   );
