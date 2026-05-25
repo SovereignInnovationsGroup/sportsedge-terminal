@@ -22,7 +22,7 @@ const FOOTBALL_NAV = [
   { label: "Profiles", value: "football-profiles", route: "#football-profiles" }
 ] as const;
 
-const FOOTBALL_MODE = new Set(["football", "liquidity", "signal-demo", "signal-ticker-demo", "bias-matrix", "arbs", "football-profiles"]);
+const FOOTBALL_MODE = new Set(["football", "liquidity", "signal-demo", "signal-ticker-demo", "signal-ticker-v2", "bias-matrix", "arbs", "football-profiles"]);
 
 type StoredAuthUser = {
   email?: string;

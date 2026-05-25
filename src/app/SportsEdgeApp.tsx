@@ -24,6 +24,7 @@ const FootballLiquidity = lazy(() => import("../sports/football/Liquidity"));
 const FootballLiquidityCompactDemo = lazy(() => import("../sports/football/LiquidityCompactDemo"));
 const FootballSignalDemo = lazy(() => import("../sports/football/SignalDemo"));
 const FootballSignalTickerDemo = lazy(() => import("../sports/football/SignalTickerDemo"));
+const FootballSignalTickerV2Demo = lazy(() => import("../sports/football/SignalTickerV2Demo"));
 const FootballBiasMatrix = lazy(() => import("../sports/football/BiasMatrix"));
 const FootballArbs = lazy(() => import("../sports/football/Arbs"));
 const FootballProfiles = lazy(() => import("../sports/football/Profiles"));
@@ -60,6 +61,7 @@ function screenForHash(hash: string) {
   if (hash === "#liquidity-compact") return requireSession(<FootballLiquidityCompactDemo />);
   if (hash === "#signal-demo" || hash === "#signals") return requireSession(<FootballSignalDemo />);
   if (hash === "#signal-ticker-demo" || hash === "#signals-ticker") return requireSession(<FootballSignalTickerDemo />);
+  if (hash === "#signal-ticker-v2") return requireSession(<FootballSignalTickerV2Demo />);
   if (hash === "#bias-matrix" || hash === "#agtest2") return requireSession(<FootballBiasMatrix />);
   if (hash === "#arbs") return requireSession(<FootballArbs />);
   if (hash === "#football-profiles" || hash === "#profile-mockup" || hash === "#profiles") return requireSession(<FootballProfiles />);

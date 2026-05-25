@@ -3417,6 +3417,48 @@ button {
   text-transform: uppercase;
 }
 
+.signal-row-inline {
+  grid-column: 3 / -1;
+  display: grid;
+  grid-template-columns: minmax(92px, 0.9fr) 74px 112px 64px minmax(120px, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.signal-row-inline b,
+.signal-row-inline i,
+.signal-row-inline span,
+.signal-row-inline em,
+.signal-row-inline small {
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.signal-row-inline b {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.signal-row-inline i,
+.signal-row-inline em {
+  color: var(--green);
+  font-style: normal;
+}
+
+.signal-row-inline span {
+  color: var(--amber);
+}
+
+.signal-row-inline small {
+  color: var(--green);
+}
+
 .signal-outcome-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

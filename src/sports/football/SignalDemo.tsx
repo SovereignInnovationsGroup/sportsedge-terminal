@@ -250,7 +250,7 @@ function flowLabel(value: number) {
   return "Outflow";
 }
 
-function SignalDemoExperience({ tickerMode = false }: { tickerMode?: boolean }) {
+function SignalDemoExperience({ tickerMode = false, inlineIndicators = false }: { tickerMode?: boolean; inlineIndicators?: boolean }) {
   const [tick, setTick] = useState(0);
   const [selectedId, setSelectedId] = useState(SIGNAL_MARKETS[0].id);
   const [tickerVisible, setTickerVisible] = useState(true);
@@ -282,7 +282,7 @@ function SignalDemoExperience({ tickerMode = false }: { tickerMode?: boolean }) 
   return (
     <>
       <TerminalTopbar
-        active={tickerMode ? "signal-ticker-demo" : "signal-demo"}
+        active={inlineIndicators ? "signal-ticker-v2" : tickerMode ? "signal-ticker-demo" : "signal-demo"}
         searchPlaceholder="Demo: SportsEdge signals, money flow, bias, execution..."
         demoMode
         tickerVisible={tickerMode ? tickerVisible : undefined}
@@ -346,13 +346,25 @@ function SignalDemoExperience({ tickerMode = false }: { tickerMode?: boolean }) 
                   >
                     <span>{market.kickoff}</span>
                     <strong>{market.fixture}<small>{market.competition}</small></strong>
-                    <b>{market.lead.label}</b>
-                    <i>{signed(market.lead.bias)}</i>
-                    <em>{Math.round(market.lead.confidence)}%</em>
-                    <span>{market.liquidityBand}</span>
-                    <div className="signal-market-badges">
-                      {market.badges.map((badge) => <mark key={badge}>{badge}</mark>)}
-                    </div>
+                    {inlineIndicators ? (
+                      <div className="signal-row-inline">
+                        <b>{market.lead.label}</b>
+                        <i>{signed(market.lead.bias)}</i>
+                        <span>{liveTape.find((item) => item.marketId === market.id)?.action || "WATCH"}</span>
+                        <em>{Math.round(market.lead.confidence)}%</em>
+                        <small>{market.alert}</small>
+                      </div>
+                    ) : (
+                      <>
+                        <b>{market.lead.label}</b>
+                        <i>{signed(market.lead.bias)}</i>
+                        <em>{Math.round(market.lead.confidence)}%</em>
+                        <span>{market.liquidityBand}</span>
+                        <div className="signal-market-badges">
+                          {market.badges.map((badge) => <mark key={badge}>{badge}</mark>)}
+                        </div>
+                      </>
+                    )}
                   </button>
                 ))}
               </div>
@@ -452,6 +464,10 @@ function SignalDemoExperience({ tickerMode = false }: { tickerMode?: boolean }) 
 
 export function SignalTickerDemo() {
   return <SignalDemoExperience tickerMode />;
+}
+
+export function SignalTickerV2Demo() {
+  return <SignalDemoExperience tickerMode inlineIndicators />;
 }
 
 export default function SignalDemo() {
