@@ -3178,7 +3178,7 @@ button {
 .signal-live-strip {
   display: block;
   height: 42px;
-  margin: 0 -10px 8px;
+  margin: 0;
   border: 1px solid var(--line);
   border-left: 0;
   border-right: 0;
@@ -3192,7 +3192,8 @@ button {
   display: flex;
   width: max-content;
   height: 100%;
-  animation: signalTickerScroll 18s linear infinite;
+  animation: signalTickerScroll 64s linear infinite;
+  will-change: transform;
 }
 
 .signal-live-strip:hover .signal-ticker-track {

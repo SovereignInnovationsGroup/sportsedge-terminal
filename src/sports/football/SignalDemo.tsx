@@ -285,6 +285,26 @@ function SignalDemoExperience({ tickerMode = false }: { tickerMode?: boolean }) 
         searchPlaceholder="Demo: SportsEdge signals, money flow, bias, execution..."
         demoMode
       />
+      {tickerMode && (
+        <section className="signal-live-strip" aria-label="Global signal ticker">
+          <div className="signal-ticker-track">
+            {tickerTape.map((item, index) => (
+              <button
+                className={`signal-ticker-cell ${item.tone}${index === 0 ? " hot" : ""}`}
+                key={`${item.code}-${item.text}-${index}`}
+                type="button"
+                onClick={() => setSelectedId(item.marketId)}
+              >
+                <strong>{item.code}</strong>
+                <b>{item.score}</b>
+                <span>{item.action}</span>
+                <em>{item.confidence}%</em>
+                <i>{item.text}</i>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
       <main className="signal-demo-page">
         <section className="signal-demo-hero">
           <div>
@@ -301,27 +321,6 @@ function SignalDemoExperience({ tickerMode = false }: { tickerMode?: boolean }) 
             <div><span>Signal State</span><strong>{selected.alert}</strong></div>
           </div>
         </section>
-
-        {tickerMode && (
-          <section className="signal-live-strip" aria-label="Global signal ticker">
-            <div className="signal-ticker-track">
-              {tickerTape.map((item, index) => (
-                <button
-                  className={`signal-ticker-cell ${item.tone}${index === 0 ? " hot" : ""}`}
-                  key={`${item.code}-${item.text}-${index}`}
-                  type="button"
-                  onClick={() => setSelectedId(item.marketId)}
-                >
-                  <strong>{item.code}</strong>
-                  <b>{item.score}</b>
-                  <span>{item.action}</span>
-                  <em>{item.confidence}%</em>
-                  <i>{item.text}</i>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
 
         <section className="signal-demo-layout">
           <div className="signal-demo-main">
