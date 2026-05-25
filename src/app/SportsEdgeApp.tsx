@@ -60,7 +60,8 @@ function screenForHash(hash: string) {
   if (hash === "#golf") return <GolfDashboard />;
   if (hash === "#liquidity" || hash === "#agtest") return requireSession(<FootballLiquidity />);
   if (hash === "#liquidity-compact") return requireSession(<FootballLiquidityCompactDemo />);
-  if (hash === "#signal-demo" || hash === "#signals") return requireSession(<FootballSignalDemo />);
+  if (hash === "#signal-demo") return requireSession(<FootballSignalDemo />);
+  if (hash === "#signals") return requireSession(<FootballSignalTickerV3Demo />);
   if (hash === "#signal-ticker-demo" || hash === "#signals-ticker") return requireSession(<FootballSignalTickerDemo />);
   if (hash === "#signal-ticker-v2") return requireSession(<FootballSignalTickerV2Demo />);
   if (hash === "#signal-ticker-v3") return requireSession(<FootballSignalTickerV3Demo />);

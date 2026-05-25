@@ -16,7 +16,7 @@ const FOOTBALL_NAV = [
   { label: "< Back", value: "all-sports", route: "#dashboard", tone: "back" },
   { label: "Football", value: "football", route: "#football", tone: "sport" },
   { label: "Liquidity", value: "liquidity", route: "#liquidity" },
-  { label: "Signals", value: "signal-demo", route: "#signal-demo" },
+  { label: "Signals", value: "signal-ticker-v3", route: "#signal-ticker-v3" },
   { label: "Bias Matrix", value: "bias-matrix", route: "#bias-matrix" },
   { label: "Arbs", value: "arbs", route: "#arbs" },
   { label: "Profiles", value: "football-profiles", route: "#football-profiles" }
