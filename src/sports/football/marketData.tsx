@@ -164,14 +164,16 @@ function demoMarketFeedEnabled() {
   const hashQuery = window.location.hash.includes("?")
     ? new URLSearchParams(window.location.hash.slice(window.location.hash.indexOf("?") + 1))
     : new URLSearchParams();
-  return ["1", "true", "yes", "demo"].includes(String(search.get("demoOdds") || hashQuery.get("demoOdds") || "").toLowerCase())
-    || window.localStorage.getItem("sportsedge.demoMarketFeed") === "true";
+  if (window.localStorage.getItem("sportsedge.demoMarketFeed") === "false") return false;
+  if (["1", "true", "yes", "demo"].includes(String(search.get("demoOdds") || hashQuery.get("demoOdds") || "").toLowerCase())) return true;
+  if (window.localStorage.getItem("sportsedge.demoMarketFeed") === "true") return true;
+  return window.location.hash.startsWith("#liquidity");
 }
 
 function withDemoMarketFeed(url: string) {
   if (!demoMarketFeedEnabled() || !url.includes("/api/markets/snapshot")) return url;
   const separator = url.includes("?") ? "&" : "?";
-  return `${url}${separator}demo=1`;
+  return `${url}${separator}demo=hybrid`;
 }
 
 export async function fetchMarketSnapshotRows(url: string, fallbackUrl?: string) {

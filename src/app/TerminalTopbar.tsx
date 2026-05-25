@@ -59,17 +59,21 @@ function logoutToLogin() {
 export function TerminalTopbar({
   active,
   searchPlaceholder = "Search sport, market, fixture, exchange...",
-  onSearchChange
+  onSearchChange,
+  demoMode = false
 }: {
   active?: string;
   searchPlaceholder?: string;
   onSearchChange?: (query: string) => void;
+  demoMode?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [clockNow, setClockNow] = useState(() => new Date());
   const [sessionUser] = useState(readStoredAuthUser);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [demoOpen, setDemoOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement | null>(null);
+  const demoRef = useRef<HTMLDivElement | null>(null);
   const inFootballMode = active ? FOOTBALL_MODE.has(active) : false;
   const navItems = inFootballMode ? FOOTBALL_NAV : TOP_NAV;
   const loginId = sessionUser?.login_id || sessionUser?.email || "public";
@@ -83,9 +87,11 @@ export function TerminalTopbar({
   useEffect(() => {
     function closeOnOutsideClick(event: MouseEvent) {
       if (!settingsRef.current?.contains(event.target as Node)) setSettingsOpen(false);
+      if (!demoRef.current?.contains(event.target as Node)) setDemoOpen(false);
     }
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape") setSettingsOpen(false);
+      if (event.key === "Escape") setDemoOpen(false);
     }
     window.addEventListener("mousedown", closeOnOutsideClick);
     window.addEventListener("keydown", closeOnEscape);
@@ -137,6 +143,26 @@ export function TerminalTopbar({
         />
         <kbd>/</kbd>
       </label>
+      {demoMode && (
+        <div className="testboard-demo-disclosure" ref={demoRef}>
+          <button
+            className="testboard-demo-pill"
+            type="button"
+            aria-expanded={demoOpen}
+            aria-haspopup="dialog"
+            onClick={() => setDemoOpen((value) => !value)}
+          >
+            Hybrid Demo
+          </button>
+          {demoOpen && (
+            <div className="testboard-demo-popover" role="dialog" aria-label="Hybrid demo data notice">
+              <strong>Hybrid demo mode</strong>
+              <p>Real fixtures and live exchange rows stay live. Where a fixture has no usable market depth yet, SportsEdge fills the gap with simulated odds and liquidity so the terminal can be demoed end to end.</p>
+              <span>No demo value should be treated as executable.</span>
+            </div>
+          )}
+        </div>
+      )}
       <div className="testboard-local-clock" aria-label={`Local time ${formatClock(clockNow)}`}>
         <span>Local</span>
         <strong>{formatClock(clockNow)}</strong>

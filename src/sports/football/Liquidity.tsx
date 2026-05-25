@@ -267,6 +267,7 @@ export default function Liquidity() {
         active="liquidity"
         onSearchChange={setSearchQuery}
         searchPlaceholder="Filter table, open team/player, market..."
+        demoMode={hasDemoRows}
       />
       <main className="agtest-page">
         <FootballScopeFilter
@@ -283,7 +284,7 @@ export default function Liquidity() {
         />
         <section className="agtest-source-strip" aria-label="Liquidity source status">
           <span>Available now: BF / MB / SM / BD / SX</span>
-          {hasDemoRows && <span>Demo odds and liquidity feed</span>}
+          {hasDemoRows && <span className="demo">Hybrid demo fills missing fixtures</span>}
         </section>
         <section className="agtest-grid-wrap ag-theme-quartz-dark">
           <AgGridReact
