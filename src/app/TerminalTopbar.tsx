@@ -154,10 +154,11 @@ export function TerminalTopbar({
         <button
           className={`testboard-ticker-toggle${tickerVisible ? " active" : ""}`}
           type="button"
+          aria-label={`${tickerVisible ? "Hide" : "Show"} ${tickerLabel}`}
           aria-pressed={Boolean(tickerVisible)}
           onClick={onTickerToggle}
         >
-          {tickerVisible ? "Hide" : "Show"} {tickerLabel}
+          {tickerVisible ? "Hide" : "Show"} ticker
         </button>
       )}
       {demoMode && (

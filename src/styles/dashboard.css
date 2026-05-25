@@ -4143,7 +4143,7 @@ button {
 }
 
 .global-terminal-topbar {
-  grid-template-columns: auto minmax(320px, 1fr) minmax(240px, 360px) auto auto auto auto auto;
+  grid-template-columns: auto minmax(300px, 1fr) minmax(220px, 340px) auto auto auto auto auto auto;
 }
 
 .testboard-brand,
