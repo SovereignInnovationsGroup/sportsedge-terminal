@@ -220,7 +220,7 @@ export default function Liquidity() {
   }, []);
 
   const columnDefs = useMemo<ColDef<AgTestRow>[]>(() => [
-    { field: "kickoff", headerName: "Time", width: 82, minWidth: 74, pinned: "left" },
+    { field: "kickoff", headerName: "Time", width: 132, minWidth: 124, pinned: "left" },
     {
       field: "match",
       headerName: "Fixture",
