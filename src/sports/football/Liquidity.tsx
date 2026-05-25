@@ -204,8 +204,8 @@ export default function Liquidity() {
     {
       field: "match",
       headerName: "Fixture",
-      minWidth: 390,
-      flex: 1.6,
+      minWidth: 300,
+      flex: 1.25,
       pinned: "left",
       cellRenderer: ({ data }: { data?: AgTestRow }) => (
         <div className="ag-fixture-cell">
@@ -217,7 +217,7 @@ export default function Liquidity() {
     {
       field: "coverage",
       headerName: "Coverage",
-      width: 156,
+      width: 152,
       cellRenderer: ({ data }: { data?: AgTestRow }) => (
         <div className="exchange-coverage ag-coverage">
           {(data?.coverage || []).map((exchange) => (
@@ -226,19 +226,19 @@ export default function Liquidity() {
         </div>
       )
     },
-    { field: "outcomes", headerName: "Outcomes", minWidth: 260, flex: 1.05, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.outcomes} /> },
-    { field: "betfair", headerName: "Betfair", minWidth: 230, flex: 1, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betfair} className="ag-price-stack" /> },
-    { field: "matchbook", headerName: "Matchbook", minWidth: 250, flex: 1.1, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.matchbook} className="ag-price-stack" /> },
-    { field: "smarkets", headerName: "Smarkets", minWidth: 230, flex: 1, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.smarkets} className="ag-price-stack" /> },
-    { field: "betdaq", headerName: "Betdaq", minWidth: 220, flex: 0.95, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betdaq} className="ag-price-stack" /> },
-    { field: "sx", headerName: "SX", minWidth: 210, flex: 0.9, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.sx} className="ag-price-stack" /> },
-    { field: "bias", headerName: "Bias", width: 150 },
-    { field: "bfLiquidity", headerName: "BF £ Now", width: 118 },
-    { field: "mbLiquidity", headerName: "MB £ Now", width: 118 },
-    { field: "smLiquidity", headerName: "SM £ Now", width: 118 },
-    { field: "bdLiquidity", headerName: "BD £ Now", width: 118 },
-    { field: "sxLiquidity", headerName: "SX £ Now", width: 118 },
-    { field: "fresh", headerName: "Fresh", width: 118 }
+    { field: "outcomes", headerName: "Outcomes", minWidth: 190, flex: 0.8, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.outcomes} /> },
+    { field: "betfair", headerName: "BF", minWidth: 168, flex: 0.78, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betfair} className="ag-price-stack" /> },
+    { field: "matchbook", headerName: "MB", minWidth: 168, flex: 0.78, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.matchbook} className="ag-price-stack" /> },
+    { field: "smarkets", headerName: "SM", minWidth: 168, flex: 0.78, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.smarkets} className="ag-price-stack" /> },
+    { field: "betdaq", headerName: "BD", minWidth: 168, flex: 0.78, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betdaq} className="ag-price-stack" /> },
+    { field: "sx", headerName: "SX", minWidth: 160, flex: 0.72, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.sx} className="ag-price-stack" /> },
+    { field: "bias", headerName: "Bias", width: 118 },
+    { field: "bfLiquidity", headerName: "BF £", width: 92 },
+    { field: "mbLiquidity", headerName: "MB £", width: 92 },
+    { field: "smLiquidity", headerName: "SM £", width: 92 },
+    { field: "bdLiquidity", headerName: "BD £", width: 92 },
+    { field: "sxLiquidity", headerName: "SX £", width: 92 },
+    { field: "fresh", headerName: "Fresh", width: 92 }
   ], []);
 
   return (
