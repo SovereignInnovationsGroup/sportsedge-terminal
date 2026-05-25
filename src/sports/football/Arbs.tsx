@@ -543,7 +543,7 @@ function arbTypeLabel(type: ArbRow["type"]) {
   if (type === "lay_book") return "Lay book";
   if (type === "crossed_runner") return "Crossed runner";
   if (type === "cross_venue_book") return "Venue book";
-  if (type === "cross_venue_runner") return "Venue runner";
+  if (type === "cross_venue_runner") return "Runner cross";
   return "No arb";
 }
 
