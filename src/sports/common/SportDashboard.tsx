@@ -67,7 +67,6 @@ type FootballFixtureRow = {
 const DASHBOARD_EXCHANGES = [
   { key: "betfair", label: "Betfair", short: "BF" },
   { key: "matchbook", label: "Matchbook", short: "MB" },
-  { key: "monaco", label: "BetDEX", short: "BX" },
   { key: "smarkets", label: "Smarkets", short: "SM" },
   { key: "betdaq", label: "Betdaq", short: "BD" },
   { key: "sx", label: "SX" }
@@ -286,7 +285,6 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
             <th>Coverage</th>
             <th>BF £ Now</th>
             <th>MB £ Now</th>
-            <th>BX $ Now</th>
             <th>SM £ Now</th>
             <th>BD £ Now</th>
             <th>SX £ Now</th>
@@ -303,7 +301,6 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
               <td><ExchangeCoverageCell event={event} /></td>
               <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.betfair, "GBP")}</td>
               <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.matchbook, "GBP")}</td>
-              <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.monaco, "USD")}</td>
               <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.smarkets, "GBP")}</td>
               <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.betdaq, "GBP")}</td>
               <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.sx, "GBP")}</td>
@@ -311,8 +308,8 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
               <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "-"}</td>
             </tr>
           ))}
-          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={12}>No fixtures returned for this day.</td></tr>}
-          {loading && rows.length === 0 && <tr><td className="empty" colSpan={12}>Loading fixtures.</td></tr>}
+          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={11}>No fixtures returned for this day.</td></tr>}
+          {loading && rows.length === 0 && <tr><td className="empty" colSpan={11}>Loading fixtures.</td></tr>}
         </tbody>
       </table>
     </section>
@@ -323,7 +320,7 @@ function DemoHoldingBoard({ label }: { label: string }) {
   const demoRows = [
     ["Feed", "Standing by", "No live venue rows yet"],
     ["Snapshot", "Demo", "Holding board only"],
-    ["Routing", "Ready", "BF / MB / BX / SM / BD / SX slots"],
+    ["Routing", "Ready", "BF / MB / SM / BD / SX slots"],
     ["News", "Live", "Rail remains real"]
   ];
   const demoTape = [
