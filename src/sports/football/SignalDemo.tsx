@@ -113,7 +113,7 @@ function flowLabel(value: number) {
   return "Outflow";
 }
 
-export default function SignalDemo() {
+function SignalDemoExperience({ tickerMode = false }: { tickerMode?: boolean }) {
   const [tick, setTick] = useState(0);
   const [selectedId, setSelectedId] = useState(SIGNAL_MARKETS[0].id);
 
@@ -142,7 +142,7 @@ export default function SignalDemo() {
   return (
     <>
       <TerminalTopbar
-        active="signal-demo"
+        active={tickerMode ? "signal-ticker-demo" : "signal-demo"}
         searchPlaceholder="Demo: SportsEdge signals, money flow, bias, execution..."
         demoMode
       />
@@ -163,22 +163,24 @@ export default function SignalDemo() {
           </div>
         </section>
 
-        <section className="signal-live-strip" aria-label="Global signal ticker">
-          <strong><Activity size={14} /> Signal Ticker</strong>
-          <div>
-            {liveTape.slice(0, 6).map((item, index) => (
-              <button
-                className={index === 0 ? "hot" : ""}
-                key={`${item.code}-${item.text}-${index}`}
-                type="button"
-                onClick={() => setSelectedId(item.marketId)}
-              >
-                <span>{item.code}</span>
-                {item.text}
-              </button>
-            ))}
-          </div>
-        </section>
+        {tickerMode && (
+          <section className="signal-live-strip" aria-label="Global signal ticker">
+            <strong><Activity size={14} /> Signal Ticker</strong>
+            <div>
+              {liveTape.slice(0, 6).map((item, index) => (
+                <button
+                  className={index === 0 ? "hot" : ""}
+                  key={`${item.code}-${item.text}-${index}`}
+                  type="button"
+                  onClick={() => setSelectedId(item.marketId)}
+                >
+                  <span>{item.code}</span>
+                  {item.text}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="signal-demo-layout">
           <div className="signal-demo-main">
@@ -284,11 +286,11 @@ export default function SignalDemo() {
             <section className="signal-demo-panel signal-tape">
               <header className="signal-panel-head">
                 <div>
-                  <span>{selected.fixture}</span>
-                  <strong>Selected transcript</strong>
+                  <span>{tickerMode ? selected.fixture : "Live tape"}</span>
+                  <strong>{tickerMode ? "Selected transcript" : "What makes it feel alive"}</strong>
                 </div>
               </header>
-              {selectedTape.slice(0, 5).map((item, index) => (
+              {(tickerMode ? selectedTape : liveTape).slice(0, 5).map((item, index) => (
                 <div className={index === 0 ? "signal-tape-item hot" : "signal-tape-item"} key={`${item.code}-${item.text}-${index}`}>
                   <i />
                   <span>{item.code}: {item.text}</span>
@@ -300,4 +302,12 @@ export default function SignalDemo() {
       </main>
     </>
   );
+}
+
+export function SignalTickerDemo() {
+  return <SignalDemoExperience tickerMode />;
+}
+
+export default function SignalDemo() {
+  return <SignalDemoExperience />;
 }
