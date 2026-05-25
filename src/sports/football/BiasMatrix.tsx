@@ -123,6 +123,16 @@ export default function BiasMatrix() {
             <em><Activity size={14} /> live demo signals</em>
           </header>
           <table className="alignment-matrix-table">
+            <colgroup>
+              <col className="alignment-col-match" />
+              <col className="alignment-col-bias" />
+              <col className="alignment-col-flow" />
+              <col className="alignment-col-news" />
+              <col className="alignment-col-model" />
+              <col className="alignment-col-align" />
+              <col className="alignment-col-confidence" />
+              <col className="alignment-col-action" />
+            </colgroup>
             <thead>
               <tr>
                 <th>Match</th>

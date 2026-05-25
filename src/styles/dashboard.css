@@ -3731,22 +3731,38 @@ button {
   table-layout: fixed;
 }
 
+.alignment-col-match {
+  width: 28%;
+}
+
+.alignment-col-bias {
+  width: 10%;
+}
+
+.alignment-col-flow {
+  width: 13%;
+}
+
+.alignment-col-news,
+.alignment-col-model,
+.alignment-col-align {
+  width: 11%;
+}
+
+.alignment-col-confidence {
+  width: 14%;
+}
+
+.alignment-col-action {
+  width: 12%;
+}
+
 .alignment-matrix-table th,
 .alignment-matrix-table td {
   border-bottom: 1px solid var(--line-soft);
   padding: 10px 12px;
   text-align: left;
   vertical-align: middle;
-}
-
-.alignment-matrix-table th:first-child,
-.alignment-matrix-table td:first-child {
-  width: 26%;
-}
-
-.alignment-matrix-table th:nth-child(7),
-.alignment-matrix-table td:nth-child(7) {
-  width: 150px;
 }
 
 .alignment-matrix-table tbody tr:hover {
