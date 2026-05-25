@@ -316,6 +316,57 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
   );
 }
 
+function DemoHoldingBoard({ label }: { label: string }) {
+  const demoRows = [
+    ["Feed", "Standing by", "No live venue rows yet"],
+    ["Snapshot", "Demo", "Holding board only"],
+    ["Routing", "Ready", "BF / MB / SM / BD / SX slots"],
+    ["News", "Live", "Rail remains real"]
+  ];
+  const demoTape = [
+    `${label.toUpperCase()} market spine ready`,
+    "Real feed empty for this sport",
+    "Demo state labelled",
+    "No executable prices shown",
+    "Waiting for exchange liquidity"
+  ];
+
+  return (
+    <section className="sport-demo-holding" aria-label={`${label} demo holding screen`}>
+      <div className="sport-demo-holding-head">
+        <span>SportsEdge / {label}</span>
+        <strong>Demo holding screen</strong>
+        <p>No live exchange events are currently available for this sport. This placeholder keeps the terminal surface warm while the real feed is empty.</p>
+      </div>
+      <div className="sport-demo-tape" aria-label="Demo holding ticker">
+        <div>{demoTape.concat(demoTape).map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</div>
+      </div>
+      <div className="sport-demo-grid">
+        {demoRows.map(([labelText, value, note]) => (
+          <article key={labelText}>
+            <span>{labelText}</span>
+            <strong>{value}</strong>
+            <em>{note}</em>
+          </article>
+        ))}
+      </div>
+      <table className="sport-demo-table">
+        <thead><tr>{["Screen", "State", "Liquidity", "Fresh", "Action"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+        <tbody>
+          {[
+            [`${label} Dashboard`, "Ready", "-", "watch", "Await live feed"],
+            ["Liquidity", "Slots armed", "-", "watch", "Open when exchange rows arrive"],
+            ["Bias Matrix", "Demo capable", "-", "watch", "Odds-only feed can populate later"],
+            ["News", "Live", "Real news rail", "live", "Monitor sport context"]
+          ].map((row) => (
+            <tr key={row[0]}>{row.map((cell, index) => <td className={index === 1 || index === 3 ? "mono positive" : ""} key={`${row[0]}-${cell}`}>{cell}</td>)}</tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 export function SportDashboard({
   sport,
   label,
@@ -404,6 +455,7 @@ export function SportDashboard({
     .map((event) => event.latestSeenAt ? new Date(event.latestSeenAt).getTime() : 0)
     .filter((value) => Number.isFinite(value) && value > 0)
     .sort((a, b) => b - a)[0];
+  const showDemoHolding = !loading && filteredEvents.length === 0;
 
   return (
     <>
@@ -436,8 +488,14 @@ export function SportDashboard({
         {error && <div className="agtest-error">{error}</div>}
         <section className="sport-summary-layout">
           <div className="sport-summary-main">
-            <FixtureTable title="Today" rows={todayRows} loading={loading} />
-            <FixtureTable title="Tomorrow" rows={tomorrowRows} loading={loading} />
+            {showDemoHolding ? (
+              <DemoHoldingBoard label={label} />
+            ) : (
+              <>
+                <FixtureTable title="Today" rows={todayRows} loading={loading} />
+                <FixtureTable title="Tomorrow" rows={tomorrowRows} loading={loading} />
+              </>
+            )}
           </div>
           <aside className="sport-summary-news" aria-label={`${label} news`}>
             <header>
