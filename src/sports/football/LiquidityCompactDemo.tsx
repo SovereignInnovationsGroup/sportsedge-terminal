@@ -39,6 +39,7 @@ type CompactLiquidityRow = {
   startAt: string | null;
   kickoff: string;
   match: string;
+  market: string;
   competition: string;
   country: string | null;
   coverage: Array<{ label: string; available: boolean }>;
@@ -133,6 +134,7 @@ function compactRowsFromBackend(rows: BackendPriceRow[]) {
         startAt: row.startAt,
         kickoff: displayStartTime(row),
         match: displayEventName(row.name),
+        market: row.marketName || row.marketType || "Market",
         competition: row.competitionName || "Exchange football",
         country: inferCountryFromCompetition(row.competitionName),
         coverage: COMPACT_EXCHANGES.map((exchange) => ({ label: exchange.label, available: Boolean(row.matches?.[exchange.key]) })),
@@ -295,12 +297,12 @@ export default function LiquidityCompactDemo() {
   }, []);
 
   const columnDefs = useMemo<ColDef<CompactLiquidityRow>[]>(() => [
-    { field: "kickoff", headerName: "Time", width: 118, minWidth: 110 },
+    { field: "kickoff", headerName: "Time", width: 108, minWidth: 102 },
     {
       field: "match",
       headerName: "Fixture",
-      minWidth: 420,
-      flex: 1,
+      width: 390,
+      minWidth: 320,
       cellRenderer: ({ data }: { data?: CompactLiquidityRow }) => (
         <div className="ag-fixture-cell">
           <strong>{data?.match}</strong>
@@ -308,10 +310,11 @@ export default function LiquidityCompactDemo() {
         </div>
       )
     },
+    { field: "market", headerName: "Market", width: 178, minWidth: 142 },
     {
       field: "coverage",
       headerName: "Cvg",
-      width: 116,
+      width: 112,
       cellRenderer: ({ data }: { data?: CompactLiquidityRow }) => (
         <div className="exchange-coverage ag-coverage compact">
           {(data?.coverage || []).map((exchange) => (
@@ -320,19 +323,18 @@ export default function LiquidityCompactDemo() {
         </div>
       )
     },
-    { colId: "best", headerName: "Best", width: 78, sortable: false, cellRenderer: ({ data }: { data?: CompactLiquidityRow }) => <BestRouteCell data={data} /> },
+    { colId: "best", headerName: "Best", width: 86, sortable: false, cellRenderer: ({ data }: { data?: CompactLiquidityRow }) => <BestRouteCell data={data} /> },
     ...COMPACT_EXCHANGES.map((exchange) => ({
       colId: exchange.key,
       headerName: exchange.label,
-      width: 92,
-      minWidth: 86,
-      maxWidth: 108,
+      minWidth: 118,
+      flex: 1,
       sortable: false,
       cellClass: "ag-compact-quote-cell",
       cellRenderer: ({ data }: { data?: CompactLiquidityRow }) => <CompactQuoteCell data={data} exchange={exchange.key} />
     })),
-    { field: "total", headerName: "Total", width: 90 },
-    { field: "fresh", headerName: "Fresh", width: 76 }
+    { field: "total", headerName: "Total", width: 106 },
+    { field: "fresh", headerName: "Fresh", width: 84 }
   ], []);
 
   function showCellDetails(event: { event?: Event; colDef?: ColDef<CompactLiquidityRow>; data?: CompactLiquidityRow }) {
@@ -391,7 +393,7 @@ export default function LiquidityCompactDemo() {
             onCellMouseOver={showCellDetails}
             onCellMouseMove={showCellDetails}
             onCellMouseOut={() => setHoverDetails(null)}
-            rowHeight={42}
+            rowHeight={46}
             headerHeight={34}
             animateRows
             suppressCellFocus
