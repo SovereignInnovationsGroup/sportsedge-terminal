@@ -2,6 +2,21 @@ import { localDateKey, normalizeFixtureText } from "../../core/format";
 
 export type FootballGridFilter = { label: string; value: string };
 
+export const FOOTBALL_DATE_SCOPE_FILTERS: FootballGridFilter[] = [
+  { label: "All", value: "all" },
+  { label: "Today", value: "today" },
+  { label: "Tomorrow", value: "tomorrow" }
+];
+
+export const FOOTBALL_LOCATION_SCOPE_FILTERS: FootballGridFilter[] = [
+  { label: "All", value: "all" },
+  { label: "UK", value: "uk" },
+  { label: "Europe", value: "european" },
+  { label: "UEFA", value: "uefa" },
+  { label: "International", value: "international" },
+  { label: "World", value: "world" }
+];
+
 export const AGTEST_FOOTBALL_PRIMARY_FILTERS: FootballGridFilter[] = [
   { label: "All", value: "all" },
   { label: "Today", value: "today" },
@@ -156,6 +171,25 @@ export function footballTextMatchesGroup(text: string, country: string | null | 
     return countryMatches && (!terms.length || terms.some((term) => haystack.includes(normalizeFixtureText(term))));
   }
   return terms.length ? terms.some((term) => haystack.includes(normalizeFixtureText(term))) : true;
+}
+
+export function footballScopeMatches(
+  text: string,
+  country: string | null | undefined,
+  startAt: string | null | undefined,
+  dateScope: string,
+  locationScope: string
+) {
+  return footballDateGroupMatches(startAt || null, dateScope)
+    && footballTextMatchesGroup(text, country, locationScope, startAt || null);
+}
+
+export function footballScopeBreadcrumb(dateScope: string, locationScope: string) {
+  const dateLabel = FOOTBALL_DATE_SCOPE_FILTERS.find((filter) => filter.value === dateScope)?.label || "All";
+  const locationLabel = locationScope === "all"
+    ? ""
+    : FOOTBALL_LOCATION_SCOPE_FILTERS.find((filter) => filter.value === locationScope)?.label || locationScope;
+  return ["SportsEdge", "Football", dateLabel, locationLabel].filter(Boolean).join(" / ");
 }
 
 export function footballFilterBreadcrumb(bucket: string, group: string) {

@@ -7392,11 +7392,6 @@ button {
   color: rgba(226, 232, 240, 0.86);
 }
 
-.sport-summary-fixtures tbody tr.is-past-event .sport-summary-venue,
-.sport-summary-fixtures tbody tr.is-past-event .sport-summary-fixture-only {
-  filter: grayscale(1);
-}
-
 .sport-summary-fixtures th:nth-child(1),
 .sport-summary-fixtures td:nth-child(1) { width: 86px; }
 
@@ -7413,29 +7408,9 @@ button {
 .sport-summary-fixtures th:nth-child(7),
 .sport-summary-fixtures td:nth-child(7),
 .sport-summary-fixtures th:nth-child(8),
-.sport-summary-fixtures td:nth-child(8) { width: 104px; }
-
-.sport-summary-venue {
-  display: inline-flex;
-  align-items: center;
-  min-height: 20px;
-  border: 1px solid rgba(59, 130, 246, 0.45);
-  border-radius: 999px;
-  color: #93c5fd;
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 950;
-  padding: 0 7px;
-  text-transform: uppercase;
-}
-
-.sport-summary-fixture-only {
-  color: rgba(203, 213, 225, 0.66);
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 950;
-  text-transform: uppercase;
-}
+.sport-summary-fixtures td:nth-child(8),
+.sport-summary-fixtures th:nth-child(9),
+.sport-summary-fixtures td:nth-child(9) { width: 104px; }
 
 .sport-summary-news {
   min-width: 0;

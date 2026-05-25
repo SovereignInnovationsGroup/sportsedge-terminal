@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { eventHasPassed, formatExchangeMoney, localEventTime, normalizeFixtureText } from "../../core/format";
+import { FootballScopeFilter } from "./FootballScopeFilter";
+import { footballScopeMatches } from "./filters";
 import {
   fetchMarketSnapshotRows,
   type BackendExchangeMatch,
@@ -312,6 +314,8 @@ export default function Arbs() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
+  const [dateScope, setDateScope] = useState("all");
+  const [locationScope, setLocationScope] = useState("all");
   const [lastRefresh, setLastRefresh] = useState<string | null>(null);
   const [sourceMarkets, setSourceMarkets] = useState(0);
 
@@ -344,8 +348,9 @@ export default function Arbs() {
 
   const filteredRows = useMemo(() => {
     const terms = normalizeFixtureText(query).split(" ").filter(Boolean);
-    if (!terms.length) return rows;
-    return rows.filter((row) => {
+    const scopedRows = rows.filter((row) => footballScopeMatches(`${row.fixture} ${row.competition}`, null, row.startAt, dateScope, locationScope));
+    if (!terms.length) return scopedRows;
+    return scopedRows.filter((row) => {
       const haystack = normalizeFixtureText([
         row.fixture,
         row.competition,
@@ -355,7 +360,7 @@ export default function Arbs() {
       ].join(" "));
       return terms.every((term) => haystack.includes(term));
     });
-  }, [query, rows]);
+  }, [query, rows, dateScope, locationScope]);
 
   const executableRows = filteredRows.filter((row) => row.status === "EXECUTABLE_ARB");
   const anomalyRows = filteredRows.filter((row) => row.status === "ANOMALY");
@@ -365,20 +370,20 @@ export default function Arbs() {
     <>
       <TerminalTopbar active="arbs" onSearchChange={setQuery} searchPlaceholder="Filter arbs, fixture, market, runner..." />
       <main className="agtest-page arbs-page">
-        <section className="agtest-subbar" aria-label="Betfair arb monitor context">
-          <nav aria-label="Arbitrage sections">
-            <button className="active" type="button">Betfair</button>
-            <button type="button" onClick={() => { window.location.hash = "#liquidity"; }}>Liquidity</button>
-            <button type="button" onClick={() => { window.location.hash = "#oddsapi"; }}>Odds API</button>
-          </nav>
-          <div>
-            <span>{executableRows.length} executable</span>
-            <span>{anomalyRows.length} anomalies</span>
-            <span>{rows.length} watched</span>
-            <span>{sourceMarkets} BF markets</span>
-            <span>{loading ? "scanning" : `fresh ${freshest}`}</span>
-          </div>
-        </section>
+        <FootballScopeFilter
+          dateScope={dateScope}
+          locationScope={locationScope}
+          onDateScopeChange={setDateScope}
+          onLocationScopeChange={setLocationScope}
+          meta={[
+            `${executableRows.length} executable`,
+            `${anomalyRows.length} anomalies`,
+            `${filteredRows.length} / ${rows.length} watched`,
+            `${sourceMarkets} BF markets`,
+            loading ? "scanning" : `fresh ${freshest}`
+          ]}
+          ariaLabel="Football arbitrage filters"
+        />
 
         <section className="arbs-summary">
           <article><span>Executable</span><strong>{executableRows.length}</strong></article>

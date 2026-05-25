@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { eventHasPassed, normalizeFixtureText } from "../../core/format";
+import { FootballScopeFilter } from "./FootballScopeFilter";
+import { footballScopeMatches } from "./filters";
 import {
   decimalOddsLabel,
   groupOddsApiRowsByEvent,
@@ -174,6 +176,8 @@ export default function BiasMatrix() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
+  const [dateScope, setDateScope] = useState("all");
+  const [locationScope, setLocationScope] = useState("all");
   const [changedKeys, setChangedKeys] = useState<Set<string>>(new Set());
   const previousOddsRef = useRef<Map<string, number> | null>(null);
   const clearChangedTimerRef = useRef<number | null>(null);
@@ -234,12 +238,19 @@ export default function BiasMatrix() {
 
   const rows = useMemo(() => {
     const terms = normalizeFixtureText(query).split(" ").filter(Boolean);
-    if (!terms.length) return allRows;
-    return allRows.filter((row) => {
+    const scopedRows = allRows.filter((row) => footballScopeMatches(
+      `${row.fixture} ${row.league}`,
+      null,
+      row.startTime ? new Date(row.startTime * 1000).toISOString() : null,
+      dateScope,
+      locationScope
+    ));
+    if (!terms.length) return scopedRows;
+    return scopedRows.filter((row) => {
       const haystack = normalizeFixtureText([row.fixture, row.league, row.read, row.bias, row.note].join(" "));
       return terms.every((term) => haystack.includes(term));
     });
-  }, [allRows, query]);
+  }, [allRows, query, dateScope, locationScope]);
 
   const aligned = allRows.filter((row) => row.read === "aligned").length;
   const split = allRows.filter((row) => row.read === "split").length;
@@ -250,18 +261,18 @@ export default function BiasMatrix() {
     <>
       <TerminalTopbar active="bias-matrix" onSearchChange={setQuery} searchPlaceholder="Filter alignment rows, fixture, source, bias..." />
       <main className="agtest2-page">
-        <section className="agtest-subbar" aria-label="Bias Matrix odds alignment context">
-          <nav aria-label="Bias Matrix sections">
-            <button className="active" type="button">Odds Alignment</button>
-            <button type="button" onClick={() => { window.location.hash = "#liquidity"; }}>Liquidity</button>
-            <button type="button" onClick={() => { window.location.hash = "#oddsapi"; }}>Diagnostics</button>
-          </nav>
-          <div>
-            <span>{rows.length}{query.trim() ? ` / ${allRows.length}` : ""} fixtures</span>
-            <span>MB / BF / SM / BD / UNI</span>
-            <span>{loading ? "loading" : "odds-only bias"}</span>
-          </div>
-        </section>
+        <FootballScopeFilter
+          dateScope={dateScope}
+          locationScope={locationScope}
+          onDateScopeChange={setDateScope}
+          onLocationScopeChange={setLocationScope}
+          meta={[
+            `${rows.length}${query.trim() || dateScope !== "all" || locationScope !== "all" ? ` / ${allRows.length}` : ""} fixtures`,
+            "MB / BF / SM / BD / UNI",
+            loading ? "loading" : "odds-only bias"
+          ]}
+          ariaLabel="Bias Matrix football filters"
+        />
         <section className="agtest2-summary">
           <article><span>Fixtures</span><strong>{allRows.length}</strong></article>
           <article><span>Aligned</span><strong>{aligned}</strong></article>

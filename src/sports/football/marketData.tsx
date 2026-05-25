@@ -27,6 +27,7 @@ export type BackendExchangeMatch = {
   startAt: string | null;
   observedAt: string | null;
   volume?: number;
+  isDemo?: boolean;
   runners: BackendRunner[];
 };
 
@@ -42,6 +43,7 @@ export type BackendPriceRow = {
   arbs?: Array<{ edgePct?: number; backExchange?: string; layExchange?: string; label?: string }>;
   marketCount?: number;
   aggregateLiquidityByExchange?: Record<string, number>;
+  isDemo?: boolean;
 };
 
 export type FootballFixture = {
@@ -83,25 +85,33 @@ export type AgTestRow = {
   outcomes: string[];
   betfair: string[];
   matchbook: string[];
+  smarkets: string[];
+  betdaq: string[];
   sx: string[];
   bias: string;
   liquidity: string;
   bfLiquidity: string;
   mbLiquidity: string;
+  smLiquidity: string;
+  bdLiquidity: string;
   sxLiquidity: string;
   fresh: string;
+  isDemo?: boolean;
 };
 
 export const BETTING_EXCHANGE_COLUMNS = [
   { key: "bf", label: "BF", name: "Betfair", backendKey: "betfair", currency: "GBP" },
   { key: "mb", label: "MB", name: "Matchbook", backendKey: "matchbook", currency: "GBP" },
+  { key: "sm", label: "SM", name: "Smarkets", backendKey: "smarkets", currency: "GBP" },
+  { key: "bd", label: "BD", name: "Betdaq", backendKey: "betdaq", currency: "GBP" },
   { key: "sx", label: "SX", name: "SX", backendKey: "sx", currency: "USD" }
 ] as const;
 
 type BettingExchangeColumn = typeof BETTING_EXCHANGE_COLUMNS[number];
 
-const FOOTBALL_LIQUIDITY_FAST_URL = "/api/markets/snapshot?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=80";
-const FOOTBALL_LIQUIDITY_FALLBACK_URL = "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=80";
+const FOOTBALL_EXCHANGE_QUERY = "betfair,matchbook,smarkets,betdaq,sx";
+const FOOTBALL_LIQUIDITY_FAST_URL = `/api/markets/snapshot?sport=football&exchanges=${FOOTBALL_EXCHANGE_QUERY}&segment=upcoming4&limit=80`;
+const FOOTBALL_LIQUIDITY_FALLBACK_URL = `/api/exchange-odds?sport=football&exchanges=${FOOTBALL_EXCHANGE_QUERY}&segment=upcoming4&limit=80`;
 const FOOTBALL_LIQUIDITY_STORAGE_KEY = "sportsedge.footballLiquiditySnapshot.v1";
 let footballLiquidityCache: { rows: BackendPriceRow[]; fetchedAt: number } | null = null;
 let footballLiquidityPrefetchPromise: Promise<BackendPriceRow[]> | null = null;
@@ -142,10 +152,26 @@ export function cachedFootballLiquidityRows(maxAgeMs = 2 * 60 * 1000) {
 }
 
 async function fetchBackendPriceRows(url: string) {
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(withDemoMarketFeed(url), { cache: "no-store" });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !Array.isArray(payload.rows)) throw new Error(payload.detail || "liquidity fetch failed");
   return payload.rows as BackendPriceRow[];
+}
+
+function demoMarketFeedEnabled() {
+  if (typeof window === "undefined") return false;
+  const search = new URLSearchParams(window.location.search);
+  const hashQuery = window.location.hash.includes("?")
+    ? new URLSearchParams(window.location.hash.slice(window.location.hash.indexOf("?") + 1))
+    : new URLSearchParams();
+  return ["1", "true", "yes", "demo"].includes(String(search.get("demoOdds") || hashQuery.get("demoOdds") || "").toLowerCase())
+    || window.localStorage.getItem("sportsedge.demoMarketFeed") === "true";
+}
+
+function withDemoMarketFeed(url: string) {
+  if (!demoMarketFeedEnabled() || !url.includes("/api/markets/snapshot")) return url;
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}demo=1`;
 }
 
 export async function fetchMarketSnapshotRows(url: string, fallbackUrl?: string) {
@@ -273,6 +299,8 @@ function normalizeExchangeCode(value: unknown) {
   const normalized = String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   if (["bf", "betfair"].includes(normalized)) return "betfair";
   if (["mb", "matchbook"].includes(normalized)) return "matchbook";
+  if (["sm", "smarkets"].includes(normalized)) return "smarkets";
+  if (["bd", "betdaq"].includes(normalized)) return "betdaq";
   if (["sx", "sxbet", "sxmarkets", "sportx"].includes(normalized)) return "sx";
   return normalized;
 }
@@ -296,7 +324,7 @@ export function isPrimaryTradingMarket(payload: unknown, selectedSport: string) 
 export function mergeLivePriceRows(rows: BackendPriceRow[], channel: string, payload: unknown, selectedSport: string, primaryOnly = true, maxRows = 80) {
   if (primaryOnly && !isPrimaryTradingMarket(payload, selectedSport)) return rows;
   const exchange = normalizeExchangeCode(textFromPayload(payload, ["exchange", "exchange_code", "exchangeCode", "venue", "source", "source_name"]) || channel.split(".")[0]);
-  if (!["betfair", "matchbook", "sx"].includes(exchange)) return rows;
+  if (!["betfair", "matchbook", "smarkets", "betdaq", "sx"].includes(exchange)) return rows;
   const eventName = textFromPayload(payload, ["event_name", "eventName", "fixture", "fixture_name", "event", "name", "title"]);
   const runnerName = textFromPayload(payload, ["runner_name", "runnerName", "selection", "outcome"]);
   const side = textFromPayload(payload, ["side"]).toLowerCase();
@@ -429,7 +457,7 @@ function formatFresh(row?: BackendPriceRow) {
 
 type OutcomeRow = {
   label: string;
-  runners: Partial<Record<"betfair" | "matchbook" | "sx", BackendRunner>>;
+  runners: Partial<Record<string, BackendRunner>>;
 };
 
 function tradeableOutcomeRows(row?: BackendPriceRow) {
@@ -441,13 +469,13 @@ function tradeableOutcomeRows(row?: BackendPriceRow) {
       const key = normalizeFixtureText(runner.name);
       if (!key) return;
       if (!byName.has(key)) byName.set(key, { label: runner.name, runners: {} });
-      byName.get(key)!.runners[exchange.backendKey as "betfair" | "matchbook" | "sx"] = runner;
+      byName.get(key)!.runners[exchange.backendKey] = runner;
     });
   });
   return [...byName.values()].slice(0, 3);
 }
 
-function formatOutcomeCell(outcome: OutcomeRow, exchange: "betfair" | "matchbook" | "sx") {
+function formatOutcomeCell(outcome: OutcomeRow, exchange: string) {
   const runner = outcome.runners[exchange];
   if (!runner) return "-";
   const back = runner.back ? `B ${runner.back.odds.toFixed(2)} ${formatExchangeMoney(runner.back.amount, "GBP")}` : "B -";
@@ -505,13 +533,18 @@ function agRowFromBackend(row: BackendPriceRow): AgTestRow {
     outcomes: marketCount > 1 ? [`${marketCount} markets`] : outcomes.length ? outcomes.map((outcome) => outcome.label) : ["Exchange market"],
     betfair: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "betfair")) : ["-"],
     matchbook: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "matchbook")) : ["-"],
+    smarkets: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "smarkets")) : ["-"],
+    betdaq: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "betdaq")) : ["-"],
     sx: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "sx")) : ["-"],
     bias: biasFromRow(row),
     liquidity: liquidityValue ? formatExchangeMoney(liquidityValue, "GBP") : "-",
     bfLiquidity: formatBackendExchangeLiquidity(row, "betfair"),
     mbLiquidity: formatBackendExchangeLiquidity(row, "matchbook"),
+    smLiquidity: formatBackendExchangeLiquidity(row, "smarkets"),
+    bdLiquidity: formatBackendExchangeLiquidity(row, "betdaq"),
     sxLiquidity: formatBackendExchangeLiquidity(row, "sx"),
-    fresh: formatFresh(row)
+    fresh: row.isDemo ? "demo" : formatFresh(row),
+    isDemo: Boolean(row.isDemo || Object.values(row.matches || {}).some((match) => match?.isDemo))
   };
 }
 
@@ -532,11 +565,15 @@ export function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendP
       outcomes: ["Provider fixture"],
       betfair: ["-"],
       matchbook: ["-"],
+      smarkets: ["-"],
+      betdaq: ["-"],
       sx: ["-"],
       bias: "No route",
       liquidity: "-",
       bfLiquidity: "-",
       mbLiquidity: "-",
+      smLiquidity: "-",
+      bdLiquidity: "-",
       sxLiquidity: "-",
       fresh: "watch"
     };
@@ -563,11 +600,15 @@ export function filterAgTestRows(rows: AgTestRow[], query: string) {
       row.outcomes.join(" "),
       row.betfair.join(" "),
       row.matchbook.join(" "),
+      row.smarkets.join(" "),
+      row.betdaq.join(" "),
       row.sx.join(" "),
       row.bias,
       row.liquidity,
       row.bfLiquidity,
       row.mbLiquidity,
+      row.smLiquidity,
+      row.bdLiquidity,
       row.sxLiquidity,
       row.fresh
     ].join(" "));

@@ -4,10 +4,11 @@ import { AllCommunityModule, ModuleRegistry, type ColDef } from "ag-grid-communi
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
+import { FootballScopeFilter } from "./FootballScopeFilter";
+import { footballScopeBreadcrumb, footballScopeMatches } from "./filters";
 import {
   AgStackCell,
   BETTING_EXCHANGE_COLUMNS,
-  agTestRowMatchesGroup,
   buildAgTestRows,
   cachedFootballLiquidityRows,
   fetchMarketSnapshotRows,
@@ -26,29 +27,6 @@ import {
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const LIQUIDITY_DATE_FILTERS = [
-  { label: "All", value: "all" },
-  { label: "Today", value: "today" },
-  { label: "Tomorrow", value: "tomorrow" }
-];
-
-const LIQUIDITY_LOCATION_FILTERS = [
-  { label: "All", value: "all" },
-  { label: "UK", value: "uk" },
-  { label: "Europe", value: "european" },
-  { label: "UEFA", value: "uefa" },
-  { label: "International", value: "international" },
-  { label: "World", value: "world" }
-];
-
-function liquidityBreadcrumb(dateScope: string, locationScope: string) {
-  const dateLabel = LIQUIDITY_DATE_FILTERS.find((filter) => filter.value === dateScope)?.label || "All";
-  const locationLabel = locationScope === "all"
-    ? ""
-    : LIQUIDITY_LOCATION_FILTERS.find((filter) => filter.value === locationScope)?.label || locationScope;
-  return ["SportsEdge", "Football", "Liquidity", dateLabel, locationLabel].filter(Boolean).join(" / ");
-}
-
 export default function Liquidity() {
   const cachedLiquidityRows = cachedFootballLiquidityRows();
   const [fixtures, setFixtures] = useState<FootballFixture[]>([]);
@@ -65,8 +43,9 @@ export default function Liquidity() {
   const pendingPriceEventsRef = useRef<Array<{ channel: string; payload: unknown }>>([]);
   const priceFlushTimerRef = useRef<number | null>(null);
   const allRows = useMemo(() => buildAgTestRows(fixtures, backendRows), [fixtures, backendRows]);
+  const hasDemoRows = useMemo(() => allRows.some((row) => row.isDemo), [allRows]);
   const groupedRows = useMemo(() => allRows.filter((row) => (
-    agTestRowMatchesGroup(row, dateScope) && agTestRowMatchesGroup(row, locationScope)
+    footballScopeMatches(`${row.match} ${row.competition}`, row.country, row.startAt, dateScope, locationScope)
   )), [allRows, dateScope, locationScope]);
   const rows = useMemo(() => filterAgTestRows(groupedRows, searchQuery), [groupedRows, searchQuery]);
 
@@ -94,8 +73,8 @@ export default function Liquidity() {
           try {
             const [fullOddsResponse, fixtureResponse] = await Promise.all([
               fetchMarketSnapshotRows(
-                "/api/markets/snapshot?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=220",
-                "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,sx&segment=upcoming4&limit=220"
+                "/api/markets/snapshot?sport=football&exchanges=betfair,matchbook,smarkets,betdaq,sx&segment=upcoming4&limit=220",
+                "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,smarkets,betdaq,sx&segment=upcoming4&limit=220"
               ),
               fetch("/api/football/fixtures?days=4&limit=2000&timezone=Europe/London", { cache: "no-store" })
             ]);
@@ -250,10 +229,14 @@ export default function Liquidity() {
     { field: "outcomes", headerName: "Outcomes", minWidth: 260, flex: 1.05, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.outcomes} /> },
     { field: "betfair", headerName: "Betfair", minWidth: 230, flex: 1, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betfair} className="ag-price-stack" /> },
     { field: "matchbook", headerName: "Matchbook", minWidth: 250, flex: 1.1, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.matchbook} className="ag-price-stack" /> },
+    { field: "smarkets", headerName: "Smarkets", minWidth: 230, flex: 1, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.smarkets} className="ag-price-stack" /> },
+    { field: "betdaq", headerName: "Betdaq", minWidth: 220, flex: 0.95, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betdaq} className="ag-price-stack" /> },
     { field: "sx", headerName: "SX", minWidth: 210, flex: 0.9, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.sx} className="ag-price-stack" /> },
     { field: "bias", headerName: "Bias", width: 150 },
     { field: "bfLiquidity", headerName: "BF £ Now", width: 118 },
     { field: "mbLiquidity", headerName: "MB £ Now", width: 118 },
+    { field: "smLiquidity", headerName: "SM £ Now", width: 118 },
+    { field: "bdLiquidity", headerName: "BD £ Now", width: 118 },
     { field: "sxLiquidity", headerName: "SX £ Now", width: 118 },
     { field: "fresh", headerName: "Fresh", width: 118 }
   ], []);
@@ -266,41 +249,21 @@ export default function Liquidity() {
         searchPlaceholder="Filter table, open team/player, market..."
       />
       <main className="agtest-page">
-        <section className="agtest-subbar" aria-label="Liquidity market context">
-          <div className="agtest-filter-stack">
-            <nav aria-label="Football liquidity filters">
-              {LIQUIDITY_DATE_FILTERS.map((filter) => (
-                <button
-                  className={dateScope === filter.value ? "active" : ""}
-                  key={filter.value}
-                  type="button"
-                  onClick={() => setDateScope(filter.value)}
-                >
-                  {filter.label}
-                </button>
-              ))}
-              <span className="agtest-filter-crumb">/</span>
-              {LIQUIDITY_LOCATION_FILTERS.map((filter) => (
-                <button
-                  className={locationScope === filter.value ? "active" : ""}
-                  key={filter.value}
-                  type="button"
-                  onClick={() => setLocationScope(filter.value)}
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-          <div>
-            <span>{liquidityBreadcrumb(dateScope, locationScope)}</span>
-            <span>{rows.length}{searchQuery.trim() || dateScope !== "all" || locationScope !== "all" ? ` / ${allRows.length}` : ""} markets</span>
-            <span>Available money now</span>
-            <span>{socketStatus === "live" ? "wss live" : loading ? "loading" : socketStatus}</span>
-          </div>
-        </section>
+        <FootballScopeFilter
+          dateScope={dateScope}
+          locationScope={locationScope}
+          onDateScopeChange={setDateScope}
+          onLocationScopeChange={setLocationScope}
+          meta={[
+            `${rows.length}${searchQuery.trim() || dateScope !== "all" || locationScope !== "all" ? ` / ${allRows.length}` : ""} markets`,
+            "Available money now",
+            socketStatus === "live" ? "wss live" : loading ? "loading" : socketStatus
+          ]}
+          ariaLabel="Football liquidity filters"
+        />
         <section className="agtest-source-strip" aria-label="Liquidity source status">
-          <span>Available now: BF / MB / SX</span>
+          <span>Available now: BF / MB / SM / BD / SX</span>
+          {hasDemoRows && <span>Demo odds and liquidity feed</span>}
         </section>
         <section className="agtest-grid-wrap ag-theme-quartz-dark">
           <AgGridReact
@@ -318,13 +281,13 @@ export default function Liquidity() {
           {!initialSnapshotLoaded && rows.length === 0 && (
             <div className="agtest-empty-state">
               <strong>Loading liquidity</strong>
-              <span>Fetching BF / MB / SX exchange snapshot</span>
+              <span>Fetching BF / MB / SM / BD / SX exchange snapshot</span>
             </div>
           )}
           {initialSnapshotLoaded && !loading && rows.length === 0 && (
             <div className="agtest-empty-state">
               <strong>No liquidity rows for this filter</strong>
-              <span>{liquidityBreadcrumb(dateScope, locationScope)}</span>
+              <span>{footballScopeBreadcrumb(dateScope, locationScope)}</span>
             </div>
           )}
         </section>

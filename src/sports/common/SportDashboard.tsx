@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { eventHasPassed, localDateKey, localEventTime } from "../../core/format";
-import { footballTextMatchesGroup } from "../football/filters";
+import { FootballScopeFilter } from "../football/FootballScopeFilter";
+import { footballScopeMatches } from "../football/filters";
 import { fetchMarketSnapshotRows } from "../football/marketData";
 
 type BackendRunnerLevel = { odds: number; amount: number; level?: number };
@@ -66,21 +67,10 @@ type FootballFixtureRow = {
 const DASHBOARD_EXCHANGES = [
   { key: "betfair", label: "Betfair" },
   { key: "matchbook", label: "Matchbook" },
+  { key: "smarkets", label: "Smarkets" },
+  { key: "betdaq", label: "Betdaq" },
   { key: "sx", label: "SX" }
 ] as const;
-const FOOTBALL_DASHBOARD_FILTERS = [
-  { label: "All", value: "all" },
-  { label: "Today", value: "today" },
-  { label: "Tomorrow", value: "tomorrow" },
-  { label: "UK", value: "uk" },
-  { label: "UK Today", value: "uk-today" },
-  { label: "UK Tomorrow", value: "uk-tomorrow" },
-  { label: "Europe", value: "european" },
-  { label: "UEFA", value: "uefa" },
-  { label: "International", value: "international" },
-  { label: "World", value: "world" }
-];
-
 function apiSportValue(value: string) {
   if (value === "horseracing" || value === "horse-racing") return "horseracing";
   return value;
@@ -133,12 +123,6 @@ function backendMatchLiquidity(row: BackendPriceRow, exchangeKey: string) {
 
 function rowMatchedValue(row: BackendPriceRow) {
   return DASHBOARD_EXCHANGES.reduce((sum, exchange) => sum + backendMatchLiquidity(row, exchange.key), 0);
-}
-
-function liquiditySources(event: SportEventRow) {
-  return DASHBOARD_EXCHANGES
-    .filter((exchange) => Number(event.liquidityByExchange[exchange.key] || 0) > 0)
-    .map((exchange) => exchange.label);
 }
 
 function normalizeEventName(value: string) {
@@ -249,16 +233,6 @@ function footballFixtureToEvent(fixture: FootballFixtureRow): SportEventRow | nu
   };
 }
 
-function footballDashboardGroupMatches(event: SportEventRow, group: string) {
-  if (group === "uk-today") {
-    return footballTextMatchesGroup(`${event.name} ${event.competition || ""}`, event.country, "uk", event.startAt) && isTodayLocal(event.startAt);
-  }
-  if (group === "uk-tomorrow") {
-    return footballTextMatchesGroup(`${event.name} ${event.competition || ""}`, event.country, "uk", event.startAt) && isTomorrowLocal(event.startAt);
-  }
-  return footballTextMatchesGroup(`${event.name} ${event.competition || ""}`, event.country, group, event.startAt);
-}
-
 function newsTime(item: NewsItem) {
   return localEventTime(item.published_at || item.discovered_at || null);
 }
@@ -295,35 +269,30 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
             <th>Competition</th>
             <th>BF £ Now</th>
             <th>MB £ Now</th>
+            <th>SM £ Now</th>
+            <th>BD £ Now</th>
             <th>SX £ Now</th>
             <th>Total £ Now</th>
-            <th>Liquidity Sources</th>
             <th>Latest</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((event) => {
-            const sources = liquiditySources(event);
-            return (
-              <tr className={eventRowClass(event)} key={`${title}-${event.id}-${event.startAt}`}>
-                <td className="mono positive">{localEventTime(event.startAt)}</td>
-                <td><strong>{event.name}</strong></td>
-                <td>{event.competition || "-"}</td>
-                <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.betfair, "GBP")}</td>
-                <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.matchbook, "GBP")}</td>
-                <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.sx, "GBP")}</td>
-                <td className="mono liquidity-money total">{formatExchangeMoney(event.liquidity, "GBP")}</td>
-                <td>
-                  {sources.length > 0
-                    ? <span className="sport-summary-venue">{sources.join(" / ")}</span>
-                    : <span className="sport-summary-fixture-only">No exchange money</span>}
-                </td>
-                <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "-"}</td>
-              </tr>
-            );
-          })}
-          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={9}>No fixtures returned for this day.</td></tr>}
-          {loading && rows.length === 0 && <tr><td className="empty" colSpan={9}>Loading fixtures.</td></tr>}
+          {rows.map((event) => (
+            <tr className={eventRowClass(event)} key={`${title}-${event.id}-${event.startAt}`}>
+              <td className="mono positive">{localEventTime(event.startAt)}</td>
+              <td><strong>{event.name}</strong></td>
+              <td>{event.competition || "-"}</td>
+              <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.betfair, "GBP")}</td>
+              <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.matchbook, "GBP")}</td>
+              <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.smarkets, "GBP")}</td>
+              <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.betdaq, "GBP")}</td>
+              <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.sx, "GBP")}</td>
+              <td className="mono liquidity-money total">{formatExchangeMoney(event.liquidity, "GBP")}</td>
+              <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "-"}</td>
+            </tr>
+          ))}
+          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={10}>No fixtures returned for this day.</td></tr>}
+          {loading && rows.length === 0 && <tr><td className="empty" colSpan={10}>Loading fixtures.</td></tr>}
         </tbody>
       </table>
     </section>
@@ -345,7 +314,8 @@ export function SportDashboard({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const isFootball = normalizedSport === "football";
-  const [marketGroup, setMarketGroup] = useState(isFootball ? "uk" : "all");
+  const [dateScope, setDateScope] = useState("all");
+  const [locationScope, setLocationScope] = useState("all");
 
   useEffect(() => {
     let cancelled = false;
@@ -406,13 +376,13 @@ export function SportDashboard({
 
   const filteredEvents = useMemo(() => {
     if (!isFootball) return events;
-    return events.filter((event) => footballDashboardGroupMatches(event, marketGroup));
-  }, [events, isFootball, marketGroup]);
+    return events.filter((event) => footballScopeMatches(`${event.name} ${event.competition || ""}`, event.country, event.startAt, dateScope, locationScope));
+  }, [events, isFootball, dateScope, locationScope]);
 
   const todayRows = useMemo(() => filteredEvents.filter((event) => isTodayLocal(event.startAt)), [filteredEvents]);
   const tomorrowRows = useMemo(() => filteredEvents.filter((event) => isTomorrowLocal(event.startAt)), [filteredEvents]);
   const todayLiquidity = todayRows.reduce((sum, event) => sum + event.liquidity, 0);
-  const exchangeCount = new Set(filteredEvents.flatMap((event) => liquiditySources(event))).size;
+  const exchangeCount = new Set(filteredEvents.flatMap((event) => event.exchanges)).size;
   const latestTick = filteredEvents
     .map((event) => event.latestSeenAt ? new Date(event.latestSeenAt).getTime() : 0)
     .filter((value) => Number.isFinite(value) && value > 0)
@@ -422,26 +392,14 @@ export function SportDashboard({
     <>
       <TerminalTopbar active={active} searchPlaceholder={`${label}: fixtures, news, liquidity...`} />
       {isFootball && (
-        <section className="agtest-subbar sport-summary-filterbar" aria-label="Football dashboard filters">
-          <div className="agtest-filter-stack">
-            <nav aria-label="Football dashboard filters">
-              {FOOTBALL_DASHBOARD_FILTERS.map((filter) => (
-                <button
-                  className={marketGroup === filter.value ? "active" : ""}
-                  key={filter.value}
-                  type="button"
-                  onClick={() => setMarketGroup(filter.value)}
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-          <div>
-            <span>SportsEdge / Football / {FOOTBALL_DASHBOARD_FILTERS.find((filter) => filter.value === marketGroup)?.label || "All"}</span>
-            <span>{filteredEvents.length}{marketGroup !== "all" ? ` / ${events.length}` : ""} fixtures</span>
-          </div>
-        </section>
+        <FootballScopeFilter
+          dateScope={dateScope}
+          locationScope={locationScope}
+          onDateScopeChange={setDateScope}
+          onLocationScopeChange={setLocationScope}
+          meta={[`${filteredEvents.length} / ${events.length} fixtures`]}
+          ariaLabel="Football dashboard filters"
+        />
       )}
       <main className="sport-summary-page">
         <section className="sport-summary-hero">

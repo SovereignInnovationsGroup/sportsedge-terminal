@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
-import { AGTEST_FOOTBALL_PRIMARY_FILTERS, AGTEST_FOOTBALL_SECONDARY_FILTERS, footballFilterBreadcrumb } from "./filters";
+import { FootballScopeFilter } from "./FootballScopeFilter";
 import { normalizeFixtureText, teamInitials } from "../../core/format";
 import {
   cachedFootballTeamAssets,
@@ -20,8 +20,8 @@ export default function Profiles() {
   const [serverSearchTeams, setServerSearchTeams] = useState<FootballTeamAsset[] | null>(null);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
-  const [filterBucket, setFilterBucket] = useState("all");
-  const [marketGroup, setMarketGroup] = useState("all");
+  const [dateScope, setDateScope] = useState("all");
+  const [locationScope, setLocationScope] = useState("all");
 
   useEffect(() => {
     let cancelled = false;
@@ -73,11 +73,10 @@ export default function Profiles() {
     };
   }, [query]);
 
-  const secondaryFilters = AGTEST_FOOTBALL_SECONDARY_FILTERS[filterBucket] || [];
   const filteredTeams = useMemo(() => {
     const terms = normalizeFixtureText(query).split(" ").filter(Boolean);
     return (serverSearchTeams || teams)
-      .filter((team) => footballTeamAssetMatchesGroup(team, marketGroup))
+      .filter((team) => footballTeamAssetMatchesGroup(team, locationScope))
       .filter((team) => {
         if (!terms.length) return true;
         const haystack = normalizeFixtureText([
@@ -95,51 +94,23 @@ export default function Profiles() {
         if (country !== 0) return country;
         return String(a.fullName || a.shortName).localeCompare(String(b.fullName || b.shortName));
       });
-  }, [teams, serverSearchTeams, marketGroup, query]);
+  }, [teams, serverSearchTeams, locationScope, query]);
 
   return (
     <>
       <TerminalTopbar active="football-profiles" onSearchChange={setQuery} searchPlaceholder="Filter football teams, country, league..." />
       <main className="football-profiles-page">
-        <section className="agtest-subbar" aria-label="Football profile filters">
-          <div className="agtest-filter-stack">
-            <nav aria-label="Football profile filters">
-              {AGTEST_FOOTBALL_PRIMARY_FILTERS.filter((filter) => !["today", "tomorrow"].includes(filter.value)).map((filter) => (
-                <button
-                  className={filterBucket === filter.value ? "active" : ""}
-                  key={filter.value}
-                  type="button"
-                  onClick={() => {
-                    setFilterBucket(filter.value);
-                    setMarketGroup(filter.value);
-                  }}
-                >
-                  {filter.label}
-                </button>
-              ))}
-              {secondaryFilters.length > 0 && (
-                <>
-                  <span className="agtest-filter-crumb">/</span>
-                  {secondaryFilters.map((filter) => (
-                    <button
-                      className={marketGroup === filter.value ? "active" : ""}
-                      key={filter.value}
-                      type="button"
-                      onClick={() => setMarketGroup(filter.value)}
-                    >
-                      {filter.label}
-                    </button>
-                  ))}
-                </>
-              )}
-            </nav>
-          </div>
-          <div>
-            <span>{filteredTeams.length} / {teams.length} teams</span>
-            <span>{footballFilterBreadcrumb(filterBucket, marketGroup)}</span>
-            <span>{loading ? "loading" : hydrating ? "loading full directory" : "double-click opens profile"}</span>
-          </div>
-        </section>
+        <FootballScopeFilter
+          dateScope={dateScope}
+          locationScope={locationScope}
+          onDateScopeChange={setDateScope}
+          onLocationScopeChange={setLocationScope}
+          meta={[
+            `${filteredTeams.length} / ${teams.length} teams`,
+            loading ? "loading" : hydrating ? "loading full directory" : "double-click opens profile"
+          ]}
+          ariaLabel="Football profile filters"
+        />
 
         <section className="football-profiles-header">
           <div>
