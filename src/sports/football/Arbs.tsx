@@ -18,7 +18,7 @@ type ArbRow = {
   market: string;
   startAt: string | null;
   observedAt: string | null;
-  type: "back_book" | "lay_book" | "crossed_runner" | "watch";
+  type: "back_book" | "lay_book" | "crossed_runner" | "cross_venue_book" | "cross_venue_runner" | "watch";
   status: "EXECUTABLE_ARB" | "ANOMALY" | "WATCH";
   edgePct: number;
   roiPct: number;
@@ -39,15 +39,49 @@ type ArbRow = {
   bestLay: string;
   outcomes: string;
   liquidity: number;
+  venuePair: string;
+  sourceCoverage: string;
 };
 
 const ARB_FRESH_MS = 2000;
 const MIN_EXECUTABLE_STAKE = 10;
+const ARB_EXCHANGES = [
+  { key: "betfair", label: "BF", currency: "GBP" },
+  { key: "matchbook", label: "MB", currency: "GBP" },
+  { key: "monaco", label: "BetDEX", currency: "USD" },
+  { key: "betdex", label: "BetDEX", currency: "USD", aliasOf: "monaco" }
+] as const;
+
+const ACTIVE_ARB_EXCHANGES = ARB_EXCHANGES.filter((exchange) => !("aliasOf" in exchange));
 
 function runnerPriceText(runner: BackendRunner) {
   const back = runner.back ? `B ${runner.back.odds.toFixed(2)} ${formatExchangeMoney(runner.back.amount, "GBP")}` : "B -";
   const lay = runner.lay ? `L ${runner.lay.odds.toFixed(2)} ${formatExchangeMoney(runner.lay.amount, "GBP")}` : "L -";
   return `${runner.name}: ${back} / ${lay}`;
+}
+
+function exchangeLabel(key: string) {
+  return ARB_EXCHANGES.find((exchange) => exchange.key === key)?.label || key;
+}
+
+function exchangeCurrency(key: string) {
+  return ARB_EXCHANGES.find((exchange) => exchange.key === key)?.currency || "GBP";
+}
+
+function matchForExchange(row: BackendPriceRow, key: string) {
+  if (key === "monaco") return row.matches?.monaco || row.matches?.betdex;
+  return row.matches?.[key];
+}
+
+function normalizeRunnerKey(name: string) {
+  const normalized = normalizeFixtureText(name);
+  if (normalized === "draw" || normalized.includes(" the draw")) return "draw";
+  return normalized.replace(/\b(fc|cf|afc|sc)\b/g, "").replace(/\s+/g, " ").trim();
+}
+
+function sameCurrency(keys: string[]) {
+  const currencies = new Set(keys.map(exchangeCurrency));
+  return currencies.size <= 1;
 }
 
 function marketBookPct(runners: BackendRunner[], side: "back" | "lay") {
@@ -153,10 +187,149 @@ function executionStatus(execution: { executableStake: number; maxProfit: number
     && execution.maxLoss <= 0;
 }
 
+type CrossVenueQuote = {
+  exchange: string;
+  runner: BackendRunner;
+  match: BackendExchangeMatch;
+};
+
+function buildCrossVenueRows(row: BackendPriceRow) {
+  const matches = ACTIVE_ARB_EXCHANGES
+    .map((exchange) => ({ exchange: exchange.key, match: matchForExchange(row, exchange.key) }))
+    .filter((item): item is { exchange: string; match: BackendExchangeMatch } => Boolean(item.match?.runners?.length));
+  if (matches.length < 2) return [];
+
+  const output: ArbRow[] = [];
+  const runnerMap = new Map<string, CrossVenueQuote[]>();
+  const sourceCoverage = matches.map((item) => exchangeLabel(item.exchange)).join(" / ");
+  const firstMatch = matches[0].match;
+  const startAt = firstMatch.startAt || row.startAt;
+  const observedTimes = matches
+    .map((item) => item.match.observedAt)
+    .filter(Boolean)
+    .map((value) => new Date(String(value).includes("T") ? String(value) : `${String(value).replace(" ", "T")}Z`).getTime())
+    .filter((value) => Number.isFinite(value));
+  const staleMs = observedTimes.length ? Date.now() - Math.max(...observedTimes) : null;
+  const isFresh = staleMs != null && staleMs <= ARB_FRESH_MS;
+
+  matches.forEach(({ exchange, match }) => {
+    (match.runners || []).forEach((runner) => {
+      const key = normalizeRunnerKey(runner.name);
+      if (!key) return;
+      const bucket = runnerMap.get(key) || [];
+      bucket.push({ exchange, runner, match });
+      runnerMap.set(key, bucket);
+    });
+  });
+
+  const bestBacks: Array<{ outcome: string; exchange: string; runner: BackendRunner; odds: number; amount: number }> = [];
+  const bestLays: Array<{ outcome: string; exchange: string; runner: BackendRunner; odds: number; amount: number }> = [];
+
+  runnerMap.forEach((quotes, outcome) => {
+    const backs = quotes
+      .map((quote) => ({ outcome, exchange: quote.exchange, runner: quote.runner, odds: Number(quote.runner.back?.odds || 0), amount: Number(quote.runner.back?.amount || 0) }))
+      .filter((quote) => quote.odds > 1 && quote.amount > 0)
+      .sort((a, b) => b.odds - a.odds);
+    const lays = quotes
+      .map((quote) => ({ outcome, exchange: quote.exchange, runner: quote.runner, odds: Number(quote.runner.lay?.odds || 0), amount: Number(quote.runner.lay?.amount || 0) }))
+      .filter((quote) => quote.odds > 1 && quote.amount > 0)
+      .sort((a, b) => a.odds - b.odds);
+    if (backs[0]) bestBacks.push(backs[0]);
+    if (lays[0]) bestLays.push(lays[0]);
+
+    if (backs[0] && lays[0] && backs[0].exchange !== lays[0].exchange && backs[0].odds > lays[0].odds) {
+      const execution = crossedRunnerExecution({
+        ...backs[0].runner,
+        back: { odds: backs[0].odds, amount: backs[0].amount },
+        lay: { odds: lays[0].odds, amount: lays[0].amount }
+      });
+      const currenciesMatch = sameCurrency([backs[0].exchange, lays[0].exchange]);
+      const executable = currenciesMatch && isFresh && execution.executableStake >= MIN_EXECUTABLE_STAKE && execution.maxProfit > 0;
+      output.push({
+        id: `${row.id}:${outcome}:${backs[0].exchange}-${lays[0].exchange}:cross`,
+        fixture: firstMatch.name || row.name,
+        competition: firstMatch.competitionName || row.competitionName || "",
+        market: firstMatch.marketName || row.marketName || "Market",
+        startAt,
+        observedAt: firstMatch.observedAt,
+        type: "cross_venue_runner",
+        status: executable ? "EXECUTABLE_ARB" : "ANOMALY",
+        edgePct: ((backs[0].odds / lays[0].odds) - 1) * 100,
+        roiPct: ((backs[0].odds / lays[0].odds) - 1) * 100,
+        backBookPct: null,
+        layBookPct: null,
+        usableLiquidity: execution.executableStake,
+        validRunners: runnerMap.size,
+        expectedRunners: null,
+        missingRunners: null,
+        marketComplete: true,
+        staleMs,
+        executable,
+        executableStake: execution.executableStake,
+        maxProfit: execution.maxProfit,
+        maxLoss: execution.maxLoss,
+        reason: executable ? "cross venue + fresh + sized" : !currenciesMatch ? "cross-currency/fee check required" : !isFresh ? `stale ${arbFreshnessLabel(staleMs)}` : "below min executable stake",
+        bestBack: `${exchangeLabel(backs[0].exchange)} ${backs[0].odds.toFixed(2)}`,
+        bestLay: `${exchangeLabel(lays[0].exchange)} ${lays[0].odds.toFixed(2)}`,
+        outcomes: `${backs[0].runner.name}: back ${exchangeLabel(backs[0].exchange)} ${backs[0].odds.toFixed(2)} / lay ${exchangeLabel(lays[0].exchange)} ${lays[0].odds.toFixed(2)}`,
+        liquidity: backs[0].amount + lays[0].amount,
+        venuePair: `${exchangeLabel(backs[0].exchange)} -> ${exchangeLabel(lays[0].exchange)}`,
+        sourceCoverage
+      });
+    }
+  });
+
+  if (bestBacks.length >= 2) {
+    const bookPct = bestBacks.reduce((sum, quote) => sum + 1 / quote.odds, 0) * 100;
+    if (bookPct < 99.95) {
+      const exchanges = bestBacks.map((quote) => quote.exchange);
+      const currenciesMatch = sameCurrency(exchanges);
+      const minReturn = Math.min(...bestBacks.map((quote) => quote.amount * quote.odds));
+      const executableStake = Number.isFinite(minReturn) && minReturn > 0 ? minReturn * (bookPct / 100) : 0;
+      const maxProfit = Number.isFinite(minReturn) && minReturn > 0 ? minReturn - executableStake : 0;
+      const executable = currenciesMatch && isFresh && executableStake >= MIN_EXECUTABLE_STAKE && maxProfit > 0;
+      output.push({
+        id: `${row.id}:cross-back-book`,
+        fixture: firstMatch.name || row.name,
+        competition: firstMatch.competitionName || row.competitionName || "",
+        market: firstMatch.marketName || row.marketName || "Market",
+        startAt,
+        observedAt: firstMatch.observedAt,
+        type: "cross_venue_book",
+        status: executable ? "EXECUTABLE_ARB" : "ANOMALY",
+        edgePct: 100 - bookPct,
+        roiPct: (100 / bookPct - 1) * 100,
+        backBookPct: bookPct,
+        layBookPct: null,
+        usableLiquidity: executableStake,
+        validRunners: bestBacks.length,
+        expectedRunners: null,
+        missingRunners: null,
+        marketComplete: true,
+        staleMs,
+        executable,
+        executableStake,
+        maxProfit,
+        maxLoss: 0,
+        reason: executable ? "best back book across venues" : !currenciesMatch ? "cross-currency/fee check required" : !isFresh ? `stale ${arbFreshnessLabel(staleMs)}` : "below min executable stake",
+        bestBack: `${bookPct.toFixed(2)}%`,
+        bestLay: "-",
+        outcomes: bestBacks.map((quote) => `${quote.runner.name}: ${exchangeLabel(quote.exchange)} ${quote.odds.toFixed(2)}`).join(" | "),
+        liquidity: bestBacks.reduce((sum, quote) => sum + quote.amount, 0),
+        venuePair: Array.from(new Set(bestBacks.map((quote) => exchangeLabel(quote.exchange)))).join(" / "),
+        sourceCoverage
+      });
+    }
+  }
+
+  return output;
+}
+
 function buildArbRows(rows: BackendPriceRow[]) {
   const output: ArbRow[] = [];
 
   for (const row of rows) {
+    output.push(...buildCrossVenueRows(row));
     const match = row.matches?.betfair;
     if (!match || !match.runners?.length) continue;
     const marketName = match.marketName || row.marketName || "Market";
@@ -204,7 +377,9 @@ function buildArbRows(rows: BackendPriceRow[]) {
       bestLay: layBookPct == null ? "-" : `${layBookPct.toFixed(2)}%`,
       outcomes,
       usableLiquidity: 0,
-      liquidity
+      liquidity,
+      venuePair: "BF internal",
+      sourceCoverage: "BF"
     };
 
     if (backBookPct != null && backBookPct < 99.95) {
@@ -302,6 +477,8 @@ function arbTypeLabel(type: ArbRow["type"]) {
   if (type === "back_book") return "Back book";
   if (type === "lay_book") return "Lay book";
   if (type === "crossed_runner") return "Crossed runner";
+  if (type === "cross_venue_book") return "Venue book";
+  if (type === "cross_venue_runner") return "Venue runner";
   return "Watch";
 }
 
@@ -324,7 +501,7 @@ export default function Arbs() {
     try {
       const params = new URLSearchParams({
         sport: "football",
-        exchanges: "betfair",
+        exchanges: "betfair,matchbook,monaco,betdex",
         segment: "upcoming4",
         limit: "300"
       });
@@ -334,7 +511,7 @@ export default function Arbs() {
       setLastRefresh(new Date().toISOString());
       setError("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Betfair arb scan failed");
+      setError(err instanceof Error ? err.message : "Private arb scan failed");
     } finally {
       setLoading(false);
     }
@@ -356,6 +533,8 @@ export default function Arbs() {
         row.competition,
         row.market,
         row.type,
+        row.venuePair,
+        row.sourceCoverage,
         row.outcomes
       ].join(" "));
       return terms.every((term) => haystack.includes(term));
@@ -379,7 +558,8 @@ export default function Arbs() {
             `${executableRows.length} executable`,
             `${anomalyRows.length} anomalies`,
             `${filteredRows.length} / ${rows.length} watched`,
-            `${sourceMarkets} BF markets`,
+            `${sourceMarkets} private markets`,
+            "BF / MB / BetDEX",
             loading ? "scanning" : `fresh ${freshest}`
           ]}
           ariaLabel="Football arbitrage filters"
@@ -400,6 +580,7 @@ export default function Arbs() {
                 <th>Time</th>
                 <th>Fixture</th>
                 <th>Market</th>
+                <th>Venues</th>
                 <th>Signal</th>
                 <th>Status</th>
                 <th>Arb %</th>
@@ -423,6 +604,7 @@ export default function Arbs() {
                   <td className="mono">{row.startAt ? localEventTime(row.startAt, { day: "2-digit", month: "short" }) : "-"}</td>
                   <td><strong>{row.fixture}</strong><span>{row.competition}</span></td>
                   <td>{row.market}</td>
+                  <td><strong>{row.venuePair}</strong><span>{row.sourceCoverage}</span></td>
                   <td><span className={`arb-type ${arbStatusClass(row.status)}`}>{arbTypeLabel(row.type)}</span></td>
                   <td><strong>{row.status}</strong><span>{row.reason}</span></td>
                   <td className={row.status === "EXECUTABLE_ARB" ? "mono positive" : "mono"}>{row.edgePct > 0 ? `+${row.edgePct.toFixed(2)}%` : `${row.edgePct.toFixed(2)}%`}</td>
@@ -441,14 +623,14 @@ export default function Arbs() {
                 </tr>
               ))}
               {!loading && filteredRows.length === 0 && (
-                <tr><td className="empty" colSpan={18}>
+                <tr><td className="empty" colSpan={19}>
                   {sourceMarkets > 0
-                    ? "Betfair markets returned, but none passed the complete-runner, both-sides, fresh-liquidity arb checks."
-                    : "No Betfair football markets matched the current arb scan."}
+                    ? "Private markets returned, but none passed the cross-venue or complete-runner arb checks."
+                    : "No private football markets matched the BF / Matchbook / BetDEX arb scan."}
                 </td></tr>
               )}
               {loading && filteredRows.length === 0 && (
-                <tr><td className="empty" colSpan={18}>Scanning Betfair back and lay books.</td></tr>
+                <tr><td className="empty" colSpan={19}>Scanning BF, Matchbook and BetDEX books.</td></tr>
               )}
             </tbody>
           </table>
