@@ -65,10 +65,10 @@ type FootballFixtureRow = {
 };
 
 const DASHBOARD_EXCHANGES = [
-  { key: "betfair", label: "Betfair" },
-  { key: "matchbook", label: "Matchbook" },
-  { key: "smarkets", label: "Smarkets" },
-  { key: "betdaq", label: "Betdaq" },
+  { key: "betfair", label: "Betfair", short: "BF" },
+  { key: "matchbook", label: "Matchbook", short: "MB" },
+  { key: "smarkets", label: "Smarkets", short: "SM" },
+  { key: "betdaq", label: "Betdaq", short: "BD" },
   { key: "sx", label: "SX" }
 ] as const;
 function apiSportValue(value: string) {
@@ -133,7 +133,7 @@ function ExchangeCoverageCell({ event }: { event: SportEventRow }) {
           className={Number(event.liquidityByExchange[exchange.key] || 0) > 0 ? "available" : ""}
           key={exchange.key}
         >
-          {exchange.label.slice(0, 2)}
+          {"short" in exchange ? exchange.short : exchange.label.slice(0, 2)}
         </span>
       ))}
     </div>
