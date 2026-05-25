@@ -85,6 +85,7 @@ export type AgTestRow = {
   outcomes: string[];
   betfair: string[];
   matchbook: string[];
+  betdex: string[];
   smarkets: string[];
   betdaq: string[];
   sx: string[];
@@ -92,6 +93,7 @@ export type AgTestRow = {
   liquidity: string;
   bfLiquidity: string;
   mbLiquidity: string;
+  bdxLiquidity: string;
   smLiquidity: string;
   bdLiquidity: string;
   sxLiquidity: string;
@@ -102,6 +104,7 @@ export type AgTestRow = {
 export const BETTING_EXCHANGE_COLUMNS = [
   { key: "bf", label: "BF", name: "Betfair", backendKey: "betfair", currency: "GBP" },
   { key: "mb", label: "MB", name: "Matchbook", backendKey: "matchbook", currency: "GBP" },
+  { key: "bx", label: "BX", name: "BetDEX", backendKey: "monaco", currency: "USD" },
   { key: "sm", label: "SM", name: "Smarkets", backendKey: "smarkets", currency: "GBP" },
   { key: "bd", label: "BD", name: "Betdaq", backendKey: "betdaq", currency: "GBP" },
   { key: "sx", label: "SX", name: "SX", backendKey: "sx", currency: "USD" }
@@ -109,7 +112,7 @@ export const BETTING_EXCHANGE_COLUMNS = [
 
 type BettingExchangeColumn = typeof BETTING_EXCHANGE_COLUMNS[number];
 
-const FOOTBALL_EXCHANGE_QUERY = "betfair,matchbook,smarkets,betdaq,sx";
+const FOOTBALL_EXCHANGE_QUERY = "betfair,matchbook,monaco,smarkets,betdaq,sx";
 const FOOTBALL_LIQUIDITY_FAST_URL = `/api/markets/snapshot?sport=football&exchanges=${FOOTBALL_EXCHANGE_QUERY}&segment=upcoming4&limit=80`;
 const FOOTBALL_LIQUIDITY_FALLBACK_URL = `/api/exchange-odds?sport=football&exchanges=${FOOTBALL_EXCHANGE_QUERY}&segment=upcoming4&limit=80`;
 const FOOTBALL_LIQUIDITY_STORAGE_KEY = "sportsedge.footballLiquiditySnapshot.v1";
@@ -167,7 +170,7 @@ function demoMarketFeedEnabled() {
   if (window.localStorage.getItem("sportsedge.demoMarketFeed") === "false") return false;
   if (["1", "true", "yes", "demo"].includes(String(search.get("demoOdds") || hashQuery.get("demoOdds") || "").toLowerCase())) return true;
   if (window.localStorage.getItem("sportsedge.demoMarketFeed") === "true") return true;
-  return window.location.hash.startsWith("#liquidity");
+  return false;
 }
 
 function withDemoMarketFeed(url: string) {
@@ -301,6 +304,7 @@ function normalizeExchangeCode(value: unknown) {
   const normalized = String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   if (["bf", "betfair"].includes(normalized)) return "betfair";
   if (["mb", "matchbook"].includes(normalized)) return "matchbook";
+  if (["bdx", "btdx", "betdex", "monaco", "monacoprotocol"].includes(normalized)) return "monaco";
   if (["sm", "smarkets"].includes(normalized)) return "smarkets";
   if (["bd", "betdaq"].includes(normalized)) return "betdaq";
   if (["sx", "sxbet", "sxmarkets", "sportx"].includes(normalized)) return "sx";
@@ -326,7 +330,7 @@ export function isPrimaryTradingMarket(payload: unknown, selectedSport: string) 
 export function mergeLivePriceRows(rows: BackendPriceRow[], channel: string, payload: unknown, selectedSport: string, primaryOnly = true, maxRows = 80) {
   if (primaryOnly && !isPrimaryTradingMarket(payload, selectedSport)) return rows;
   const exchange = normalizeExchangeCode(textFromPayload(payload, ["exchange", "exchange_code", "exchangeCode", "venue", "source", "source_name"]) || channel.split(".")[0]);
-  if (!["betfair", "matchbook", "smarkets", "betdaq", "sx"].includes(exchange)) return rows;
+  if (!["betfair", "matchbook", "monaco", "smarkets", "betdaq", "sx"].includes(exchange)) return rows;
   const eventName = textFromPayload(payload, ["event_name", "eventName", "fixture", "fixture_name", "event", "name", "title"]);
   const runnerName = textFromPayload(payload, ["runner_name", "runnerName", "selection", "outcome"]);
   const side = textFromPayload(payload, ["side"]).toLowerCase();
@@ -535,6 +539,7 @@ function agRowFromBackend(row: BackendPriceRow): AgTestRow {
     outcomes: marketCount > 1 ? [`${marketCount} markets`] : outcomes.length ? outcomes.map((outcome) => outcome.label) : ["Exchange market"],
     betfair: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "betfair")) : ["-"],
     matchbook: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "matchbook")) : ["-"],
+    betdex: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "monaco")) : ["-"],
     smarkets: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "smarkets")) : ["-"],
     betdaq: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "betdaq")) : ["-"],
     sx: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "sx")) : ["-"],
@@ -542,6 +547,7 @@ function agRowFromBackend(row: BackendPriceRow): AgTestRow {
     liquidity: liquidityValue ? formatExchangeMoney(liquidityValue, "GBP") : "-",
     bfLiquidity: formatBackendExchangeLiquidity(row, "betfair"),
     mbLiquidity: formatBackendExchangeLiquidity(row, "matchbook"),
+    bdxLiquidity: formatBackendExchangeLiquidity(row, "monaco"),
     smLiquidity: formatBackendExchangeLiquidity(row, "smarkets"),
     bdLiquidity: formatBackendExchangeLiquidity(row, "betdaq"),
     sxLiquidity: formatBackendExchangeLiquidity(row, "sx"),
@@ -567,6 +573,7 @@ export function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendP
       outcomes: ["Provider fixture"],
       betfair: ["-"],
       matchbook: ["-"],
+      betdex: ["-"],
       smarkets: ["-"],
       betdaq: ["-"],
       sx: ["-"],
@@ -574,6 +581,7 @@ export function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendP
       liquidity: "-",
       bfLiquidity: "-",
       mbLiquidity: "-",
+      bdxLiquidity: "-",
       smLiquidity: "-",
       bdLiquidity: "-",
       sxLiquidity: "-",
@@ -602,6 +610,7 @@ export function filterAgTestRows(rows: AgTestRow[], query: string) {
       row.outcomes.join(" "),
       row.betfair.join(" "),
       row.matchbook.join(" "),
+      row.betdex.join(" "),
       row.smarkets.join(" "),
       row.betdaq.join(" "),
       row.sx.join(" "),
@@ -609,6 +618,7 @@ export function filterAgTestRows(rows: AgTestRow[], query: string) {
       row.liquidity,
       row.bfLiquidity,
       row.mbLiquidity,
+      row.bdxLiquidity,
       row.smLiquidity,
       row.bdLiquidity,
       row.sxLiquidity,

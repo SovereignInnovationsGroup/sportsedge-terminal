@@ -32,6 +32,7 @@ type BiasMatrixRow = {
 const BIAS_MATRIX_SOURCES = [
   { key: "matchbook", label: "Matchbook", short: "MB", kind: "exchange" },
   { key: "betfair", label: "Betfair", short: "BF", kind: "exchange" },
+  { key: "monaco", label: "BetDEX", short: "BX", kind: "exchange" },
   { key: "smarkets", label: "Smarkets", short: "SM", kind: "exchange" },
   { key: "betdaq", label: "Betdaq", short: "BD", kind: "exchange" },
   { key: "unibet", label: "Unibet", short: "UNI", kind: "anchor" }
@@ -387,7 +388,7 @@ export default function BiasMatrix() {
           onLocationScopeChange={setLocationScope}
           meta={[
             `${rows.length}${query.trim() || dateScope !== "all" || locationScope !== "all" ? ` / ${allRows.length}` : ""} fixtures`,
-            "MB / BF / SM / BD / UNI",
+            "MB / BF / BX / SM / BD / UNI",
             loading ? "loading" : hasDemoRows ? "hybrid demo bias" : fallbackRows.length ? "market snapshot support" : "odds-only bias"
           ]}
           ariaLabel="Bias Matrix football filters"

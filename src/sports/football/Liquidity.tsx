@@ -7,7 +7,6 @@ import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { FootballScopeFilter } from "./FootballScopeFilter";
 import { footballScopeBreadcrumb, footballScopeMatches } from "./filters";
 import {
-  AgStackCell,
   BETTING_EXCHANGE_COLUMNS,
   buildAgTestRows,
   cachedFootballLiquidityRows,
@@ -27,7 +26,19 @@ import {
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const LIQUIDITY_COLUMN_STATE_KEY = "sportsedge.footballLiquidityColumnState.v1";
+const LIQUIDITY_COLUMN_STATE_KEY = "sportsedge.footballLiquidityColumnState.v2";
+const COMPACT_EXCHANGE_COLUMNS = [
+  { field: "betfair", label: "BF", liquidityField: "bfLiquidity" },
+  { field: "matchbook", label: "MB", liquidityField: "mbLiquidity" },
+  { field: "betdex", label: "BX", liquidityField: "bdxLiquidity" },
+  { field: "smarkets", label: "SM", liquidityField: "smLiquidity" },
+  { field: "betdaq", label: "BD", liquidityField: "bdLiquidity" },
+  { field: "sx", label: "SX", liquidityField: "sxLiquidity" }
+] as const satisfies ReadonlyArray<{
+  field: keyof Pick<AgTestRow, "betfair" | "matchbook" | "betdex" | "smarkets" | "betdaq" | "sx">;
+  label: string;
+  liquidityField: keyof Pick<AgTestRow, "bfLiquidity" | "mbLiquidity" | "bdxLiquidity" | "smLiquidity" | "bdLiquidity" | "sxLiquidity">;
+}>;
 
 function readLiquidityColumnState() {
   try {
@@ -45,6 +56,70 @@ function saveLiquidityColumnState(api: { getColumnState?: () => unknown[] }) {
   } catch {
     // Column state is a convenience preference only.
   }
+}
+
+function parseQuoteLine(line: string) {
+  const back = Number(line.match(/\bB\s+([0-9]+(?:\.[0-9]+)?)/)?.[1]);
+  const lay = Number(line.match(/\bL\s+([0-9]+(?:\.[0-9]+)?)/)?.[1]);
+  return {
+    back: Number.isFinite(back) ? back : null,
+    lay: Number.isFinite(lay) ? lay : null
+  };
+}
+
+function compactQuote(data: AgTestRow | undefined, field: typeof COMPACT_EXCHANGE_COLUMNS[number]["field"], liquidityField: typeof COMPACT_EXCHANGE_COLUMNS[number]["liquidityField"]) {
+  const lines = Array.isArray(data?.[field]) ? data[field].filter((line) => line && line !== "-") : [];
+  let bestBack: number | null = null;
+  let bestLay: number | null = null;
+  for (const line of lines) {
+    const quote = parseQuoteLine(line);
+    if (quote.back && (!bestBack || quote.back > bestBack)) bestBack = quote.back;
+    if (quote.lay && (!bestLay || quote.lay < bestLay)) bestLay = quote.lay;
+  }
+  const price = bestBack || bestLay
+    ? `${bestBack ? bestBack.toFixed(2) : "-"} / ${bestLay ? bestLay.toFixed(2) : "-"}`
+    : "-";
+  return {
+    price,
+    liquidity: data?.[liquidityField] || "-"
+  };
+}
+
+function CompactExchangeCell({
+  data,
+  field,
+  liquidityField
+}: {
+  data?: AgTestRow;
+  field: typeof COMPACT_EXCHANGE_COLUMNS[number]["field"];
+  liquidityField: typeof COMPACT_EXCHANGE_COLUMNS[number]["liquidityField"];
+}) {
+  const quote = compactQuote(data, field, liquidityField);
+  return (
+    <div className={quote.price === "-" ? "ag-compact-quote empty" : "ag-compact-quote"}>
+      <strong>{quote.price}</strong>
+      <span>{quote.liquidity}</span>
+    </div>
+  );
+}
+
+function BestRouteCell({ data }: { data?: AgTestRow }) {
+  let best: { label: string; price: number } | null = null;
+  for (const exchange of COMPACT_EXCHANGE_COLUMNS) {
+    const lines = Array.isArray(data?.[exchange.field]) ? data[exchange.field] : [];
+    for (const line of lines) {
+      const quote = parseQuoteLine(line);
+      if (quote.back && (!best || quote.back > best.price)) {
+        best = { label: exchange.label, price: quote.back };
+      }
+    }
+  }
+  return (
+    <div className={best ? "ag-best-route" : "ag-best-route empty"}>
+      <strong>{best ? best.label : "-"}</strong>
+      <span>{best ? best.price.toFixed(2) : "no quote"}</span>
+    </div>
+  );
 }
 
 export default function Liquidity() {
@@ -94,8 +169,8 @@ export default function Liquidity() {
           try {
             const [fullOddsResponse, fixtureResponse] = await Promise.all([
               fetchMarketSnapshotRows(
-                "/api/markets/snapshot?sport=football&exchanges=betfair,matchbook,smarkets,betdaq,sx&segment=upcoming4&limit=220",
-                "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,smarkets,betdaq,sx&segment=upcoming4&limit=220"
+                "/api/markets/snapshot?sport=football&exchanges=betfair,matchbook,monaco,smarkets,betdaq,sx&segment=upcoming4&limit=220",
+                "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,monaco,smarkets,betdaq,sx&segment=upcoming4&limit=220"
               ),
               fetch("/api/football/fixtures?days=4&limit=2000&timezone=Europe/London", { cache: "no-store" })
             ]);
@@ -221,11 +296,11 @@ export default function Liquidity() {
   }, []);
 
   const columnDefs = useMemo<ColDef<AgTestRow>[]>(() => [
-    { field: "kickoff", headerName: "Time", width: 132, minWidth: 124, pinned: "left" },
+    { field: "kickoff", headerName: "Time", width: 112, minWidth: 106, pinned: "left" },
     {
       field: "match",
       headerName: "Fixture",
-      minWidth: 250,
+      minWidth: 280,
       flex: 1,
       pinned: "left",
       cellRenderer: ({ data }: { data?: AgTestRow }) => (
@@ -237,8 +312,8 @@ export default function Liquidity() {
     },
     {
       field: "coverage",
-      headerName: "Coverage",
-      width: 188,
+      headerName: "Cvg",
+      width: 118,
       cellRenderer: ({ data }: { data?: AgTestRow }) => (
         <div className="exchange-coverage ag-coverage">
           {(data?.coverage || []).map((exchange) => (
@@ -247,26 +322,33 @@ export default function Liquidity() {
         </div>
       )
     },
-    { field: "outcomes", headerName: "Outcomes", minWidth: 150, flex: 0.55, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.outcomes} /> },
-    { field: "betfair", headerName: "BF", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betfair} className="ag-price-stack" /> },
-    { field: "matchbook", headerName: "MB", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.matchbook} className="ag-price-stack" /> },
-    { field: "smarkets", headerName: "SM", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.smarkets} className="ag-price-stack" /> },
-    { field: "betdaq", headerName: "BD", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betdaq} className="ag-price-stack" /> },
-    { field: "sx", headerName: "SX", minWidth: 122, flex: 0.45, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.sx} className="ag-price-stack" /> },
-    { field: "bias", headerName: "Bias", width: 92 },
-    { field: "bfLiquidity", headerName: "BF £", width: 76 },
-    { field: "mbLiquidity", headerName: "MB £", width: 76 },
-    { field: "smLiquidity", headerName: "SM £", width: 76 },
-    { field: "bdLiquidity", headerName: "BD £", width: 76 },
-    { field: "sxLiquidity", headerName: "SX £", width: 76 },
-    { field: "fresh", headerName: "Fresh", width: 76 }
+    {
+      colId: "best",
+      headerName: "Best",
+      width: 70,
+      sortable: false,
+      cellRenderer: ({ data }: { data?: AgTestRow }) => <BestRouteCell data={data} />
+    },
+    ...COMPACT_EXCHANGE_COLUMNS.map((exchange) => ({
+      field: exchange.field,
+      headerName: exchange.label,
+      width: 86,
+      minWidth: 82,
+      maxWidth: 98,
+      cellClass: "ag-compact-quote-cell",
+      cellRenderer: ({ data }: { data?: AgTestRow }) => (
+        <CompactExchangeCell data={data} field={exchange.field} liquidityField={exchange.liquidityField} />
+      )
+    })),
+    { field: "liquidity", headerName: "Total", width: 88 },
+    { field: "fresh", headerName: "Fresh", width: 72 }
   ], []);
 
   function showCellDetails(event: { event?: Event; colDef?: ColDef<AgTestRow>; data?: AgTestRow }) {
     const pointerEvent = event.event as MouseEvent | undefined;
     const field = event.colDef?.field as keyof AgTestRow | undefined;
     if (!pointerEvent || !field || !event.data) return;
-    if (!["outcomes", "betfair", "matchbook", "smarkets", "betdaq", "sx"].includes(String(field))) {
+    if (!["outcomes", "betfair", "matchbook", "betdex", "smarkets", "betdaq", "sx"].includes(String(field))) {
       setHoverDetails(null);
       return;
     }
@@ -280,6 +362,7 @@ export default function Liquidity() {
       outcomes: "Outcomes",
       betfair: "Betfair ladder",
       matchbook: "Matchbook ladder",
+      betdex: "BetDEX ladder",
       smarkets: "Smarkets ladder",
       betdaq: "Betdaq ladder",
       sx: "SX ladder"
@@ -314,8 +397,8 @@ export default function Liquidity() {
           ariaLabel="Football liquidity filters"
         />
         <section className="agtest-source-strip" aria-label="Liquidity source status">
-          <span>Available now: BF / MB / SM / BD / SX</span>
-          {hasDemoRows && <span className="demo">Hybrid demo fills missing fixtures</span>}
+          <span>Available now: BF / MB / BX / SM / BD / SX</span>
+          {hasDemoRows && <span className="demo">Demo rows disabled for production screens</span>}
         </section>
         <section className="agtest-grid-wrap ag-theme-quartz-dark">
           <AgGridReact
@@ -339,7 +422,7 @@ export default function Liquidity() {
             onCellMouseOver={showCellDetails}
             onCellMouseMove={showCellDetails}
             onCellMouseOut={() => setHoverDetails(null)}
-            rowHeight={36}
+            rowHeight={42}
             headerHeight={34}
             animateRows
             suppressCellFocus
@@ -348,7 +431,7 @@ export default function Liquidity() {
           {!initialSnapshotLoaded && rows.length === 0 && (
             <div className="agtest-empty-state">
               <strong>Loading liquidity</strong>
-              <span>Fetching BF / MB / SM / BD / SX exchange snapshot</span>
+              <span>Fetching BF / MB / BX / SM / BD / SX exchange snapshot</span>
             </div>
           )}
           {initialSnapshotLoaded && !loading && rows.length === 0 && (
