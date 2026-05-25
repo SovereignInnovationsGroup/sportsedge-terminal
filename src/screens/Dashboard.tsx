@@ -1,9 +1,29 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TerminalTopbar } from "../app/TerminalTopbar";
 import { terminalNewsHeadline, terminalNewsTag, terminalNewsTimeLabel, uniqueNewsItems, type NewsItem } from "../core/news";
 
+const DASHBOARD_NEWS_WIDTH_KEY = "sportsedge.dashboard.newsRailWidth.v1";
+const DEFAULT_NEWS_WIDTH = 330;
+const MIN_NEWS_WIDTH = 260;
+const MAX_NEWS_WIDTH = 560;
+
+function clampNewsWidth(value: number) {
+  return Math.min(MAX_NEWS_WIDTH, Math.max(MIN_NEWS_WIDTH, Math.round(value)));
+}
+
+function readNewsRailWidth() {
+  try {
+    const stored = Number(window.localStorage.getItem(DASHBOARD_NEWS_WIDTH_KEY) || "");
+    return Number.isFinite(stored) && stored > 0 ? clampNewsWidth(stored) : DEFAULT_NEWS_WIDTH;
+  } catch {
+    return DEFAULT_NEWS_WIDTH;
+  }
+}
+
 export default function Dashboard() {
   const [dashboardNews, setDashboardNews] = useState<NewsItem[]>([]);
+  const [newsRailWidth, setNewsRailWidth] = useState(readNewsRailWidth);
+  const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const sportRows = [
     ["Football", "42", "18", "GBP 8.42m", "12s", "Lineups, injuries", "+3"],
     ["Tennis", "31", "9", "GBP 2.18m", "18s", "Retirement watch", "+1"],
@@ -50,6 +70,48 @@ export default function Dashboard() {
     };
   }, []);
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(DASHBOARD_NEWS_WIDTH_KEY, String(newsRailWidth));
+    } catch {
+      // Layout preference only.
+    }
+  }, [newsRailWidth]);
+
+  useEffect(() => {
+    function handlePointerMove(event: PointerEvent) {
+      const resize = resizeRef.current;
+      if (!resize) return;
+      const nextWidth = clampNewsWidth(resize.startWidth - (event.clientX - resize.startX));
+      setNewsRailWidth(nextWidth);
+    }
+
+    function handlePointerUp() {
+      resizeRef.current = null;
+      document.body.classList.remove("bb-news-resizing");
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+      document.body.classList.remove("bb-news-resizing");
+    };
+  }, []);
+
+  function startNewsResize(event: React.PointerEvent<HTMLButtonElement>) {
+    resizeRef.current = {
+      startX: event.clientX,
+      startWidth: newsRailWidth
+    };
+    document.body.classList.add("bb-news-resizing");
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  }
+
   return (
     <>
       <TerminalTopbar active="today-demo" searchPlaceholder="TODAY, FOOTBALL, TENNIS, LIQUIDITY, NEWS, ALERTS..." />
@@ -67,7 +129,10 @@ export default function Dashboard() {
           </div>
         </section>
 
-        <div className="bb-today-layout">
+        <div
+          className="bb-today-layout"
+          style={{ gridTemplateColumns: `178px minmax(0, 1fr) ${newsRailWidth}px` }}
+        >
           <aside className="bb-news-filters">
             <strong>Market Menu</strong>
             {["All Sports", "High Liquidity", "Starting Soon", "Live Now", "My Watchlist", "Sharp Moves", "News Alerts", "Saved Screens"].map((item, index) => (
@@ -138,7 +203,13 @@ export default function Dashboard() {
             </table>
           </section>
 
-          <aside className="bb-demo-news bb-profile-news-rail">
+          <aside className="bb-demo-news bb-profile-news-rail bb-resizable-news-rail">
+            <button
+              aria-label="Resize news rail"
+              className="bb-news-resize-handle"
+              type="button"
+              onPointerDown={startNewsResize}
+            />
             <div className="bb-demo-news-head"><strong>News</strong><span>ALL SPORTSEDGE NEWS</span></div>
             {dashboardNews.length > 0
               ? dashboardNews.slice(0, 40).map((item) => (

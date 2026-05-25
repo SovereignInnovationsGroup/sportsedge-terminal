@@ -8160,6 +8160,49 @@ button {
   text-transform: uppercase;
 }
 .bb-demo-news { border-left: 1px solid rgba(36, 50, 65, 0.72); }
+
+.bb-resizable-news-rail {
+  position: relative;
+  min-width: 260px;
+  max-width: 560px;
+}
+
+.bb-news-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -5px;
+  z-index: 4;
+  width: 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: col-resize;
+}
+
+.bb-news-resize-handle::after {
+  position: absolute;
+  top: 44px;
+  bottom: 14px;
+  left: 4px;
+  width: 1px;
+  background: rgba(56, 189, 248, 0.2);
+  content: "";
+  opacity: 0;
+  transition: opacity 0.14s ease, background 0.14s ease;
+}
+
+.bb-news-resize-handle:hover::after,
+.bb-news-resizing .bb-news-resize-handle::after {
+  background: rgba(56, 189, 248, 0.62);
+  opacity: 1;
+}
+
+.bb-news-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
 .bb-demo-news-head {
   position: sticky;
   top: 0;
