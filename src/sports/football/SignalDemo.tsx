@@ -268,6 +268,22 @@ function signalSegmentWeight(outcome: LiveSignalOutcome, lead: LiveSignalOutcome
   return clamp(18 + Math.max(0, outcome.bias) * 2.5, 14, 32);
 }
 
+function outcomeRoleLabel(key: OutcomeKey) {
+  if (key === "home") return "HOME";
+  if (key === "away") return "AWAY";
+  return "DRAW";
+}
+
+function literalSignalState(outcomes: LiveSignalOutcome[], lead: LiveSignalOutcome) {
+  const opponent = outcomes
+    .filter((outcome) => outcome.key !== lead.key && outcome.key !== "draw")
+    .sort((a, b) => a.bias - b.bias)[0];
+  const leadFlow = lead.bias >= 1 ? "INFLOW" : lead.bias <= -1 ? "OUTFLOW" : "FLAT";
+  if (!opponent || Math.abs(opponent.bias) < 1.5) return `${outcomeRoleLabel(lead.key)} ${leadFlow}`;
+  const opponentFlow = opponent.bias >= 1 ? "INFLOW" : "OUTFLOW";
+  return `${outcomeRoleLabel(lead.key)} ${leadFlow} / ${outcomeRoleLabel(opponent.key)} ${opponentFlow}`;
+}
+
 function SignalDemoExperience({
   tickerMode = false,
   inlineIndicators = false,
@@ -397,7 +413,7 @@ function SignalDemoExperience({
                             </span>
                           ))}
                         </div>
-                        <small>{market.alert}</small>
+                        <small>{literalSignalState(market.outcomes, market.lead)}</small>
                       </div>
                     ) : inlineIndicators ? (
                       <div className="signal-row-inline">
