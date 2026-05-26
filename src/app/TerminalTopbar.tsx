@@ -36,6 +36,17 @@ type StoredAuthUser = {
   subscription?: { plan_name?: string; level?: string; status?: string };
 };
 
+type GlobalSearchResult = {
+  type: string;
+  sport: string;
+  title: string;
+  subtitle?: string;
+  href: string;
+  provider?: string | null;
+  imageUrl?: string | null;
+  source?: string | null;
+};
+
 function readStoredAuthUser(): StoredAuthUser | null {
   try {
     const raw = window.localStorage.getItem("sportsedge.auth.user");
@@ -85,6 +96,9 @@ export function TerminalTopbar({
   const [sessionUser] = useState(readStoredAuthUser);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [demoOpen, setDemoOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<GlobalSearchResult[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const demoRef = useRef<HTMLDivElement | null>(null);
   const inFootballMode = active ? FOOTBALL_MODE.has(active) : false;
@@ -113,6 +127,40 @@ export function TerminalTopbar({
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, []);
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setSearchResults([]);
+      setSearchOpen(false);
+      setSearchLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setSearchLoading(true);
+      fetch(`/api/search?q=${encodeURIComponent(trimmed)}&limit=14`, { signal: controller.signal, cache: "no-store" })
+        .then((response) => response.ok ? response.json() : Promise.reject(new Error("search failed")))
+        .then((payload) => {
+          const results = Array.isArray(payload.results) ? payload.results : [];
+          setSearchResults(results);
+          setSearchOpen(true);
+        })
+        .catch((error) => {
+          if (error.name !== "AbortError") {
+            setSearchResults([]);
+            setSearchOpen(true);
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setSearchLoading(false);
+        });
+    }, 180);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query]);
 
   useEffect(() => {
     function handleSlash(event: KeyboardEvent) {
@@ -152,9 +200,51 @@ export function TerminalTopbar({
             setQuery(event.target.value);
             onSearchChange?.(event.target.value);
           }}
+          onFocus={() => {
+            if (query.trim().length >= 2) setSearchOpen(true);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && searchResults[0]?.href) {
+              event.preventDefault();
+              window.location.hash = searchResults[0].href;
+              setSearchOpen(false);
+            }
+            if (event.key === "Escape") setSearchOpen(false);
+          }}
           placeholder={searchPlaceholder}
         />
         <kbd>/</kbd>
+        {searchOpen && query.trim().length >= 2 && (
+          <div className="testboard-search-results" role="listbox" onMouseDown={(event) => event.preventDefault()}>
+            <div className="testboard-search-help">
+              <span>Global search</span>
+              <strong>FB: team/player • GF: golf • TN: tennis • NFL: player/team</strong>
+            </div>
+            {searchLoading && <div className="testboard-search-empty">Searching SportsEdge...</div>}
+            {!searchLoading && searchResults.length === 0 && <div className="testboard-search-empty">No matching teams, players, news or sports entities.</div>}
+            {!searchLoading && searchResults.map((result, index) => (
+              <button
+                key={`${result.type}-${result.href}-${index}`}
+                type="button"
+                role="option"
+                className="testboard-search-result"
+                onClick={() => {
+                  window.location.hash = result.href;
+                  setSearchOpen(false);
+                }}
+              >
+                <span className="testboard-search-result-media">
+                  {result.imageUrl ? <img src={result.imageUrl} alt="" /> : result.type.slice(0, 2).toUpperCase()}
+                </span>
+                <span className="testboard-search-result-copy">
+                  <strong>{result.title}</strong>
+                  <em>{result.subtitle || result.sport}</em>
+                </span>
+                <span className="testboard-search-result-type">{result.type}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </label>
       {onTickerToggle && (
         <button
