@@ -362,6 +362,14 @@ function SignalDemoExperience({
                 </div>
                 <em><Activity size={14} /> moving demo data</em>
               </header>
+              {inlineScales && (
+                <div className="signal-bar-key" aria-label="Signal pressure colour key">
+                  <span className="lead">Lead pressure</span>
+                  <span className="neutral">Draw / neutral</span>
+                  <span className="resistance">Resistance</span>
+                  <span className="muted">Muted = not leading</span>
+                </div>
+              )}
               <div className="signal-market-table">
                 {rows.map((market) => (
                   <button
