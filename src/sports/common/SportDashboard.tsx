@@ -319,27 +319,35 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
   );
 }
 
-function DemoHoldingBoard({ label }: { label: string }) {
+function SportStandingByBoard({
+  label,
+  espnScopes,
+  dataStatus
+}: {
+  label: string;
+  espnScopes: string[];
+  dataStatus: string;
+}) {
   const demoRows = [
-    ["Feed", "Standing by", "No live venue rows yet"],
-    ["Snapshot", "Demo", "Holding board only"],
+    ["Provider", "ESPN", espnScopes.length ? espnScopes.join(" / ") : "Scope pending"],
+    ["Exchange Rows", "Standing by", "No live venue rows yet"],
     ["Routing", "Ready", "BF / MB / BX / SM / BD / SX slots"],
-    ["News", "Live", "Rail remains real"]
+    ["News", "Live", "Rail remains real when sport news exists"]
   ];
   const demoTape = [
-    `${label.toUpperCase()} market spine ready`,
-    "Real feed empty for this sport",
-    "Demo state labelled",
+    `${label.toUpperCase()} data spine ready`,
+    "No live exchange rows for this sport",
+    "ESPN metadata additive",
     "No executable prices shown",
     "Waiting for exchange liquidity"
   ];
 
   return (
-    <section className="sport-demo-holding" aria-label={`${label} demo holding screen`}>
+    <section className="sport-demo-holding" aria-label={`${label} data standing by screen`}>
       <div className="sport-demo-holding-head">
         <span>SportsEdge / {label}</span>
-        <strong>Demo holding screen</strong>
-        <p>No live exchange events are currently available for this sport. This placeholder keeps the terminal surface warm while the real feed is empty.</p>
+        <strong>Data standing by</strong>
+        <p>{dataStatus}</p>
       </div>
       <div className="sport-demo-tape" aria-label="Demo holding ticker">
         <div>{demoTape.concat(demoTape).map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</div>
@@ -357,10 +365,10 @@ function DemoHoldingBoard({ label }: { label: string }) {
         <thead><tr>{["Screen", "State", "Liquidity", "Fresh", "Action"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
         <tbody>
           {[
-            [`${label} Dashboard`, "Ready", "-", "watch", "Await live feed"],
+            [`${label} Dashboard`, "Ready", "-", "watch", "Await normalized events"],
             ["Liquidity", "Slots armed", "-", "watch", "Open when exchange rows arrive"],
-            ["Bias Matrix", "Demo capable", "-", "watch", "Odds-only feed can populate later"],
-            ["News", "Live", "Real news rail", "live", "Monitor sport context"]
+            ["Bias Matrix", "Pending", "-", "watch", "Odds-only feed can populate later"],
+            ["News", "Live capable", "Real news rail", "watch", "Monitor sport context"]
           ].map((row) => (
             <tr key={row[0]}>{row.map((cell, index) => <td className={index === 1 || index === 3 ? "mono positive" : ""} key={`${row[0]}-${cell}`}>{cell}</td>)}</tr>
           ))}
@@ -373,11 +381,15 @@ function DemoHoldingBoard({ label }: { label: string }) {
 export function SportDashboard({
   sport,
   label,
-  active
+  active,
+  espnScopes = [],
+  dataStatus = "ESPN metadata enabled; exchange liquidity appears when normalized venue rows are available."
 }: {
   sport: string;
   label: string;
   active: string;
+  espnScopes?: string[];
+  dataStatus?: string;
 }) {
   const normalizedSport = apiSportValue(sport);
   const [events, setEvents] = useState<SportEventRow[]>([]);
@@ -492,7 +504,7 @@ export function SportDashboard({
         <section className="sport-summary-layout">
           <div className="sport-summary-main">
             {showDemoHolding ? (
-              <DemoHoldingBoard label={label} />
+              <SportStandingByBoard label={label} espnScopes={espnScopes} dataStatus={dataStatus} />
             ) : (
               <>
                 <FixtureTable title="Today" rows={todayRows} loading={loading} />

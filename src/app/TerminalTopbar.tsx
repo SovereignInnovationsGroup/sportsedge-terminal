@@ -6,9 +6,15 @@ const sportsEdgeMarketsLogo = "/images/sportsedge-markets-logo.png";
 
 const TOP_NAV = [
   { label: "Football", value: "football", route: "#football" },
-  { label: "Horse Racing", value: "horseracing", route: "#horseracing" },
   { label: "Tennis", value: "tennis", route: "#tennis" },
   { label: "Golf", value: "golf", route: "#golf" },
+  { label: "Basketball", value: "basketball", route: "#basketball" },
+  { label: "Baseball", value: "baseball", route: "#baseball" },
+  { label: "NFL", value: "american-football", route: "#american-football" },
+  { label: "Hockey", value: "hockey", route: "#hockey" },
+  { label: "Motorsport", value: "motorsport", route: "#motorsport" },
+  { label: "Rugby", value: "rugby", route: "#rugby" },
+  { label: "Cricket", value: "cricket", route: "#cricket" },
   { label: "News", value: "news", route: "#news" }
 ] as const;
 

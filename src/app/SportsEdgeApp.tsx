@@ -20,6 +20,13 @@ const FootballDashboard = lazy(() => import("../sports/football/FootballDashboar
 const TennisDashboard = lazy(() => import("../sports/tennis/TennisDashboard"));
 const RacingDashboard = lazy(() => import("../sports/racing/RacingDashboard"));
 const GolfDashboard = lazy(() => import("../sports/golf/GolfDashboard"));
+const BasketballDashboard = lazy(() => import("../sports/basketball/BasketballDashboard"));
+const BaseballDashboard = lazy(() => import("../sports/baseball/BaseballDashboard"));
+const AmericanFootballDashboard = lazy(() => import("../sports/american-football/AmericanFootballDashboard"));
+const HockeyDashboard = lazy(() => import("../sports/hockey/HockeyDashboard"));
+const MotorsportDashboard = lazy(() => import("../sports/motorsport/MotorsportDashboard"));
+const RugbyDashboard = lazy(() => import("../sports/rugby/RugbyDashboard"));
+const CricketDashboard = lazy(() => import("../sports/cricket/CricketDashboard"));
 const FootballLiquidity = lazy(() => import("../sports/football/Liquidity"));
 const FootballLiquidityCompactDemo = lazy(() => import("../sports/football/LiquidityCompactDemo"));
 const FootballSignalDemo = lazy(() => import("../sports/football/SignalDemo"));
@@ -58,6 +65,13 @@ function screenForHash(hash: string) {
   if (hash === "#tennis") return <TennisDashboard />;
   if (hash === "#horseracing" || hash === "#horse-racing") return <RacingDashboard />;
   if (hash === "#golf") return <GolfDashboard />;
+  if (hash === "#basketball") return <BasketballDashboard />;
+  if (hash === "#baseball") return <BaseballDashboard />;
+  if (hash === "#american-football" || hash === "#nfl") return <AmericanFootballDashboard />;
+  if (hash === "#hockey" || hash === "#nhl") return <HockeyDashboard />;
+  if (hash === "#motorsport" || hash === "#f1") return <MotorsportDashboard />;
+  if (hash === "#rugby") return <RugbyDashboard />;
+  if (hash === "#cricket") return <CricketDashboard />;
   if (hash === "#liquidity" || hash === "#agtest") return requireSession(<FootballLiquidity />);
   if (hash === "#liquidity-compact") return requireSession(<FootballLiquidityCompactDemo />);
   if (hash === "#signal-demo") return requireSession(<FootballSignalDemo />);

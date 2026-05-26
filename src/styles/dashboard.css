@@ -4333,7 +4333,7 @@ button {
 }
 
 .global-terminal-topbar {
-  grid-template-columns: auto minmax(300px, 1fr) minmax(220px, 340px) auto auto auto auto auto auto;
+  grid-template-columns: auto minmax(320px, 1fr) minmax(220px, 340px) auto auto auto auto auto auto;
 }
 
 .testboard-brand,
@@ -4365,7 +4365,15 @@ button {
   align-items: center;
   gap: 6px;
   height: 52px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
   padding: 0 10px;
+  scrollbar-width: none;
+}
+
+.testboard-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .testboard-nav.football-mode {
@@ -4382,6 +4390,7 @@ button {
 
 .testboard-nav button,
 .testboard-diag-nav button {
+  flex: 0 0 auto;
   border: 1px solid rgba(36, 50, 65, 0.92);
   border-radius: 7px;
   background: rgba(17, 24, 33, 0.7);
