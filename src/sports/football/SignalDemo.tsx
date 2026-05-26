@@ -25,6 +25,12 @@ type SignalMarket = {
   outcomes: SignalOutcome[];
 };
 
+type LiveSignalOutcome = SignalOutcome & {
+  flow: number;
+  bias: number;
+  confidence: number;
+};
+
 const SIGNAL_MARKETS: SignalMarket[] = [
   {
     id: "ars-che",
@@ -250,6 +256,18 @@ function flowLabel(value: number) {
   return "Outflow";
 }
 
+function signalSegmentClass(outcome: LiveSignalOutcome, lead: LiveSignalOutcome) {
+  if (outcome.key === lead.key) return "lead";
+  if (outcome.key === "draw") return "neutral";
+  return outcome.bias > 0 ? "support" : "resistance";
+}
+
+function signalSegmentWeight(outcome: LiveSignalOutcome, lead: LiveSignalOutcome) {
+  if (outcome.key === lead.key) return clamp(54 + Math.abs(outcome.bias) * 3, 46, 72);
+  if (outcome.key === "draw") return clamp(20 + Math.max(0, outcome.bias) * 2, 16, 30);
+  return clamp(18 + Math.max(0, outcome.bias) * 2.5, 14, 32);
+}
+
 function SignalDemoExperience({
   tickerMode = false,
   inlineIndicators = false,
@@ -362,9 +380,9 @@ function SignalDemoExperience({
                         <div className="signal-row-meter" aria-label="Home, draw and away signal pressure">
                           {market.outcomes.map((outcome) => (
                             <span
-                              className={outcome.direction}
+                              className={signalSegmentClass(outcome, market.lead)}
                               key={outcome.key}
-                              style={{ flexGrow: Math.max(12, outcome.flow) }}
+                              style={{ flexGrow: signalSegmentWeight(outcome, market.lead) }}
                             >
                               {outcome.label}
                             </span>
