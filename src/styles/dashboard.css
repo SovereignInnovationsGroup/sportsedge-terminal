@@ -3549,6 +3549,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
   height: 100%;
   border-radius: inherit;
   color: rgba(226, 232, 240, 0.92);
@@ -3564,6 +3565,23 @@ button {
   text-transform: uppercase;
   white-space: nowrap;
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.42);
+}
+
+.signal-row-scales .signal-row-meter span small,
+.signal-row-scales .signal-row-meter span b {
+  overflow: hidden;
+  color: inherit;
+  font-family: var(--mono);
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.signal-row-scales .signal-row-meter span small {
+  opacity: 0.72;
 }
 
 .signal-row-scales .signal-row-meter .lead {

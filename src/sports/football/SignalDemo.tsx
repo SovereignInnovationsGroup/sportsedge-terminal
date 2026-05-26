@@ -392,7 +392,8 @@ function SignalDemoExperience({
                               key={outcome.key}
                               style={{ flexGrow: signalSegmentWeight(outcome, market.lead) }}
                             >
-                              {outcome.label}
+                              <small>{outcome.key}</small>
+                              <b>{outcome.label}</b>
                             </span>
                           ))}
                         </div>
