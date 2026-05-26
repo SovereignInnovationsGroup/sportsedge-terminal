@@ -9,6 +9,8 @@ import {
   type AdminBlogPost,
   type AdminNewsSource,
   type AdminNewsSourcesResponse,
+  type AdminSportsResponse,
+  type AdminSportRow,
   type AdminSessionRow,
   type AdminUserRow
 } from "../../core/admin";
@@ -27,10 +29,11 @@ function logoutToLogin() {
 }
 
 export default function AdminConsole() {
-  const [panel, setPanel] = useState<"overview" | "users" | "sessions" | "analytics" | "blog" | "newsSources">("overview");
+  const [panel, setPanel] = useState<"overview" | "sports" | "users" | "sessions" | "analytics" | "blog" | "newsSources">("overview");
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [sessions, setSessions] = useState<AdminSessionRow[]>([]);
   const [analytics, setAnalytics] = useState<AdminAnalyticsResponse | null>(null);
+  const [sports, setSports] = useState<AdminSportsResponse | null>(null);
   const [posts, setPosts] = useState<AdminBlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
@@ -48,11 +51,12 @@ export default function AdminConsole() {
   async function loadAdmin() {
     setLoading(true);
     const nextErrors: Record<string, string> = {};
-    const [userResult, sessionResult, analyticsResult, blogResult] = await Promise.allSettled([
+    const [userResult, sessionResult, analyticsResult, blogResult, sportsResult] = await Promise.allSettled([
       fetchAdminJson<{ users: AdminUserRow[] }>("/auth/admin/users"),
       fetchAdminJson<{ sessions: AdminSessionRow[] }>("/auth/admin/sessions"),
       fetchAdminJson<AdminAnalyticsResponse>("/auth/admin/analytics?days=30"),
-      fetchAdminJson<{ posts: AdminBlogPost[] }>("/auth/admin/blog-posts")
+      fetchAdminJson<{ posts: AdminBlogPost[] }>("/auth/admin/blog-posts"),
+      fetchAdminJson<AdminSportsResponse>("/auth/admin/sports")
     ]);
 
     if (userResult.status === "fulfilled") setUsers(userResult.value.users || []);
@@ -63,6 +67,9 @@ export default function AdminConsole() {
     else nextErrors.analytics = analyticsResult.reason instanceof Error ? analyticsResult.reason.message : "Analytics endpoint failed";
     if (blogResult.status === "fulfilled") setPosts(blogResult.value.posts || []);
     else nextErrors.blog = blogResult.reason instanceof Error ? blogResult.reason.message : "Blog endpoint failed";
+
+    if (sportsResult.status === "fulfilled") setSports(sportsResult.value);
+    else nextErrors.sports = sportsResult.reason instanceof Error ? sportsResult.reason.message : "Sports endpoint failed";
 
     setErrors(nextErrors);
     setLoading(false);
@@ -172,6 +179,7 @@ export default function AdminConsole() {
         </a>
         <nav>
           <button className={panel === "overview" ? "active" : ""} type="button" onClick={() => setPanel("overview")}><Activity size={16} /> Overview</button>
+          <button className={panel === "sports" ? "active" : ""} type="button" onClick={() => setPanel("sports")}><Database size={16} /> Sports</button>
           <button className={panel === "users" ? "active" : ""} type="button" onClick={() => setPanel("users")}><ShieldCheck size={16} /> Users</button>
           <button className={panel === "sessions" ? "active" : ""} type="button" onClick={() => setPanel("sessions")}><Lock size={16} /> Sessions</button>
           <button className={panel === "analytics" ? "active" : ""} type="button" onClick={() => setPanel("analytics")}><Target size={16} /> Analytics</button>
@@ -201,6 +209,7 @@ export default function AdminConsole() {
             <span><strong>{activeSessions.length}</strong> active sessions</span>
             <span><strong>{Number(summary.pageviews || 0).toLocaleString("en-GB")}</strong> visits</span>
             <span><strong>{publishedPosts.length}</strong> published</span>
+            <span><strong>{sports?.summary.liveSports ?? "-"}</strong> sports live</span>
           </div>
           <button className="refresh-button" onClick={loadAdmin} type="button" disabled={loading}>
             <RefreshCw size={16} />
@@ -213,6 +222,7 @@ export default function AdminConsole() {
           <article><span>Active Sessions</span><strong>{activeSessions.length}</strong><p>{errors.sessions || "Currently valid access sessions."}</p></article>
           <article><span>Pageviews</span><strong>{Number(summary.pageviews || 0).toLocaleString("en-GB")}</strong><p>{errors.analytics || "Last 30 days SportsEdge traffic."}</p></article>
           <article><span>Blog Posts</span><strong>{posts.length}</strong><p>{errors.blog || "Draft, publish, and edit public posts."}</p></article>
+          <article><span>Sports Data</span><strong>{sports?.summary.sports ?? "-"}</strong><p>{errors.sports || `${Number(sports?.summary.marketRows || 0).toLocaleString("en-GB")} market rows configured.`}</p></article>
         </section>
 
         {panel === "overview" && (
@@ -243,6 +253,8 @@ export default function AdminConsole() {
             </div>
           </section>
         )}
+
+        {panel === "sports" && <AdminSportsPanel data={sports} error={errors.sports} />}
 
         {panel === "users" && (
           <section className="news-panel admin-console-panel">
@@ -385,6 +397,203 @@ export default function AdminConsole() {
         {panel === "newsSources" && <AdminNewsSourcesPanel />}
       </section>
     </main>
+  );
+}
+
+function formatNumber(value: unknown) {
+  const numeric = Number(value || 0);
+  return Number.isFinite(numeric) ? numeric.toLocaleString("en-GB") : "-";
+}
+
+function formatMoney(value: unknown) {
+  const numeric = Number(value || 0);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "-";
+  return `£${Math.round(numeric).toLocaleString("en-GB")}`;
+}
+
+function feedStatusClass(status: string) {
+  if (["live", "configured", "backfilling"].includes(status)) return "source-pill ok";
+  if (["waiting", "holding"].includes(status)) return "source-pill muted";
+  return "source-pill danger";
+}
+
+function latestFeedUpdate(sport: AdminSportRow) {
+  const dates = [
+    sport.market?.latestObservedAt,
+    sport.profile?.latest?.teams,
+    sport.profile?.latest?.players,
+    sport.profile?.latest?.fixtures,
+    sport.news?.lastSuccessAt,
+    sport.globalNews?.lastSuccessAt
+  ].filter(Boolean).map((value) => new Date(String(value)).getTime()).filter(Number.isFinite);
+  if (!dates.length) return null;
+  return new Date(Math.max(...dates)).toISOString();
+}
+
+function exchangeRows(sport: AdminSportRow) {
+  return Object.entries(sport.market?.exchanges || {})
+    .sort(([, left], [, right]) => Number(right.liquidity || 0) - Number(left.liquidity || 0));
+}
+
+function AdminSportsPanel({ data, error }: { data: AdminSportsResponse | null; error?: string }) {
+  const [selectedSportKey, setSelectedSportKey] = useState("football");
+  const selectedSport = data?.sports.find((sport) => sport.key === selectedSportKey) || data?.sports[0] || null;
+  const footballCountries = selectedSport?.key === "football" ? (selectedSport.profile?.countries || []) : [];
+  const fixtureCountries = selectedSport?.key === "football" ? (selectedSport.fixturesByCountry || []) : [];
+
+  useEffect(() => {
+    if (data?.sports.length && !data.sports.some((sport) => sport.key === selectedSportKey)) {
+      setSelectedSportKey(data.sports[0].key);
+    }
+  }, [data, selectedSportKey]);
+
+  return (
+    <section className="news-panel admin-console-panel admin-sports-panel">
+      <div className="news-panel-head">
+        <span><Database size={15} /> Sports Data Control</span>
+        <strong>{data ? `${formatNumber(data.summary.liveSports)} live / ${formatNumber(data.summary.sports)} configured` : "loading"}</strong>
+      </div>
+      {error && <div className="news-state error">{error}</div>}
+      {!data && !error && <div className="news-state">Loading sport feed map.</div>}
+
+      {data && (
+        <>
+          <div className="admin-console-grid compact admin-sports-kpis">
+            <article><span>Market Rows</span><strong>{formatNumber(data.summary.marketRows)}</strong><p>Redis market-state rows by sport.</p></article>
+            <article><span>Football Teams</span><strong>{formatNumber(data.summary.profileTeams)}</strong><p>Teams cached from API-Football.</p></article>
+            <article><span>Football Players</span><strong>{formatNumber(data.summary.profilePlayers)}</strong><p>Player profiles in local DB.</p></article>
+            <article><span>Unchecked Teams</span><strong>{formatNumber(data.summary.uncheckedFootballTeams)}</strong><p>Remaining profile backfill.</p></article>
+          </div>
+
+          <div className="admin-sport-selector" role="tablist" aria-label="Sport data selectors">
+            {data.sports.map((sport) => (
+              <button
+                className={sport.key === selectedSport?.key ? "active" : ""}
+                key={sport.key}
+                type="button"
+                onClick={() => setSelectedSportKey(sport.key)}
+              >
+                <strong>{sport.name}</strong>
+                <span>{sport.status}</span>
+              </button>
+            ))}
+          </div>
+
+          {selectedSport && (
+            <>
+              <div className="admin-sport-overview">
+                <article>
+                  <span>Configured Picture</span>
+                  <strong>{selectedSport.name}</strong>
+                  <p>{selectedSport.notes}</p>
+                </article>
+                <article>
+                  <span>Exchange Ladders</span>
+                  <strong>{selectedSport.exchanges.join(" / ") || "None"}</strong>
+                  <p>{formatNumber(selectedSport.market?.totalMarkets)} market rows, {formatNumber(selectedSport.market?.marketsWithMoney)} with visible money.</p>
+                </article>
+                <article>
+                  <span>Profiles / Fixtures</span>
+                  <strong>{selectedSport.profileProvider}</strong>
+                  <p>{selectedSport.fixtureProvider}</p>
+                </article>
+                <article>
+                  <span>Latest Update</span>
+                  <strong>{formatDate(latestFeedUpdate(selectedSport))}</strong>
+                  <p>Newest profile, fixture, market, or news feed update.</p>
+                </article>
+              </div>
+
+              <div className="news-panel-head admin-analytics-subhead">
+                <span>Consumed Feeds</span>
+                <strong>{selectedSport.feeds.length} configured routes</strong>
+              </div>
+              <table className="admin-source-table admin-console-table admin-sports-table">
+                <thead><tr><th>Feed</th><th>Status</th><th>Source</th><th>Coverage</th><th>Rows</th><th>Latest</th><th>Endpoint</th></tr></thead>
+                <tbody>
+                  {selectedSport.feeds.map((feed) => (
+                    <tr key={`${selectedSport.key}-${feed.kind}-${feed.name}`}>
+                      <td><strong>{feed.name}</strong><span>{feed.kind}</span></td>
+                      <td><span className={feedStatusClass(feed.status)}>{feed.status}</span></td>
+                      <td>{feed.source}</td>
+                      <td>{feed.coverage || "-"}</td>
+                      <td>{formatNumber(feed.rows)}</td>
+                      <td>{formatDate(feed.latestAt)}</td>
+                      <td><span>{feed.endpoint}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="news-panel-head admin-analytics-subhead">
+                <span>Exchange State</span>
+                <strong>{exchangeRows(selectedSport).length} venues</strong>
+              </div>
+              <table className="admin-source-table admin-console-table admin-sports-table">
+                <thead><tr><th>Exchange</th><th>Markets</th><th>With Money</th><th>Visible Money</th><th>Latest Tick</th><th>Latest Event</th></tr></thead>
+                <tbody>
+                  {exchangeRows(selectedSport).map(([exchange, row]) => (
+                    <tr key={`${selectedSport.key}-${exchange}`}>
+                      <td><strong>{exchange.toUpperCase()}</strong></td>
+                      <td>{formatNumber(row.markets)}</td>
+                      <td>{formatNumber(row.marketsWithMoney)}</td>
+                      <td>{formatMoney(row.liquidity)}</td>
+                      <td>{formatDate(row.latestObservedAt)}</td>
+                      <td>{formatDate(row.latestStartAt)}</td>
+                    </tr>
+                  ))}
+                  {!exchangeRows(selectedSport).length && <tr><td colSpan={6}>No exchange market-state rows currently visible for this sport.</td></tr>}
+                </tbody>
+              </table>
+
+              {selectedSport.key === "football" && (
+                <>
+                  <div className="news-panel-head admin-analytics-subhead">
+                    <span>Football Country Profile Cache</span>
+                    <strong>{footballCountries.length} countries</strong>
+                  </div>
+                  <table className="admin-source-table admin-console-table admin-sports-table">
+                    <thead><tr><th>Country</th><th>Teams</th><th>Checked</th><th>Squads</th><th>Players</th><th>Staff</th><th>Last Profile Update</th></tr></thead>
+                    <tbody>
+                      {footballCountries.slice(0, 80).map((country) => (
+                        <tr key={`profiles-${country.country}`}>
+                          <td><strong>{country.country}</strong></td>
+                          <td>{formatNumber(country.teams)}</td>
+                          <td>{formatNumber(country.teams_checked)}</td>
+                          <td>{formatNumber(country.teams_with_squads)}</td>
+                          <td>{formatNumber(country.players)}</td>
+                          <td>{formatNumber(country.staff)}</td>
+                          <td>{formatDate(country.last_update || null)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  <div className="news-panel-head admin-analytics-subhead">
+                    <span>Football Fixture Cache</span>
+                    <strong>{fixtureCountries.length} countries</strong>
+                  </div>
+                  <table className="admin-source-table admin-console-table admin-sports-table">
+                    <thead><tr><th>Country</th><th>Fixtures</th><th>Next 24h</th><th>Next 7d</th><th>Last Fixture Update</th></tr></thead>
+                    <tbody>
+                      {fixtureCountries.slice(0, 80).map((country) => (
+                        <tr key={`fixtures-${country.country}`}>
+                          <td><strong>{country.country}</strong></td>
+                          <td>{formatNumber(country.fixtures)}</td>
+                          <td>{formatNumber(country.next_24h)}</td>
+                          <td>{formatNumber(country.next_7d)}</td>
+                          <td>{formatDate(country.last_update || null)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              )}
+            </>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 

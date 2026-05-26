@@ -106,6 +106,79 @@ export type AdminBlogPost = {
   updated_at?: string | null;
 };
 
+export type AdminSportFeed = {
+  name: string;
+  kind: string;
+  source: string;
+  endpoint: string;
+  status: string;
+  configured: boolean;
+  coverage: string;
+  rows: number;
+  latestAt: string | null;
+};
+
+export type AdminSportCountryRow = {
+  country: string;
+  teams?: number;
+  teams_checked?: number;
+  teams_with_squads?: number;
+  players?: number;
+  staff?: number;
+  fixtures?: number;
+  next_24h?: number;
+  next_7d?: number;
+  last_update?: string | null;
+};
+
+export type AdminSportRow = {
+  key: string;
+  name: string;
+  status: string;
+  profileProvider: string;
+  fixtureProvider: string;
+  exchanges: string[];
+  oddsOnly: string[];
+  notes: string;
+  feeds: AdminSportFeed[];
+  market: {
+    totalMarkets?: number;
+    upcomingMarkets?: number;
+    marketsWithMoney?: number;
+    latestObservedAt?: string | null;
+    latestStartAt?: string | null;
+    exchanges?: Record<string, {
+      markets: number;
+      marketsWithMoney: number;
+      liquidity: number;
+      latestObservedAt: string | null;
+      latestStartAt: string | null;
+    }>;
+  };
+  profile: {
+    available: boolean;
+    totals?: Record<string, number>;
+    latest?: Record<string, string | null>;
+    countries?: AdminSportCountryRow[];
+  };
+  fixturesByCountry?: AdminSportCountryRow[];
+  news?: { sources: number; enabled: number; lastSuccessAt: string | null; eventsFetched: number } | null;
+  globalNews?: { sources: number; enabled: number; lastSuccessAt: string | null; eventsFetched: number } | null;
+};
+
+export type AdminSportsResponse = {
+  generatedAt: string;
+  summary: {
+    sports: number;
+    liveSports: number;
+    marketRows: number;
+    profileTeams: number;
+    profilePlayers: number;
+    uncheckedFootballTeams: number;
+  };
+  sports: AdminSportRow[];
+};
+
 function authHeaders(): Record<string, string> {
   const token = window.localStorage.getItem("sportsedge.auth.token");
   return token ? { Authorization: `Bearer ${token}` } : {};
