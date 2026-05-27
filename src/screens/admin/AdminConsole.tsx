@@ -311,6 +311,7 @@ export default function AdminConsole() {
                 <article key={feed.feed_id}>
                   <span>{feed.feed_name || feed.feed_id}</span>
                   <strong>{formatNumber(feed.segments)}</strong>
+                  <p>{[feed.sport, feed.category].filter(Boolean).join(" / ") || "Uncategorised"}</p>
                   <p>Latest: {formatDate(feed.latest_created_at || null)}</p>
                 </article>
               ))}
@@ -322,7 +323,7 @@ export default function AdminConsole() {
                 {(transcripts?.segments || []).map((segment) => (
                   <tr key={segment.id}>
                     <td>{formatDate(segment.created_at || null)}</td>
-                    <td><strong>{segment.feed_name || segment.feed_id}</strong><span>{segment.feed_id}</span></td>
+                    <td><strong>{segment.feed_name || segment.feed_id}</strong><span>{segment.feed_id}</span><span>{[segment.sport, segment.category].filter(Boolean).join(" / ") || "Uncategorised"}</span></td>
                     <td><strong>{segment.transcript_text}</strong></td>
                     <td><span>{segment.source_type || "-"}</span></td>
                     <td>{Number(segment.timestamp_start || 0).toFixed(1)}s - {Number(segment.timestamp_end || 0).toFixed(1)}s</td>

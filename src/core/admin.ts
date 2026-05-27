@@ -184,6 +184,8 @@ export type AdminTranscriptsResponse = {
   feeds: Array<{
     feed_id: string;
     feed_name?: string | null;
+    sport?: string | null;
+    category?: string | null;
     segments: number;
     latest_created_at?: string | null;
   }>;
@@ -193,6 +195,8 @@ export type AdminTranscriptsResponse = {
     feed_name?: string | null;
     source_url?: string | null;
     source_type?: string | null;
+    sport?: string | null;
+    category?: string | null;
     transcript_text: string;
     timestamp_start?: number | null;
     timestamp_end?: number | null;
