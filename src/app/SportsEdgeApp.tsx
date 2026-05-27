@@ -36,6 +36,7 @@ const FootballSignalTickerV3Demo = lazy(() => import("../sports/football/SignalT
 const FootballBiasMatrix = lazy(() => import("../sports/football/BiasMatrix"));
 const FootballArbs = lazy(() => import("../sports/football/Arbs"));
 const FootballProfiles = lazy(() => import("../sports/football/Profiles"));
+const FootballLeagueTables = lazy(() => import("../sports/football/LeagueTables"));
 const TeamProfile = lazy(() => import("../sports/football/TeamProfile"));
 const PlayerProfile = lazy(() => import("../sports/football/PlayerProfile"));
 
@@ -81,6 +82,7 @@ function screenForHash(hash: string) {
   if (hash === "#signal-ticker-v3") return requireSession(<FootballSignalTickerV3Demo />);
   if (hash === "#bias-matrix" || hash === "#agtest2") return requireSession(<FootballBiasMatrix />);
   if (hash === "#arbs") return requireSession(<FootballArbs />);
+  if (hash === "#football-tables" || hash === "#league-tables") return requireSession(<FootballLeagueTables />);
   if (hash === "#football-profiles" || hash === "#profile-mockup" || hash === "#profiles") return requireSession(<FootballProfiles />);
   if (hash.startsWith("#team/")) return requireSession(<TeamProfile slug={hash.replace("#team/", "") || "chelsea"} />);
   if (hash.startsWith("#player/")) return requireSession(<PlayerProfile id={hash.replace("#player/", "")} />);

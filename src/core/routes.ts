@@ -19,6 +19,7 @@ export const FOOTBALL_ROUTES = {
   dashboard: "#football",
   liquidity: "#liquidity",
   biasMatrix: "#bias-matrix",
+  tables: "#football-tables",
   arbs: "#arbs",
   profiles: "#football-profiles"
 } as const;
