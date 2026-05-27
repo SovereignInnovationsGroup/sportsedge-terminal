@@ -179,6 +179,32 @@ export type AdminSportsResponse = {
   sports: AdminSportRow[];
 };
 
+export type AdminTranscriptsResponse = {
+  generatedAt: string;
+  feeds: Array<{
+    feed_id: string;
+    feed_name?: string | null;
+    segments: number;
+    latest_created_at?: string | null;
+  }>;
+  segments: Array<{
+    id: string;
+    feed_id: string;
+    feed_name?: string | null;
+    source_url?: string | null;
+    source_type?: string | null;
+    transcript_text: string;
+    timestamp_start?: number | null;
+    timestamp_end?: number | null;
+    received_at?: number | null;
+    processing_time?: number | null;
+    detected_language?: string | null;
+    confidence?: number | null;
+    speaker?: string | null;
+    created_at?: string | null;
+  }>;
+};
+
 function authHeaders(): Record<string, string> {
   const token = window.localStorage.getItem("sportsedge.auth.token");
   return token ? { Authorization: `Bearer ${token}` } : {};

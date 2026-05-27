@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { Activity, Database, ExternalLink, Lock, LogOut, Newspaper, PauseCircle, PlayCircle, RefreshCw, Search, ShieldCheck, Target, Trash2 } from "lucide-react";
+import { Activity, Database, ExternalLink, Headphones, Lock, LogOut, Newspaper, PauseCircle, PlayCircle, RefreshCw, Search, ShieldCheck, Target, Trash2 } from "lucide-react";
 import {
   analyticsCellValue,
   asNumber,
@@ -12,6 +12,7 @@ import {
   type AdminSportsResponse,
   type AdminSportRow,
   type AdminSessionRow,
+  type AdminTranscriptsResponse,
   type AdminUserRow
 } from "../../core/admin";
 
@@ -29,11 +30,13 @@ function logoutToLogin() {
 }
 
 export default function AdminConsole() {
-  const [panel, setPanel] = useState<"overview" | "sports" | "users" | "sessions" | "analytics" | "blog" | "newsSources">("overview");
+  const [panel, setPanel] = useState<"overview" | "sports" | "users" | "sessions" | "analytics" | "blog" | "newsSources" | "transcripts">("overview");
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [sessions, setSessions] = useState<AdminSessionRow[]>([]);
   const [analytics, setAnalytics] = useState<AdminAnalyticsResponse | null>(null);
   const [sports, setSports] = useState<AdminSportsResponse | null>(null);
+  const [transcripts, setTranscripts] = useState<AdminTranscriptsResponse | null>(null);
+  const [transcriptQuery, setTranscriptQuery] = useState({ feed_id: "all", q: "" });
   const [posts, setPosts] = useState<AdminBlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
@@ -51,12 +54,13 @@ export default function AdminConsole() {
   async function loadAdmin() {
     setLoading(true);
     const nextErrors: Record<string, string> = {};
-    const [userResult, sessionResult, analyticsResult, blogResult, sportsResult] = await Promise.allSettled([
+    const [userResult, sessionResult, analyticsResult, blogResult, sportsResult, transcriptsResult] = await Promise.allSettled([
       fetchAdminJson<{ users: AdminUserRow[] }>("/auth/admin/users"),
       fetchAdminJson<{ sessions: AdminSessionRow[] }>("/auth/admin/sessions"),
       fetchAdminJson<AdminAnalyticsResponse>("/auth/admin/analytics?days=30"),
       fetchAdminJson<{ posts: AdminBlogPost[] }>("/auth/admin/blog-posts"),
-      fetchAdminJson<AdminSportsResponse>("/auth/admin/sports")
+      fetchAdminJson<AdminSportsResponse>("/auth/admin/sports"),
+      fetchAdminJson<AdminTranscriptsResponse>("/auth/admin/transcripts?limit=100")
     ]);
 
     if (userResult.status === "fulfilled") setUsers(userResult.value.users || []);
@@ -70,6 +74,8 @@ export default function AdminConsole() {
 
     if (sportsResult.status === "fulfilled") setSports(sportsResult.value);
     else nextErrors.sports = sportsResult.reason instanceof Error ? sportsResult.reason.message : "Sports endpoint failed";
+    if (transcriptsResult.status === "fulfilled") setTranscripts(transcriptsResult.value);
+    else nextErrors.transcripts = transcriptsResult.reason instanceof Error ? transcriptsResult.reason.message : "Transcripts endpoint failed";
 
     setErrors(nextErrors);
     setLoading(false);
@@ -78,6 +84,27 @@ export default function AdminConsole() {
   useEffect(() => {
     loadAdmin();
   }, []);
+
+  async function loadTranscripts(event?: FormEvent) {
+    event?.preventDefault();
+    setBusy("transcripts");
+    try {
+      const params = new URLSearchParams({ limit: "100" });
+      if (transcriptQuery.feed_id && transcriptQuery.feed_id !== "all") params.set("feed_id", transcriptQuery.feed_id);
+      if (transcriptQuery.q.trim()) params.set("q", transcriptQuery.q.trim());
+      const payload = await fetchAdminJson<AdminTranscriptsResponse>(`/auth/admin/transcripts?${params.toString()}`);
+      setTranscripts(payload);
+      setErrors((current) => {
+        const next = { ...current };
+        delete next.transcripts;
+        return next;
+      });
+    } catch (error) {
+      setErrors((current) => ({ ...current, transcripts: error instanceof Error ? error.message : "Transcripts endpoint failed" }));
+    } finally {
+      setBusy("");
+    }
+  }
 
   async function revokeSession(session: AdminSessionRow) {
     setBusy(session.id);
@@ -180,6 +207,7 @@ export default function AdminConsole() {
         <nav>
           <button className={panel === "overview" ? "active" : ""} type="button" onClick={() => setPanel("overview")}><Activity size={16} /> Overview</button>
           <button className={panel === "sports" ? "active" : ""} type="button" onClick={() => setPanel("sports")}><Database size={16} /> Sports</button>
+          <button className={panel === "transcripts" ? "active" : ""} type="button" onClick={() => setPanel("transcripts")}><Headphones size={16} /> Audio Transcripts</button>
           <button className={panel === "users" ? "active" : ""} type="button" onClick={() => setPanel("users")}><ShieldCheck size={16} /> Users</button>
           <button className={panel === "sessions" ? "active" : ""} type="button" onClick={() => setPanel("sessions")}><Lock size={16} /> Sessions</button>
           <button className={panel === "analytics" ? "active" : ""} type="button" onClick={() => setPanel("analytics")}><Target size={16} /> Analytics</button>
@@ -190,7 +218,7 @@ export default function AdminConsole() {
         <div className="rail-card">
           <span>Admin</span>
           <strong>Control</strong>
-          <small>users / sessions / analytics / blog</small>
+          <small>users / sessions / analytics / transcripts</small>
           <button className="admin-rail-logout" type="button" onClick={logoutToLogin}>
             <LogOut size={14} />
             Logout
@@ -202,12 +230,13 @@ export default function AdminConsole() {
         <header className="news-topbar">
           <div>
             <h1>Admin Console</h1>
-            <p>User control, live sessions, SportsEdge site analytics, and public blog publishing.</p>
+            <p>User control, live sessions, SportsEdge site analytics, audio transcripts, and public blog publishing.</p>
           </div>
           <div className="news-kpis">
             <span><strong>{users.length}</strong> users</span>
             <span><strong>{activeSessions.length}</strong> active sessions</span>
             <span><strong>{Number(summary.pageviews || 0).toLocaleString("en-GB")}</strong> visits</span>
+            <span><strong>{Number(transcripts?.feeds.reduce((total, feed) => total + Number(feed.segments || 0), 0) || 0).toLocaleString("en-GB")}</strong> transcripts</span>
             <span><strong>{publishedPosts.length}</strong> published</span>
             <span><strong>{sports?.summary.liveSports ?? "-"}</strong> sports live</span>
           </div>
@@ -223,6 +252,7 @@ export default function AdminConsole() {
           <article><span>Pageviews</span><strong>{Number(summary.pageviews || 0).toLocaleString("en-GB")}</strong><p>{errors.analytics || "Last 30 days SportsEdge traffic."}</p></article>
           <article><span>Blog Posts</span><strong>{posts.length}</strong><p>{errors.blog || "Draft, publish, and edit public posts."}</p></article>
           <article><span>Sports Data</span><strong>{sports?.summary.sports ?? "-"}</strong><p>{errors.sports || `${Number(sports?.summary.marketRows || 0).toLocaleString("en-GB")} market rows configured.`}</p></article>
+          <article><span>Audio</span><strong>{Number(transcripts?.feeds.reduce((total, feed) => total + Number(feed.segments || 0), 0) || 0).toLocaleString("en-GB")}</strong><p>{errors.transcripts || `Latest ${transcripts?.feeds[0]?.feed_id || "feed"}: ${formatDate(transcripts?.feeds[0]?.latest_created_at || null)}`}</p></article>
         </section>
 
         {panel === "overview" && (
@@ -255,6 +285,55 @@ export default function AdminConsole() {
         )}
 
         {panel === "sports" && <AdminSportsPanel data={sports} error={errors.sports} />}
+
+        {panel === "transcripts" && (
+          <section className="news-panel admin-console-panel">
+            <div className="news-panel-head">
+              <span><Headphones size={15} /> Audio Transcripts</span>
+              <strong>{transcripts ? `${formatNumber(transcripts.segments.length)} latest segments` : "loading"}</strong>
+            </div>
+            {errors.transcripts && <div className="news-state error">{errors.transcripts}</div>}
+            <form className="admin-blog-form" onSubmit={loadTranscripts}>
+              <select value={transcriptQuery.feed_id} onChange={(event) => setTranscriptQuery((current) => ({ ...current, feed_id: event.target.value }))}>
+                <option value="all">All feeds</option>
+                {(transcripts?.feeds || []).map((feed) => (
+                  <option value={feed.feed_id} key={feed.feed_id}>{feed.feed_name || feed.feed_id}</option>
+                ))}
+              </select>
+              <input value={transcriptQuery.q} onChange={(event) => setTranscriptQuery((current) => ({ ...current, q: event.target.value }))} placeholder="Search transcript text" />
+              <button className="refresh-button" type="submit" disabled={busy === "transcripts"}>
+                <Search size={16} />
+                {busy === "transcripts" ? "Searching" : "Search"}
+              </button>
+            </form>
+            <div className="admin-console-grid compact">
+              {(transcripts?.feeds || []).slice(0, 4).map((feed) => (
+                <article key={feed.feed_id}>
+                  <span>{feed.feed_name || feed.feed_id}</span>
+                  <strong>{formatNumber(feed.segments)}</strong>
+                  <p>Latest: {formatDate(feed.latest_created_at || null)}</p>
+                </article>
+              ))}
+              {!(transcripts?.feeds || []).length && !errors.transcripts && <article><span>Audio</span><strong>-</strong><p>No transcript feeds returned.</p></article>}
+            </div>
+            <table className="admin-source-table admin-console-table admin-analytics-table raw">
+              <thead><tr><th>Time</th><th>Feed</th><th>Transcript</th><th>Source</th><th>Timing</th><th>Model</th></tr></thead>
+              <tbody>
+                {(transcripts?.segments || []).map((segment) => (
+                  <tr key={segment.id}>
+                    <td>{formatDate(segment.created_at || null)}</td>
+                    <td><strong>{segment.feed_name || segment.feed_id}</strong><span>{segment.feed_id}</span></td>
+                    <td><strong>{segment.transcript_text}</strong></td>
+                    <td><span>{segment.source_type || "-"}</span></td>
+                    <td>{Number(segment.timestamp_start || 0).toFixed(1)}s - {Number(segment.timestamp_end || 0).toFixed(1)}s</td>
+                    <td>{segment.detected_language || "-"}{segment.confidence ? ` / ${Math.round(segment.confidence * 100)}%` : ""}</td>
+                  </tr>
+                ))}
+                {!(transcripts?.segments || []).length && !errors.transcripts && <tr><td colSpan={6}>No transcript segments returned.</td></tr>}
+              </tbody>
+            </table>
+          </section>
+        )}
 
         {panel === "users" && (
           <section className="news-panel admin-console-panel">
