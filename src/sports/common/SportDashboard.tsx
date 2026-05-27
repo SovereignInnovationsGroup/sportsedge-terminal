@@ -63,6 +63,35 @@ type FootballFixtureRow = {
   home?: { name?: string | null };
   away?: { name?: string | null };
 };
+type StandingRow = {
+  id: string;
+  provider: string;
+  sport: string;
+  league: string;
+  leagueName: string;
+  season?: number | null;
+  rank?: number | null;
+  team: string;
+  teamAbbreviation?: string | null;
+  record?: string | null;
+  played?: number | null;
+  wins?: number | null;
+  draws?: number | null;
+  losses?: number | null;
+  ties?: number | null;
+  points?: number | null;
+  pointsFor?: number | null;
+  pointsAgainst?: number | null;
+  pointDifferential?: number | null;
+  syncedAt?: string | null;
+};
+type StandingsPayload = {
+  generatedAt?: string;
+  sport?: string;
+  provider?: string;
+  sourceStatus?: string;
+  rows?: StandingRow[];
+};
 
 const DASHBOARD_EXCHANGES = [
   { key: "betfair", label: "Betfair", short: "BF" },
@@ -319,6 +348,96 @@ function FixtureTable({ title, rows, loading }: { title: string; rows: SportEven
   );
 }
 
+function standingsNumber(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(Number(value))) return "-";
+  return Number(value).toLocaleString("en-GB");
+}
+
+function StandingsPanel({
+  label,
+  rows,
+  provider,
+  sourceStatus,
+  loading
+}: {
+  label: string;
+  rows: StandingRow[];
+  provider: string;
+  sourceStatus: string;
+  loading: boolean;
+}) {
+  const groupedRows = useMemo(() => {
+    const groups = new Map<string, StandingRow[]>();
+    rows.forEach((row) => {
+      const key = row.leagueName || row.league || "Standings";
+      const group = groups.get(key) || [];
+      if (group.length < 12) group.push(row);
+      groups.set(key, group);
+    });
+    return Array.from(groups.entries()).slice(0, 4);
+  }, [rows]);
+
+  return (
+    <section className="sport-summary-panel sport-standings-panel">
+      <header>
+        <span>Tables / Standings</span>
+        <strong>{provider ? provider.toUpperCase() : "SOURCE"}</strong>
+      </header>
+      <p className="sport-standings-source">{sourceStatus || `${label} standings source pending.`}</p>
+      {groupedRows.map(([leagueName, leagueRows]) => (
+        <div className="sport-standings-league" key={leagueName}>
+          <div className="sport-standings-league-title">
+            <strong>{leagueName}</strong>
+            <span>{leagueRows[0]?.season || ""}</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Team</th>
+                <th>P</th>
+                <th>W</th>
+                <th>D/T</th>
+                <th>L</th>
+                <th>+/-</th>
+                <th>Pts</th>
+                <th>Record</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leagueRows.map((row, index) => (
+                <tr key={row.id || `${leagueName}-${row.team}-${index}`}>
+                  <td className="mono">{row.rank || index + 1}</td>
+                  <td><strong>{row.team}</strong>{row.teamAbbreviation ? <small>{row.teamAbbreviation}</small> : null}</td>
+                  <td className="mono">{standingsNumber(row.played)}</td>
+                  <td className="mono positive">{standingsNumber(row.wins)}</td>
+                  <td className="mono">{standingsNumber(row.draws ?? row.ties)}</td>
+                  <td className="mono">{standingsNumber(row.losses)}</td>
+                  <td className="mono">{standingsNumber(row.pointDifferential)}</td>
+                  <td className="mono total">{standingsNumber(row.points)}</td>
+                  <td className="mono">{row.record || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+      {!loading && groupedRows.length === 0 && (
+        <div className="sport-standings-empty">
+          <strong>No standings rows returned.</strong>
+          <span>{sourceStatus || "Provider configured, waiting for normalized standings rows."}</span>
+        </div>
+      )}
+      {loading && groupedRows.length === 0 && (
+        <div className="sport-standings-empty">
+          <strong>Loading standings.</strong>
+          <span>Checking provider cache.</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function SportStandingByBoard({
   label,
   espnScopes,
@@ -394,11 +513,15 @@ export function SportDashboard({
   const normalizedSport = apiSportValue(sport);
   const [events, setEvents] = useState<SportEventRow[]>([]);
   const [news, setNews] = useState<NewsItem[]>([]);
+  const [standings, setStandings] = useState<StandingRow[]>([]);
+  const [standingsStatus, setStandingsStatus] = useState("");
+  const [standingsProvider, setStandingsProvider] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const isFootball = normalizedSport === "football";
   const [dateScope, setDateScope] = useState("all");
   const [locationScope, setLocationScope] = useState("all");
+  const espnScopeKey = espnScopes.join(",");
 
   useEffect(() => {
     let cancelled = false;
@@ -419,15 +542,22 @@ export function SportDashboard({
         const fixturesPromise = isFootball
           ? fetch("/api/football/fixtures?days=2&limit=2000&timezone=Europe/London", { cache: "no-store" })
           : Promise.resolve(null);
+        const standingsParams = new URLSearchParams({
+          sport: normalizedSport,
+          scopes: espnScopeKey,
+          limit: "120"
+        });
         const marketSnapshotUrl = `/api/markets/snapshot?${oddsParams.toString()}`;
         const exchangeFallbackUrl = `/api/exchange-odds?${oddsParams.toString()}`;
-        const [oddsRows, newsResponse, fixturesResponse] = await Promise.all([
+        const [oddsRows, newsResponse, fixturesResponse, standingsResponse] = await Promise.all([
           fetchMarketSnapshotRows(marketSnapshotUrl, exchangeFallbackUrl),
           fetch(`/api/news?${newsParams.toString()}`, { cache: "no-store" }),
-          fixturesPromise
+          fixturesPromise,
+          fetch(`/api/sports/standings?${standingsParams.toString()}`, { cache: "no-store" })
         ]);
         const newsPayload = await newsResponse.json().catch(() => ({}));
         const fixturesPayload = fixturesResponse ? await fixturesResponse.json().catch(() => ({})) : {};
+        const standingsPayload = await standingsResponse.json().catch(() => ({})) as StandingsPayload;
         if (!Array.isArray(oddsRows)) throw new Error("fixtures failed");
         if (!cancelled) {
           const exchangeEvents = mergeEvents(oddsRows as BackendPriceRow[], normalizedSport);
@@ -436,12 +566,18 @@ export function SportDashboard({
             : [];
           setEvents(isFootball ? mergeSportEvents([...fixtureEvents, ...exchangeEvents]) : exchangeEvents);
           setNews(Array.isArray(newsPayload.items) ? newsPayload.items as NewsItem[] : []);
+          setStandings(Array.isArray(standingsPayload.rows) ? standingsPayload.rows : []);
+          setStandingsStatus(String(standingsPayload.sourceStatus || ""));
+          setStandingsProvider(String(standingsPayload.provider || ""));
           setError("");
         }
       } catch (err) {
         if (!cancelled) {
           setEvents([]);
           setNews([]);
+          setStandings([]);
+          setStandingsStatus("");
+          setStandingsProvider("");
           setError(err instanceof Error ? err.message : "sport dashboard failed");
         }
       } finally {
@@ -455,7 +591,7 @@ export function SportDashboard({
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [normalizedSport, isFootball]);
+  }, [normalizedSport, isFootball, espnScopeKey]);
 
   const filteredEvents = useMemo(() => {
     if (!isFootball) return events;
@@ -503,6 +639,13 @@ export function SportDashboard({
         {error && <div className="agtest-error">{error}</div>}
         <section className="sport-summary-layout">
           <div className="sport-summary-main">
+            <StandingsPanel
+              label={label}
+              rows={standings}
+              provider={standingsProvider}
+              sourceStatus={standingsStatus}
+              loading={loading}
+            />
             {showDemoHolding ? (
               <SportStandingByBoard label={label} espnScopes={espnScopes} dataStatus={dataStatus} />
             ) : (
