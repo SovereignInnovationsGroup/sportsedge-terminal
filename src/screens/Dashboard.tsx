@@ -1,11 +1,48 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TerminalTopbar } from "../app/TerminalTopbar";
+import { eventHasPassed, localDateKey, localEventTime } from "../core/format";
 import { terminalNewsHeadline, terminalNewsTag, terminalNewsTimeLabel, uniqueNewsItems, type NewsItem } from "../core/news";
 
 const DASHBOARD_NEWS_WIDTH_KEY = "sportsedge.dashboard.newsRailWidth.v1";
 const DEFAULT_NEWS_WIDTH = 330;
 const MIN_NEWS_WIDTH = 260;
 const MAX_NEWS_WIDTH = 560;
+const DASHBOARD_SPORT_ROUTES: Record<string, string> = {
+  football: "#football",
+  tennis: "#tennis",
+  golf: "#golf",
+  basketball: "#basketball",
+  baseball: "#baseball",
+  "american-football": "#american-football",
+  hockey: "#hockey",
+  motorsport: "#motorsport",
+  rugby: "#rugby",
+  cricket: "#cricket"
+};
+
+type DashboardSportEvent = {
+  id: string;
+  provider: string;
+  providerEventId?: string | null;
+  sport: string;
+  sportLabel: string;
+  league?: string | null;
+  competition?: string | null;
+  country?: string | null;
+  name: string;
+  shortName?: string | null;
+  startAt?: string | null;
+  statusShort?: string | null;
+  statusLong?: string | null;
+  statusState?: string | null;
+  statusGroup?: string | null;
+  completed?: boolean;
+  home?: { name?: string | null; score?: string | null } | null;
+  away?: { name?: string | null; score?: string | null } | null;
+  venue?: string | null;
+  syncedAt?: string | null;
+  updatedAt?: string | null;
+};
 
 function clampNewsWidth(value: number) {
   return Math.min(MAX_NEWS_WIDTH, Math.max(MIN_NEWS_WIDTH, Math.round(value)));
@@ -22,24 +59,12 @@ function readNewsRailWidth() {
 
 export default function Dashboard() {
   const [dashboardNews, setDashboardNews] = useState<NewsItem[]>([]);
+  const [events, setEvents] = useState<DashboardSportEvent[]>([]);
+  const [eventsGeneratedAt, setEventsGeneratedAt] = useState("");
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [eventsError, setEventsError] = useState("");
   const [newsRailWidth, setNewsRailWidth] = useState(readNewsRailWidth);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
-  const sportRows = [
-    ["Football", "42", "18", "GBP 8.42m", "12s", "Lineups, injuries", "+3"],
-    ["Tennis", "31", "9", "GBP 2.18m", "18s", "Retirement watch", "+1"],
-    ["Basketball", "14", "6", "GBP 1.74m", "22s", "Team news", "0"],
-    ["Baseball", "16", "7", "GBP 1.29m", "31s", "Pitchers confirmed", "0"],
-    ["Golf", "8", "3", "GBP 840k", "44s", "Round markets", "+2"],
-    ["Racing", "56", "24", "GBP 3.66m", "9s", "Going changes", "+4"]
-  ];
-  const eventRows = [
-    ["19:45", "ARS-TOT", "Football", "Match Odds", "GBP 1.42m", "84", "LINEUP"],
-    ["20:00", "CHE-MCI", "Football", "Match Odds", "GBP 2.31m", "91", "SHARP"],
-    ["18:30", "Sinner v Alcaraz", "Tennis", "Moneyline", "GBP 620k", "78", "LIVE"],
-    ["21:05", "Lakers v Knicks", "Basketball", "Spread", "GBP 510k", "73", "TEAM NEWS"],
-    ["22:10", "Yankees v Red Sox", "Baseball", "Moneyline", "GBP 430k", "69", "PITCHERS"],
-    ["Today", "Ascot R4", "Racing", "Win", "GBP 290k", "64", "GOING"]
-  ];
   const alerts = [
     ["10:42", "FOOTBALL", "Arsenal lineup sensitivity elevated before London derby"],
     ["10:38", "TENNIS", "Liquidity building on Sinner-Alcaraz moneyline"],
@@ -47,6 +72,39 @@ export default function Dashboard() {
     ["10:26", "MEDIA", "Official team-news windows opening for evening fixtures"],
     ["10:19", "SOCIAL", "Basketball beat reporters flag questionable starters"]
   ];
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadDashboardEvents() {
+      setEventsLoading(true);
+      try {
+        const params = new URLSearchParams({
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London",
+          limit: "1200"
+        });
+        const response = await fetch(`/api/sports/events?${params.toString()}`, { cache: "no-store", signal: controller.signal });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !Array.isArray(payload.items)) throw new Error(payload.detail || "events unavailable");
+        setEvents(payload.items as DashboardSportEvent[]);
+        setEventsGeneratedAt(String(payload.generatedAt || ""));
+        setEventsError("");
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setEvents([]);
+          setEventsGeneratedAt("");
+          setEventsError(err instanceof Error ? err.message : "events unavailable");
+        }
+      } finally {
+        if (!controller.signal.aborted) setEventsLoading(false);
+      }
+    }
+    loadDashboardEvents();
+    const timer = window.setInterval(loadDashboardEvents, 60000);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -112,9 +170,98 @@ export default function Dashboard() {
     event.preventDefault();
   }
 
+  const todayKey = localDateKey(new Date());
+  const tomorrowKey = useMemo(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    return localDateKey(date);
+  }, []);
+
+  const todayRows = useMemo(() => events.filter((event) => localDateKey(event.startAt || null) === todayKey), [events, todayKey]);
+  const tomorrowRows = useMemo(() => events.filter((event) => localDateKey(event.startAt || null) === tomorrowKey), [events, tomorrowKey]);
+  const sportRows = useMemo(() => {
+    const grouped = new Map<string, DashboardSportEvent[]>();
+    events.forEach((event) => {
+      const key = event.sport || "sport";
+      grouped.set(key, [...(grouped.get(key) || []), event]);
+    });
+    return Array.from(grouped.entries())
+      .map(([sport, rows]) => {
+        const live = rows.filter((row) => row.statusGroup === "live").length;
+        const today = rows.filter((row) => localDateKey(row.startAt || null) === todayKey).length;
+        const tomorrow = rows.filter((row) => localDateKey(row.startAt || null) === tomorrowKey).length;
+        const latest = rows
+          .map((row) => new Date(row.updatedAt || row.syncedAt || row.startAt || "").getTime())
+          .filter((value) => Number.isFinite(value) && value > 0)
+          .sort((a, b) => b - a)[0];
+        return {
+          sport,
+          label: rows[0]?.sportLabel || sport,
+          today,
+          tomorrow,
+          total: rows.length,
+          live,
+          source: Array.from(new Set(rows.map((row) => row.provider))).join(" / ").toUpperCase(),
+          latest
+        };
+      })
+      .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label));
+  }, [events, todayKey, tomorrowKey]);
+
+  function rowStatus(event: DashboardSportEvent) {
+    if (event.completed || event.statusGroup === "complete") return "Complete";
+    if (event.statusGroup === "live") return "Live";
+    if (eventHasPassed(event.startAt || null)) return "Past";
+    return event.statusShort || event.statusLong || "Upcoming";
+  }
+
+  function eventScore(event: DashboardSportEvent) {
+    const home = event.home?.score;
+    const away = event.away?.score;
+    if (home == null || away == null || home === "" || away === "") return "-";
+    return `${home}-${away}`;
+  }
+
+  function renderEventTable(title: string, rows: DashboardSportEvent[]) {
+    return (
+      <>
+        <div className="bb-demo-strip"><span>{title}</span><strong>{rows.length} captured events</strong><em>{eventsLoading ? "refreshing" : eventsGeneratedAt ? `updated ${localEventTime(eventsGeneratedAt)}` : "real cache"}</em></div>
+        <table className="bb-demo-table bb-today-events-table">
+          <thead><tr>{["Time", "Event", "Sport", "Competition", "Status", "Score", "Source"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+          <tbody>
+            {rows.slice(0, 80).map((event) => (
+              <tr
+                className={event.completed || eventHasPassed(event.startAt || null) ? "bb-event-past" : event.statusGroup === "live" ? "bb-event-live" : ""}
+                key={event.id || `${event.provider}-${event.providerEventId}`}
+                onDoubleClick={() => {
+                  const route = DASHBOARD_SPORT_ROUTES[event.sport];
+                  if (route) window.location.hash = route;
+                }}
+              >
+                <td>{localEventTime(event.startAt || null)}</td>
+                <td title={event.name}>{event.name}</td>
+                <td>{event.sportLabel}</td>
+                <td title={event.competition || ""}>{event.competition || "-"}</td>
+                <td className={event.statusGroup === "live" ? "bb-pos" : "bb-flag"}>{rowStatus(event)}</td>
+                <td className="bb-mono">{eventScore(event)}</td>
+                <td className="bb-mono">{event.provider.toUpperCase()}</td>
+              </tr>
+            ))}
+            {!eventsLoading && rows.length === 0 && (
+              <tr><td colSpan={7}>No captured events returned for {title.toLowerCase()}.</td></tr>
+            )}
+            {eventsLoading && rows.length === 0 && (
+              <tr><td colSpan={7}>Loading captured events.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </>
+    );
+  }
+
   return (
     <>
-      <TerminalTopbar active="today-demo" searchPlaceholder="TODAY, FOOTBALL, TENNIS, LIQUIDITY, NEWS, ALERTS..." />
+      <TerminalTopbar active="today-demo" searchPlaceholder="TODAY, TOMORROW, FOOTBALL, TENNIS, LIQUIDITY, NEWS..." />
       <main className="agtest-page bb-today-page">
         <section className="agtest-subbar bb-demo-subbar" aria-label="Today dashboard controls">
           <nav aria-label="Today views">
@@ -149,22 +296,22 @@ export default function Dashboard() {
             <div className="bb-today-hero">
               <div>
                 <span>SportsEdge Today</span>
-                <h1>What is on, what is liquid, what needs attention</h1>
+                <h1>Captured events across every sport today and tomorrow</h1>
               </div>
               <div className="bb-today-clock">
                 <span>As of</span>
-                <strong>10:45</strong>
-                <em>prices 9-44s fresh</em>
+                <strong>{eventsGeneratedAt ? localEventTime(eventsGeneratedAt) : localEventTime(new Date())}</strong>
+                <em>{eventsLoading ? "refreshing events" : eventsError ? "events warning" : "local event time"}</em>
               </div>
             </div>
 
             <div className="bb-profile-kpis bb-today-kpis">
               {[
-                ["Sports Active", "6", "today"],
-                ["Events Tracked", "167", "live + upcoming"],
-                ["Linked Liquidity", "GBP 18.1m", "demo"],
-                ["High Impact Alerts", "10", "+4 last hour"],
-                ["Feed Health", "Live", "WSS + API"]
+                ["Sports Captured", String(sportRows.length), "today/tomorrow"],
+                ["Today Events", String(todayRows.length), todayKey],
+                ["Tomorrow Events", String(tomorrowRows.length), tomorrowKey],
+                ["Live Now", String(events.filter((event) => event.statusGroup === "live").length), "captured"],
+                ["Feed Health", eventsError ? "Warn" : "Live", eventsError || "Postgres + API"]
               ].map(([label, value, delta]) => (
                 <div key={label}>
                   <span>{label}</span>
@@ -174,33 +321,36 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <div className="bb-demo-strip"><span>Sports On Today</span><strong>Liquidity and attention by sport</strong><em>Rows open sport dashboards.</em></div>
+            {eventsError && <div className="agtest-error">{eventsError}</div>}
+
+            <div className="bb-demo-strip"><span>Sports Captured</span><strong>Today and tomorrow by sport</strong><em>Double-click rows below to open sport dashboards.</em></div>
             <table className="bb-demo-table bb-today-sports-table">
-              <thead><tr>{["Sport", "Events", "Liquid", "Liquidity", "Fresh", "Market Focus", "Alerts"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+              <thead><tr>{["Sport", "Today", "Tomorrow", "Total", "Live", "Source", "Latest"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
               <tbody>
                 {sportRows.map((row) => (
-                  <tr key={row[0]}>
-                    {row.map((cell, index) => (
-                      <td className={index === 3 || index === 4 ? "bb-mono" : index === 6 && cell !== "0" ? "bb-flag" : ""} key={`${cell}-${index}`}>{cell}</td>
-                    ))}
+                  <tr
+                    key={row.sport}
+                    onDoubleClick={() => {
+                      const route = DASHBOARD_SPORT_ROUTES[row.sport];
+                      if (route) window.location.hash = route;
+                    }}
+                  >
+                    <td>{row.label}</td>
+                    <td className="bb-mono">{row.today}</td>
+                    <td className="bb-mono">{row.tomorrow}</td>
+                    <td className="bb-mono">{row.total}</td>
+                    <td className={row.live ? "bb-pos" : "bb-mono"}>{row.live}</td>
+                    <td className="bb-mono">{row.source || "-"}</td>
+                    <td className="bb-mono">{row.latest ? localEventTime(new Date(row.latest).toISOString()) : "-"}</td>
                   </tr>
                 ))}
+                {!eventsLoading && sportRows.length === 0 && <tr><td colSpan={7}>No captured sport events returned for today or tomorrow.</td></tr>}
+                {eventsLoading && sportRows.length === 0 && <tr><td colSpan={7}>Loading captured sports.</td></tr>}
               </tbody>
             </table>
 
-            <div className="bb-demo-strip"><span>Top Markets</span><strong>Largest available liquidity now and next</strong><em>SportsEdge fair fields appear when linked.</em></div>
-            <table className="bb-demo-table bb-today-events-table">
-              <thead><tr>{["Time", "Code", "Sport", "Market", "Liquidity", "Conf", "Flag"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
-              <tbody>
-                {eventRows.map((row) => (
-                  <tr key={`${row[1]}-${row[3]}`}>
-                    {row.map((cell, index) => (
-                      <td className={index >= 4 ? "bb-mono" : index === 6 ? "bb-flag" : ""} key={`${cell}-${index}`}>{cell}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {renderEventTable("Today", todayRows)}
+            {renderEventTable("Tomorrow", tomorrowRows)}
           </section>
 
           <aside className="bb-demo-news bb-profile-news-rail bb-resizable-news-rail">

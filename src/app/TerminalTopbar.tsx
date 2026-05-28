@@ -25,11 +25,12 @@ const FOOTBALL_NAV = [
   { label: "Signals", value: "signal-ticker-v3", route: "#signal-ticker-v3" },
   { label: "Bias Matrix", value: "bias-matrix", route: "#bias-matrix" },
   { label: "Tables", value: "football-tables", route: "#football-tables" },
+  { label: "Results", value: "football-results", route: "#football-results" },
   { label: "Arbs", value: "arbs", route: "#arbs" },
   { label: "Profiles", value: "football-profiles", route: "#football-profiles" }
 ] as const;
 
-const FOOTBALL_MODE = new Set(["football", "liquidity", "signal-demo", "signal-ticker-demo", "signal-ticker-v2", "signal-ticker-v3", "bias-matrix", "football-tables", "arbs", "football-profiles"]);
+const FOOTBALL_MODE = new Set(["football", "liquidity", "signal-demo", "signal-ticker-demo", "signal-ticker-v2", "signal-ticker-v3", "bias-matrix", "football-tables", "football-results", "arbs", "football-profiles"]);
 
 type StoredAuthUser = {
   email?: string;

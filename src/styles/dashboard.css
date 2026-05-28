@@ -9365,6 +9365,232 @@ button {
   font-weight: 850;
 }
 
+.football-results-page {
+  min-height: calc(100vh - 52px);
+  background: #05080d;
+  color: var(--text);
+  overflow: hidden;
+}
+
+.football-results-header {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(520px, 0.82fr);
+  gap: 18px;
+  align-items: end;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.66);
+  background: #071019;
+  padding: 22px 24px;
+}
+
+.football-results-header span,
+.football-results-filterbar span,
+.football-results-day header span {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.football-results-header h1 {
+  margin: 8px 0 4px;
+  color: var(--text);
+  font-size: 34px;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.football-results-header p {
+  margin: 0;
+  color: rgba(203, 213, 225, 0.9);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.football-results-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.football-results-kpis article {
+  min-height: 72px;
+  border: 1px solid rgba(36, 50, 65, 0.82);
+  border-radius: 7px;
+  background: rgba(7, 16, 25, 0.92);
+  padding: 12px;
+}
+
+.football-results-kpis strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 8px;
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 950;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.football-results-filterbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 38px;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.66);
+  background: #03060a;
+  padding: 0 10px;
+}
+
+.football-results-filterbar nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.football-results-filterbar button {
+  height: 37px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 950;
+  padding: 0 10px;
+  text-transform: uppercase;
+}
+
+.football-results-filterbar button:hover,
+.football-results-filterbar button.active {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+
+.football-results-filterbar > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.football-results-scroll {
+  height: calc(100vh - 206px);
+  overflow: auto;
+}
+
+.football-results-day {
+  border-bottom: 1px solid rgba(36, 50, 65, 0.72);
+}
+
+.football-results-day header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 38px;
+  background: #071019;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.62);
+  padding: 0 12px;
+}
+
+.football-results-day header strong {
+  color: var(--gold);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.football-results-day table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.football-results-day th,
+.football-results-day td {
+  height: 38px;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.4);
+  overflow: hidden;
+  padding: 0 10px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.football-results-day th {
+  background: #081018;
+  color: rgba(203, 213, 225, 0.78);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.football-results-day tbody tr:nth-child(even) td {
+  background: #080d13;
+}
+
+.football-results-day th:nth-child(1),
+.football-results-day td:nth-child(1) { width: 120px; }
+
+.football-results-day th:nth-child(3),
+.football-results-day td:nth-child(3) { width: 92px; }
+
+.football-results-day th:nth-child(4),
+.football-results-day td:nth-child(4),
+.football-results-day th:nth-child(6),
+.football-results-day td:nth-child(6) { width: 96px; }
+
+.football-results-day th:nth-child(5),
+.football-results-day td:nth-child(5) { width: 240px; }
+
+.football-results-day th:nth-child(7),
+.football-results-day td:nth-child(7) { width: 200px; }
+
+.football-results-day th:nth-child(8),
+.football-results-day td:nth-child(8) { width: 96px; }
+
+.football-results-day td strong {
+  display: inline-block;
+  max-width: 72%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.football-results-day td small {
+  margin-left: 9px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 950;
+  vertical-align: middle;
+  text-transform: uppercase;
+}
+
+.football-results-empty {
+  display: grid;
+  gap: 6px;
+  min-height: 260px;
+  place-content: center;
+  text-align: center;
+}
+
+.football-results-empty strong {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.football-results-empty span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
 .football-profiles-header {
   display: flex;
   align-items: flex-end;
@@ -9955,6 +10181,16 @@ button {
   font-size: 12px;
 }
 .bb-demo-table tr:nth-child(even) td { background: #080d13; }
+.bb-demo-table tr.bb-event-past td {
+  color: rgba(148, 163, 184, 0.62);
+  text-decoration: line-through;
+}
+.bb-demo-table tr.bb-event-live td {
+  background: rgba(16, 185, 129, 0.08);
+}
+.bb-demo-table tbody tr:hover td {
+  background: #101a26;
+}
 .bb-mono,
 .bb-demo-table td:nth-child(1),
 .bb-demo-table td:nth-child(2) {
@@ -10732,9 +10968,18 @@ button {
 .bb-today-events-table th:nth-child(1),
 .bb-today-events-table td:nth-child(1) { width: 86px; }
 .bb-today-events-table th:nth-child(2),
-.bb-today-events-table td:nth-child(2) { width: 150px; }
+.bb-today-events-table td:nth-child(2) {
+  width: 34%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .bb-today-events-table th:nth-child(5),
 .bb-today-events-table td:nth-child(5) { width: 120px; }
+.bb-today-events-table th:nth-child(6),
+.bb-today-events-table td:nth-child(6),
+.bb-today-events-table th:nth-child(7),
+.bb-today-events-table td:nth-child(7) { width: 90px; }
 
 .bb-profile-table-link {
   color: var(--blue);

@@ -3,6 +3,7 @@ export const FOOTBALL_SCREEN_ROUTES = {
   liquidity: "#liquidity",
   biasMatrix: "#bias-matrix",
   tables: "#football-tables",
+  results: "#football-results",
   arbs: "#arbs",
   profiles: "#football-profiles",
   team: "#team/",
