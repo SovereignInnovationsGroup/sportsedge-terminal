@@ -533,6 +533,27 @@ const DEFAULT_DATE_SCOPE_FILTERS = [
   { label: "Tomorrow", value: "tomorrow" }
 ];
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(`${label} timed out`)), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
+async function responseJson(response: Response | null) {
+  if (!response) return {};
+  return response.json().catch(() => ({}));
+}
+
 function dateScopeMatches(startAt: string | null | undefined, scope: string) {
   if (scope === "today") return isTodayLocal(startAt);
   if (scope === "tomorrow") return isTomorrowLocal(startAt);
@@ -653,18 +674,18 @@ export function SportDashboard({
         });
         const marketSnapshotUrl = `/api/markets/snapshot?${oddsParams.toString()}`;
         const exchangeFallbackUrl = `/api/exchange-odds?${oddsParams.toString()}`;
-        const [oddsRows, newsResponse, fixturesResponse, standingsResponse, capturedEventsResponse] = await Promise.all([
-          fetchMarketSnapshotRows(marketSnapshotUrl, exchangeFallbackUrl),
-          fetch(`/api/news?${newsParams.toString()}`, { cache: "no-store" }),
-          fixturesPromise,
-          fetch(`/api/sports/standings?${standingsParams.toString()}`, { cache: "no-store" }),
-          capturedEventsPromise
+        const [oddsResult, newsResult, fixturesResult, standingsResult, capturedEventsResult] = await Promise.allSettled([
+          withTimeout(fetchMarketSnapshotRows(marketSnapshotUrl, exchangeFallbackUrl), 3500, "markets"),
+          withTimeout(fetch(`/api/news?${newsParams.toString()}`, { cache: "no-store" }), 3000, "news"),
+          withTimeout(fixturesPromise, 3500, "fixtures"),
+          withTimeout(fetch(`/api/sports/standings?${standingsParams.toString()}`, { cache: "no-store" }), 3000, "standings"),
+          withTimeout(capturedEventsPromise, 3500, "captured events")
         ]);
-        const newsPayload = await newsResponse.json().catch(() => ({}));
-        const fixturesPayload = fixturesResponse ? await fixturesResponse.json().catch(() => ({})) : {};
-        const standingsPayload = await standingsResponse.json().catch(() => ({})) as StandingsPayload;
-        const capturedEventsPayload = capturedEventsResponse ? await capturedEventsResponse.json().catch(() => ({})) : {};
-        if (!Array.isArray(oddsRows)) throw new Error("fixtures failed");
+        const oddsRows = oddsResult.status === "fulfilled" && Array.isArray(oddsResult.value) ? oddsResult.value : [];
+        const newsPayload = newsResult.status === "fulfilled" ? await responseJson(newsResult.value) : {};
+        const fixturesPayload = fixturesResult.status === "fulfilled" ? await responseJson(fixturesResult.value) : {};
+        const standingsPayload = standingsResult.status === "fulfilled" ? await responseJson(standingsResult.value) as StandingsPayload : {};
+        const capturedEventsPayload = capturedEventsResult.status === "fulfilled" ? await responseJson(capturedEventsResult.value) : {};
         if (!cancelled) {
           const exchangeEvents = mergeEvents(oddsRows as BackendPriceRow[], normalizedSport);
           const fixtureEvents = Array.isArray(fixturesPayload.fixtures)
@@ -681,7 +702,14 @@ export function SportDashboard({
           setStandings(Array.isArray(standingsPayload.rows) ? standingsPayload.rows : []);
           setStandingsStatus(String(standingsPayload.sourceStatus || ""));
           setStandingsProvider(String(standingsPayload.provider || ""));
-          setError("");
+          const failed = [
+            oddsResult.status === "rejected" ? "markets" : "",
+            newsResult.status === "rejected" ? "news" : "",
+            fixturesResult.status === "rejected" ? "fixtures" : "",
+            standingsResult.status === "rejected" ? "standings" : "",
+            capturedEventsResult.status === "rejected" ? "events" : ""
+          ].filter(Boolean);
+          setError(failed.length ? `Slow or unavailable: ${failed.join(", ")}` : "");
         }
       } catch (err) {
         if (!cancelled) {
