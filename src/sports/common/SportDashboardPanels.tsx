@@ -1,0 +1,294 @@
+import { useMemo } from "react";
+import { eventHasPassed, localEventTime } from "../../core/format";
+import {
+  DASHBOARD_EXCHANGES,
+  DEFAULT_DATE_SCOPE_FILTERS,
+  NewsItem,
+  SportEventRow,
+  SportLocationFilter,
+  StandingRow
+} from "./sportDashboardTypes";
+import { formatExchangeMoney, newsHeadline, newsImpact, newsTag, newsTime } from "./sportDashboardUtils";
+
+export function ExchangeCoverageCell({ event }: { event: SportEventRow }) {
+  return (
+    <div className="exchange-coverage sport-summary-coverage">
+      {DASHBOARD_EXCHANGES.map((exchange) => (
+        <span
+          className={Number(event.liquidityByExchange[exchange.key] || 0) > 0 ? "available" : ""}
+          key={exchange.key}
+        >
+          {"short" in exchange ? exchange.short : exchange.label.slice(0, 2)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+export function FixtureTable({ title, rows, loading }: { title: string; rows: SportEventRow[]; loading: boolean }) {
+  function eventRowClass(event: SportEventRow) {
+    if (!eventHasPassed(event.startAt)) return "";
+    return event.liquidity > 0 ? "is-started-event" : "is-past-event";
+  }
+
+  return (
+    <section className="sport-summary-panel sport-summary-fixtures">
+      <header>
+        <span>{title}</span>
+        <strong>{rows.length}</strong>
+      </header>
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Fixture</th>
+            <th>Competition</th>
+            <th>Coverage</th>
+            <th>BF £ Now</th>
+            <th>MB £ Now</th>
+            <th>BX $ Now</th>
+            <th>SM £ Now</th>
+            <th>BD £ Now</th>
+            <th>SX £ Now</th>
+            <th>Total £ Now</th>
+            <th>Latest</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((event) => (
+            <tr className={eventRowClass(event)} key={`${title}-${event.id}-${event.startAt}`}>
+              <td className="mono positive">{localEventTime(event.startAt)}</td>
+              <td><strong>{event.name}</strong></td>
+              <td>{event.competition || "-"}</td>
+              <td><ExchangeCoverageCell event={event} /></td>
+              <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.betfair, "GBP")}</td>
+              <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.matchbook, "GBP")}</td>
+              <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.monaco, "USD")}</td>
+              <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.smarkets, "GBP")}</td>
+              <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.betdaq, "GBP")}</td>
+              <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.sx, "GBP")}</td>
+              <td className="mono liquidity-money total">{formatExchangeMoney(event.liquidity, "GBP")}</td>
+              <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "-"}</td>
+            </tr>
+          ))}
+          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={12}>No fixtures returned for this day.</td></tr>}
+          {loading && rows.length === 0 && <tr><td className="empty" colSpan={12}>Loading fixtures.</td></tr>}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function standingsNumber(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(Number(value))) return "-";
+  return Number(value).toLocaleString("en-GB");
+}
+
+export function StandingsPanel({
+  label,
+  rows,
+  provider,
+  sourceStatus,
+  loading
+}: {
+  label: string;
+  rows: StandingRow[];
+  provider: string;
+  sourceStatus: string;
+  loading: boolean;
+}) {
+  const groupedRows = useMemo(() => {
+    const groups = new Map<string, StandingRow[]>();
+    rows.forEach((row) => {
+      const key = row.leagueName || row.league || "Standings";
+      const group = groups.get(key) || [];
+      if (group.length < 12) group.push(row);
+      groups.set(key, group);
+    });
+    return Array.from(groups.entries()).slice(0, 4);
+  }, [rows]);
+
+  return (
+    <section className="sport-summary-panel sport-standings-panel">
+      <header>
+        <span>Tables / Standings</span>
+        <strong>{provider ? provider.toUpperCase() : "SOURCE"}</strong>
+      </header>
+      <p className="sport-standings-source">{sourceStatus || `${label} standings source pending.`}</p>
+      {groupedRows.map(([leagueName, leagueRows]) => (
+        <div className="sport-standings-league" key={leagueName}>
+          <div className="sport-standings-league-title">
+            <strong>{leagueName}</strong>
+            <span>{leagueRows[0]?.season || ""}</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Team</th>
+                <th>P</th>
+                <th>W</th>
+                <th>D/T</th>
+                <th>L</th>
+                <th>+/-</th>
+                <th>Pts</th>
+                <th>Record</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leagueRows.map((row, index) => (
+                <tr key={row.id || `${leagueName}-${row.team}-${index}`}>
+                  <td className="mono">{row.rank || index + 1}</td>
+                  <td><strong>{row.team}</strong>{row.teamAbbreviation ? <small>{row.teamAbbreviation}</small> : null}</td>
+                  <td className="mono">{standingsNumber(row.played)}</td>
+                  <td className="mono positive">{standingsNumber(row.wins)}</td>
+                  <td className="mono">{standingsNumber(row.draws ?? row.ties)}</td>
+                  <td className="mono">{standingsNumber(row.losses)}</td>
+                  <td className="mono">{standingsNumber(row.pointDifferential)}</td>
+                  <td className="mono total">{standingsNumber(row.points)}</td>
+                  <td className="mono">{row.record || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+      {!loading && groupedRows.length === 0 && (
+        <div className="sport-standings-empty">
+          <strong>No standings rows returned.</strong>
+          <span>{sourceStatus || "Provider configured, waiting for normalized standings rows."}</span>
+        </div>
+      )}
+      {loading && groupedRows.length === 0 && (
+        <div className="sport-standings-empty">
+          <strong>Loading standings.</strong>
+          <span>Checking provider cache.</span>
+        </div>
+      )}
+    </section>
+  );
+}
+
+export function SportStandingByBoard({
+  label,
+  espnScopes,
+  dataStatus
+}: {
+  label: string;
+  espnScopes: string[];
+  dataStatus: string;
+}) {
+  const demoRows = [
+    ["Provider", "ESPN", espnScopes.length ? espnScopes.join(" / ") : "Scope pending"],
+    ["Exchange Rows", "Standing by", "No live venue rows yet"],
+    ["Routing", "Ready", "BF / MB / BX / SM / BD / SX slots"],
+    ["News", "Live", "Rail remains real when sport news exists"]
+  ];
+  const demoTape = [
+    `${label.toUpperCase()} data spine ready`,
+    "No live exchange rows for this sport",
+    "ESPN metadata additive",
+    "No executable prices shown",
+    "Waiting for exchange liquidity"
+  ];
+
+  return (
+    <section className="sport-demo-holding" aria-label={`${label} data standing by screen`}>
+      <div className="sport-demo-holding-head">
+        <strong>Data standing by</strong>
+        <p>{dataStatus}</p>
+      </div>
+      <div className="sport-demo-tape" aria-label="Demo holding ticker">
+        <div>{demoTape.concat(demoTape).map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}</div>
+      </div>
+      <div className="sport-demo-grid">
+        {demoRows.map(([labelText, value, note]) => (
+          <article key={labelText}>
+            <span>{labelText}</span>
+            <strong>{value}</strong>
+            <em>{note}</em>
+          </article>
+        ))}
+      </div>
+      <table className="sport-demo-table">
+        <thead><tr>{["Screen", "State", "Liquidity", "Fresh", "Action"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+        <tbody>
+          {[
+            [`${label} Dashboard`, "Ready", "-", "watch", "Await normalized events"],
+            ["Liquidity", "Slots armed", "-", "watch", "Open when exchange rows arrive"],
+            ["Bias Matrix", "Pending", "-", "watch", "Odds-only feed can populate later"],
+            ["News", "Live capable", "Real news rail", "watch", "Monitor sport context"]
+          ].map((row) => (
+            <tr key={row[0]}>{row.map((cell, index) => <td className={index === 1 || index === 3 ? "mono positive" : ""} key={`${row[0]}-${cell}`}>{cell}</td>)}</tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+export function SportScopeFilter({
+  sportLabel,
+  dateScope,
+  locationScope,
+  locationFilters,
+  onDateScopeChange,
+  onLocationScopeChange,
+  meta,
+  ariaLabel
+}: {
+  sportLabel: string;
+  dateScope: string;
+  locationScope: string;
+  locationFilters: SportLocationFilter[];
+  onDateScopeChange: (value: string) => void;
+  onLocationScopeChange: (value: string) => void;
+  meta?: string[];
+  ariaLabel: string;
+}) {
+  const dateLabel = DEFAULT_DATE_SCOPE_FILTERS.find((filter) => filter.value === dateScope)?.label || "All";
+  const locationLabel = locationFilters.find((filter) => filter.value === locationScope)?.label || "All";
+  return (
+    <section className="agtest-subbar football-scope-filterbar" aria-label={ariaLabel}>
+      <div className="agtest-filter-stack">
+        <nav aria-label={ariaLabel}>
+          {DEFAULT_DATE_SCOPE_FILTERS.map((filter) => (
+            <button className={dateScope === filter.value ? "active" : ""} key={filter.value} type="button" onClick={() => onDateScopeChange(filter.value)}>
+              {filter.label}
+            </button>
+          ))}
+          <span className="agtest-filter-crumb">/</span>
+          {locationFilters.map((filter) => (
+            <button className={locationScope === filter.value ? "active" : ""} key={filter.value} type="button" onClick={() => onLocationScopeChange(filter.value)}>
+              {filter.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+      <div>
+        <span>{["SportsEdge", sportLabel, dateLabel, locationScope !== "all" ? locationLabel : ""].filter(Boolean).join(" / ")}</span>
+        {(meta || []).map((item) => <span key={item}>{item}</span>)}
+      </div>
+    </section>
+  );
+}
+
+export function SportNewsRail({ label, news, loading }: { label: string; news: NewsItem[]; loading: boolean }) {
+  return (
+    <aside className="sport-summary-news" aria-label={`${label} news`}>
+      <header>
+        <span>News</span>
+        <strong>{news.length}</strong>
+      </header>
+      {news.slice(0, 14).map((item) => (
+        <article key={item.id || `${item.title}-${item.published_at}`}>
+          <div><span>{newsTime(item)}</span><strong>{newsTag(item)}</strong></div>
+          <h3>{newsHeadline(item)}</h3>
+          <p>{newsImpact(item)}</p>
+        </article>
+      ))}
+      {!loading && news.length === 0 && <p className="sport-summary-empty">No news returned for {label} yet.</p>}
+      {loading && news.length === 0 && <p className="sport-summary-empty">Loading news.</p>}
+    </aside>
+  );
+}
