@@ -495,7 +495,6 @@ function SportStandingByBoard({
   return (
     <section className="sport-demo-holding" aria-label={`${label} data standing by screen`}>
       <div className="sport-demo-holding-head">
-        <span>SportsEdge / {label}</span>
         <strong>Data standing by</strong>
         <p>{dataStatus}</p>
       </div>
@@ -765,7 +764,6 @@ export function SportDashboard({
       <main className="sport-summary-page">
         <section className="sport-summary-hero">
           <div>
-            <span>SportsEdge / {label}</span>
             <h1>{label}</h1>
             <p>Today and tomorrow events, exchange coverage, available liquidity, and sport-specific intelligence.</p>
           </div>
