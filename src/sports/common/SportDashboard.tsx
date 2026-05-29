@@ -52,6 +52,22 @@ type SportEventRow = {
   latestSeenAt: string | null;
   exchanges: string[];
 };
+type CapturedSportEvent = {
+  id: string;
+  provider: string;
+  sport: string;
+  competition?: string | null;
+  country?: string | null;
+  name: string;
+  startAt?: string | null;
+  syncedAt?: string | null;
+  updatedAt?: string | null;
+};
+type SportLocationFilter = {
+  label: string;
+  value: string;
+  terms?: string[];
+};
 type FootballFixtureRow = {
   id?: string;
   providerFixtureId?: string;
@@ -278,6 +294,21 @@ function footballFixtureToEvent(fixture: FootballFixtureRow): SportEventRow | nu
   };
 }
 
+function capturedSportEventToEvent(event: CapturedSportEvent): SportEventRow | null {
+  if (!event.name || !event.startAt) return null;
+  return {
+    id: event.id,
+    name: event.name,
+    competition: event.competition || null,
+    country: event.country || null,
+    startAt: event.startAt,
+    liquidity: 0,
+    liquidityByExchange: Object.fromEntries(DASHBOARD_EXCHANGES.map((exchange) => [exchange.key, 0])),
+    latestSeenAt: event.updatedAt || event.syncedAt || null,
+    exchanges: [event.provider.toUpperCase()]
+  };
+}
+
 function newsTime(item: NewsItem) {
   return localEventTime(item.published_at || item.discovered_at || null);
 }
@@ -497,18 +528,89 @@ function SportStandingByBoard({
   );
 }
 
+const DEFAULT_DATE_SCOPE_FILTERS = [
+  { label: "All", value: "all" },
+  { label: "Today", value: "today" },
+  { label: "Tomorrow", value: "tomorrow" }
+];
+
+function dateScopeMatches(startAt: string | null | undefined, scope: string) {
+  if (scope === "today") return isTodayLocal(startAt);
+  if (scope === "tomorrow") return isTomorrowLocal(startAt);
+  return true;
+}
+
+function genericScopeMatches(event: SportEventRow, dateScope: string, locationScope: string, filters: SportLocationFilter[]) {
+  if (!dateScopeMatches(event.startAt, dateScope)) return false;
+  if (locationScope === "all") return true;
+  const filter = filters.find((item) => item.value === locationScope);
+  const terms = filter?.terms || [filter?.label || locationScope];
+  const haystack = `${event.name} ${event.competition || ""} ${event.country || ""}`.toLowerCase();
+  return terms.some((term) => haystack.includes(String(term).toLowerCase()));
+}
+
+function SportScopeFilter({
+  sportLabel,
+  dateScope,
+  locationScope,
+  locationFilters,
+  onDateScopeChange,
+  onLocationScopeChange,
+  meta,
+  ariaLabel
+}: {
+  sportLabel: string;
+  dateScope: string;
+  locationScope: string;
+  locationFilters: SportLocationFilter[];
+  onDateScopeChange: (value: string) => void;
+  onLocationScopeChange: (value: string) => void;
+  meta?: string[];
+  ariaLabel: string;
+}) {
+  const dateLabel = DEFAULT_DATE_SCOPE_FILTERS.find((filter) => filter.value === dateScope)?.label || "All";
+  const locationLabel = locationFilters.find((filter) => filter.value === locationScope)?.label || "All";
+  return (
+    <section className="agtest-subbar football-scope-filterbar" aria-label={ariaLabel}>
+      <div className="agtest-filter-stack">
+        <nav aria-label={ariaLabel}>
+          {DEFAULT_DATE_SCOPE_FILTERS.map((filter) => (
+            <button className={dateScope === filter.value ? "active" : ""} key={filter.value} type="button" onClick={() => onDateScopeChange(filter.value)}>
+              {filter.label}
+            </button>
+          ))}
+          <span className="agtest-filter-crumb">/</span>
+          {locationFilters.map((filter) => (
+            <button className={locationScope === filter.value ? "active" : ""} key={filter.value} type="button" onClick={() => onLocationScopeChange(filter.value)}>
+              {filter.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+      <div>
+        <span>{["SportsEdge", sportLabel, dateLabel, locationScope !== "all" ? locationLabel : ""].filter(Boolean).join(" / ")}</span>
+        {(meta || []).map((item) => <span key={item}>{item}</span>)}
+      </div>
+    </section>
+  );
+}
+
 export function SportDashboard({
   sport,
   label,
   active,
   espnScopes = [],
-  dataStatus = "ESPN metadata enabled; exchange liquidity appears when normalized venue rows are available."
+  dataStatus = "ESPN metadata enabled; exchange liquidity appears when normalized venue rows are available.",
+  scopeLabel,
+  locationFilters = []
 }: {
   sport: string;
   label: string;
   active: string;
   espnScopes?: string[];
   dataStatus?: string;
+  scopeLabel?: string;
+  locationFilters?: SportLocationFilter[];
 }) {
   const normalizedSport = apiSportValue(sport);
   const [events, setEvents] = useState<SportEventRow[]>([]);
@@ -542,6 +644,9 @@ export function SportDashboard({
         const fixturesPromise = isFootball
           ? fetch("/api/football/fixtures?days=2&limit=2000&timezone=Europe/London", { cache: "no-store" })
           : Promise.resolve(null);
+        const capturedEventsPromise = !isFootball
+          ? fetch(`/api/sports/events?timezone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London")}&limit=1200`, { cache: "no-store" })
+          : Promise.resolve(null);
         const standingsParams = new URLSearchParams({
           sport: normalizedSport,
           scopes: espnScopeKey,
@@ -549,22 +654,30 @@ export function SportDashboard({
         });
         const marketSnapshotUrl = `/api/markets/snapshot?${oddsParams.toString()}`;
         const exchangeFallbackUrl = `/api/exchange-odds?${oddsParams.toString()}`;
-        const [oddsRows, newsResponse, fixturesResponse, standingsResponse] = await Promise.all([
+        const [oddsRows, newsResponse, fixturesResponse, standingsResponse, capturedEventsResponse] = await Promise.all([
           fetchMarketSnapshotRows(marketSnapshotUrl, exchangeFallbackUrl),
           fetch(`/api/news?${newsParams.toString()}`, { cache: "no-store" }),
           fixturesPromise,
-          fetch(`/api/sports/standings?${standingsParams.toString()}`, { cache: "no-store" })
+          fetch(`/api/sports/standings?${standingsParams.toString()}`, { cache: "no-store" }),
+          capturedEventsPromise
         ]);
         const newsPayload = await newsResponse.json().catch(() => ({}));
         const fixturesPayload = fixturesResponse ? await fixturesResponse.json().catch(() => ({})) : {};
         const standingsPayload = await standingsResponse.json().catch(() => ({})) as StandingsPayload;
+        const capturedEventsPayload = capturedEventsResponse ? await capturedEventsResponse.json().catch(() => ({})) : {};
         if (!Array.isArray(oddsRows)) throw new Error("fixtures failed");
         if (!cancelled) {
           const exchangeEvents = mergeEvents(oddsRows as BackendPriceRow[], normalizedSport);
           const fixtureEvents = Array.isArray(fixturesPayload.fixtures)
             ? (fixturesPayload.fixtures as FootballFixtureRow[]).map(footballFixtureToEvent).filter(Boolean) as SportEventRow[]
             : [];
-          setEvents(isFootball ? mergeSportEvents([...fixtureEvents, ...exchangeEvents]) : exchangeEvents);
+          const capturedEvents = Array.isArray(capturedEventsPayload.items)
+            ? (capturedEventsPayload.items as CapturedSportEvent[])
+              .filter((event) => event.sport === normalizedSport)
+              .map(capturedSportEventToEvent)
+              .filter(Boolean) as SportEventRow[]
+            : [];
+          setEvents(isFootball ? mergeSportEvents([...fixtureEvents, ...exchangeEvents]) : mergeSportEvents([...capturedEvents, ...exchangeEvents]));
           setNews(Array.isArray(newsPayload.items) ? newsPayload.items as NewsItem[] : []);
           setStandings(Array.isArray(standingsPayload.rows) ? standingsPayload.rows : []);
           setStandingsStatus(String(standingsPayload.sourceStatus || ""));
@@ -593,10 +706,12 @@ export function SportDashboard({
     };
   }, [normalizedSport, isFootball, espnScopeKey]);
 
+  const hasScopeFilter = locationFilters.length > 0;
   const filteredEvents = useMemo(() => {
+    if (!isFootball && hasScopeFilter) return events.filter((event) => genericScopeMatches(event, dateScope, locationScope, locationFilters));
     if (!isFootball) return events;
     return events.filter((event) => footballScopeMatches(`${event.name} ${event.competition || ""}`, event.country, event.startAt, dateScope, locationScope));
-  }, [events, isFootball, dateScope, locationScope]);
+  }, [events, isFootball, hasScopeFilter, dateScope, locationScope, locationFilters]);
 
   const todayRows = useMemo(() => filteredEvents.filter((event) => isTodayLocal(event.startAt)), [filteredEvents]);
   const tomorrowRows = useMemo(() => filteredEvents.filter((event) => isTomorrowLocal(event.startAt)), [filteredEvents]);
@@ -619,6 +734,18 @@ export function SportDashboard({
           onLocationScopeChange={setLocationScope}
           meta={[`${filteredEvents.length} / ${events.length} fixtures`]}
           ariaLabel="Football dashboard filters"
+        />
+      )}
+      {!isFootball && hasScopeFilter && (
+        <SportScopeFilter
+          sportLabel={label}
+          dateScope={dateScope}
+          locationScope={locationScope}
+          locationFilters={locationFilters}
+          onDateScopeChange={setDateScope}
+          onLocationScopeChange={setLocationScope}
+          meta={[`${filteredEvents.length} / ${events.length} events`]}
+          ariaLabel={scopeLabel || `${label} dashboard filters`}
         />
       )}
       <main className="sport-summary-page">

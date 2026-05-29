@@ -22,15 +22,157 @@ const FOOTBALL_NAV = [
   { label: "< Back", value: "all-sports", route: "#dashboard", tone: "back" },
   { label: "Football", value: "football", route: "#football", tone: "sport" },
   { label: "Liquidity", value: "liquidity", route: "#liquidity" },
-  { label: "Signals", value: "signal-ticker-v3", route: "#signal-ticker-v3" },
   { label: "Bias Matrix", value: "bias-matrix", route: "#bias-matrix" },
   { label: "Tables", value: "football-tables", route: "#football-tables" },
   { label: "Results", value: "football-results", route: "#football-results" },
+  { label: "Teams", value: "football-teams", route: "#football-teams" },
+  { label: "Players", value: "football-players", route: "#football-players" },
+  { label: "Injuries", value: "football-injuries", route: "#football-injuries" },
   { label: "Arbs", value: "arbs", route: "#arbs" },
-  { label: "Profiles", value: "football-profiles", route: "#football-profiles" }
+  { label: "News", value: "football-news", route: "#football-news" }
 ] as const;
 
-const FOOTBALL_MODE = new Set(["football", "liquidity", "signal-demo", "signal-ticker-demo", "signal-ticker-v2", "signal-ticker-v3", "bias-matrix", "football-tables", "football-results", "arbs", "football-profiles"]);
+const TENNIS_NAV = [
+  { label: "< Back", value: "all-sports", route: "#dashboard", tone: "back" },
+  { label: "Tennis", value: "tennis", route: "#tennis", tone: "sport" },
+  { label: "Dashboard", value: "tennis-dashboard", route: "#tennis-dashboard" },
+  { label: "Liquidity", value: "tennis-liquidity", route: "#tennis-liquidity" },
+  { label: "Bias Matrix", value: "tennis-bias-matrix", route: "#tennis-bias-matrix" },
+  { label: "Rankings", value: "tennis-rankings", route: "#tennis-rankings" },
+  { label: "Results", value: "tennis-results", route: "#tennis-results" },
+  { label: "Players", value: "tennis-players", route: "#tennis-players" },
+  { label: "Tournaments", value: "tennis-tournaments", route: "#tennis-tournaments" },
+  { label: "Injuries", value: "tennis-injuries", route: "#tennis-injuries" },
+  { label: "News", value: "tennis-news", route: "#tennis-news" }
+] as const;
+
+const GOLF_NAV = [
+  { label: "< Back", value: "all-sports", route: "#dashboard", tone: "back" },
+  { label: "Golf", value: "golf", route: "#golf", tone: "sport" },
+  { label: "Liquidity", value: "golf-liquidity", route: "#golf-liquidity" },
+  { label: "Bias Matrix", value: "golf-bias-matrix", route: "#golf-bias-matrix" },
+  { label: "Leaderboards", value: "golf-leaderboards", route: "#golf-leaderboards" },
+  { label: "Results", value: "golf-results", route: "#golf-results" },
+  { label: "Players", value: "golf-players", route: "#golf-players" },
+  { label: "Tournaments", value: "golf-tournaments", route: "#golf-tournaments" },
+  { label: "News", value: "golf-news", route: "#golf-news" }
+] as const;
+
+const BASKETBALL_NAV = [
+  { label: "< Back", value: "all-sports", route: "#dashboard", tone: "back" },
+  { label: "Basketball", value: "basketball", route: "#basketball", tone: "sport" },
+  { label: "Liquidity", value: "basketball-liquidity", route: "#basketball-liquidity" },
+  { label: "Bias Matrix", value: "basketball-bias-matrix", route: "#basketball-bias-matrix" },
+  { label: "Standings", value: "basketball-standings", route: "#basketball-standings" },
+  { label: "Results", value: "basketball-results", route: "#basketball-results" },
+  { label: "Teams", value: "basketball-teams", route: "#basketball-teams" },
+  { label: "Players", value: "basketball-players", route: "#basketball-players" },
+  { label: "Injuries", value: "basketball-injuries", route: "#basketball-injuries" },
+  { label: "News", value: "basketball-news", route: "#basketball-news" }
+] as const;
+
+const BASEBALL_NAV = [
+  { label: "< Back", value: "all-sports", route: "#dashboard", tone: "back" },
+  { label: "Baseball", value: "baseball", route: "#baseball", tone: "sport" },
+  { label: "Liquidity", value: "baseball-liquidity", route: "#baseball-liquidity" },
+  { label: "Bias Matrix", value: "baseball-bias-matrix", route: "#baseball-bias-matrix" },
+  { label: "Standings", value: "baseball-standings", route: "#baseball-standings" },
+  { label: "Results", value: "baseball-results", route: "#baseball-results" },
+  { label: "Teams", value: "baseball-teams", route: "#baseball-teams" },
+  { label: "Players", value: "baseball-players", route: "#baseball-players" },
+  { label: "Injuries", value: "baseball-injuries", route: "#baseball-injuries" },
+  { label: "News", value: "baseball-news", route: "#baseball-news" }
+] as const;
+
+const AMERICAN_FOOTBALL_NAV = [
+  { label: "< Back", value: "all-sports", route: "#dashboard", tone: "back" },
+  { label: "NFL", value: "american-football", route: "#american-football", tone: "sport" },
+  { label: "Liquidity", value: "american-football-liquidity", route: "#american-football-liquidity" },
+  { label: "Bias Matrix", value: "american-football-bias-matrix", route: "#american-football-bias-matrix" },
+  { label: "Standings", value: "american-football-standings", route: "#american-football-standings" },
+  { label: "Results", value: "american-football-results", route: "#american-football-results" },
+  { label: "Teams", value: "american-football-teams", route: "#american-football-teams" },
+  { label: "Players", value: "american-football-players", route: "#american-football-players" },
+  { label: "Injuries", value: "american-football-injuries", route: "#american-football-injuries" },
+  { label: "News", value: "american-football-news", route: "#american-football-news" }
+] as const;
+
+const HOCKEY_NAV = [
+  { label: "< Back", value: "all-sports", route: "#dashboard", tone: "back" },
+  { label: "Hockey", value: "hockey", route: "#hockey", tone: "sport" },
+  { label: "Liquidity", value: "hockey-liquidity", route: "#hockey-liquidity" },
+  { label: "Bias Matrix", value: "hockey-bias-matrix", route: "#hockey-bias-matrix" },
+  { label: "Standings", value: "hockey-standings", route: "#hockey-standings" },
+  { label: "Results", value: "hockey-results", route: "#hockey-results" },
+  { label: "Teams", value: "hockey-teams", route: "#hockey-teams" },
+  { label: "Players", value: "hockey-players", route: "#hockey-players" },
+  { label: "Injuries", value: "hockey-injuries", route: "#hockey-injuries" },
+  { label: "News", value: "hockey-news", route: "#hockey-news" }
+] as const;
+
+const MOTORSPORT_NAV = [
+  { label: "< Back", value: "all-sports", route: "#dashboard", tone: "back" },
+  { label: "Motorsport", value: "motorsport", route: "#motorsport", tone: "sport" },
+  { label: "Markets", value: "motorsport-markets", route: "#motorsport-markets" },
+  { label: "Bias Matrix", value: "motorsport-bias-matrix", route: "#motorsport-bias-matrix" },
+  { label: "Calendar", value: "motorsport-calendar", route: "#motorsport-calendar" },
+  { label: "Results", value: "motorsport-results", route: "#motorsport-results" },
+  { label: "Drivers", value: "motorsport-drivers", route: "#motorsport-drivers" },
+  { label: "Teams", value: "motorsport-teams", route: "#motorsport-teams" },
+  { label: "News", value: "motorsport-news", route: "#motorsport-news" }
+] as const;
+
+const RUGBY_NAV = [
+  { label: "< Back", value: "all-sports", route: "#dashboard", tone: "back" },
+  { label: "Rugby", value: "rugby", route: "#rugby", tone: "sport" },
+  { label: "Liquidity", value: "rugby-liquidity", route: "#rugby-liquidity" },
+  { label: "Bias Matrix", value: "rugby-bias-matrix", route: "#rugby-bias-matrix" },
+  { label: "Tables", value: "rugby-tables", route: "#rugby-tables" },
+  { label: "Results", value: "rugby-results", route: "#rugby-results" },
+  { label: "Teams", value: "rugby-teams", route: "#rugby-teams" },
+  { label: "Players", value: "rugby-players", route: "#rugby-players" },
+  { label: "Injuries", value: "rugby-injuries", route: "#rugby-injuries" },
+  { label: "News", value: "rugby-news", route: "#rugby-news" }
+] as const;
+
+const CRICKET_NAV = [
+  { label: "< Back", value: "all-sports", route: "#dashboard", tone: "back" },
+  { label: "Cricket", value: "cricket", route: "#cricket", tone: "sport" },
+  { label: "Liquidity", value: "cricket-liquidity", route: "#cricket-liquidity" },
+  { label: "Bias Matrix", value: "cricket-bias-matrix", route: "#cricket-bias-matrix" },
+  { label: "Tables", value: "cricket-tables", route: "#cricket-tables" },
+  { label: "Results", value: "cricket-results", route: "#cricket-results" },
+  { label: "Teams", value: "cricket-teams", route: "#cricket-teams" },
+  { label: "Players", value: "cricket-players", route: "#cricket-players" },
+  { label: "Series", value: "cricket-series", route: "#cricket-series" },
+  { label: "News", value: "cricket-news", route: "#cricket-news" }
+] as const;
+
+const FOOTBALL_MODE = new Set(["football", "liquidity", "signal-demo", "signal-ticker-demo", "signal-ticker-v2", "signal-ticker-v3", "bias-matrix", "football-tables", "football-results", "football-teams", "football-players", "football-injuries", "arbs", "football-news", "football-profiles"]);
+const TENNIS_MODE = new Set(["tennis", "tennis-dashboard", "tennis-liquidity", "tennis-bias-matrix", "tennis-rankings", "tennis-results", "tennis-players", "tennis-tournaments", "tennis-injuries", "tennis-news"]);
+const GOLF_MODE = new Set(GOLF_NAV.map((item) => item.value));
+const BASKETBALL_MODE = new Set(BASKETBALL_NAV.map((item) => item.value));
+const BASEBALL_MODE = new Set(BASEBALL_NAV.map((item) => item.value));
+const AMERICAN_FOOTBALL_MODE = new Set(AMERICAN_FOOTBALL_NAV.map((item) => item.value));
+const HOCKEY_MODE = new Set(HOCKEY_NAV.map((item) => item.value));
+const MOTORSPORT_MODE = new Set(MOTORSPORT_NAV.map((item) => item.value));
+const RUGBY_MODE = new Set(RUGBY_NAV.map((item) => item.value));
+const CRICKET_MODE = new Set(CRICKET_NAV.map((item) => item.value));
+
+function sportNavForActive(active?: string) {
+  if (!active) return null;
+  if (FOOTBALL_MODE.has(active)) return { items: FOOTBALL_NAV, label: "Football navigation" };
+  if (TENNIS_MODE.has(active)) return { items: TENNIS_NAV, label: "Tennis navigation" };
+  if (GOLF_MODE.has(active)) return { items: GOLF_NAV, label: "Golf navigation" };
+  if (BASKETBALL_MODE.has(active)) return { items: BASKETBALL_NAV, label: "Basketball navigation" };
+  if (BASEBALL_MODE.has(active)) return { items: BASEBALL_NAV, label: "Baseball navigation" };
+  if (AMERICAN_FOOTBALL_MODE.has(active)) return { items: AMERICAN_FOOTBALL_NAV, label: "NFL navigation" };
+  if (HOCKEY_MODE.has(active)) return { items: HOCKEY_NAV, label: "Hockey navigation" };
+  if (MOTORSPORT_MODE.has(active)) return { items: MOTORSPORT_NAV, label: "Motorsport navigation" };
+  if (RUGBY_MODE.has(active)) return { items: RUGBY_NAV, label: "Rugby navigation" };
+  if (CRICKET_MODE.has(active)) return { items: CRICKET_NAV, label: "Cricket navigation" };
+  return null;
+}
 
 type StoredAuthUser = {
   email?: string;
@@ -103,8 +245,9 @@ export function TerminalTopbar({
   const [searchLoading, setSearchLoading] = useState(false);
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const demoRef = useRef<HTMLDivElement | null>(null);
-  const inFootballMode = active ? FOOTBALL_MODE.has(active) : false;
-  const navItems = inFootballMode ? FOOTBALL_NAV : TOP_NAV;
+  const sportNav = sportNavForActive(active);
+  const navItems = sportNav?.items || TOP_NAV;
+  const navLabel = sportNav?.label || "SportsEdge navigation";
   const loginId = sessionUser?.login_id || sessionUser?.email || "public";
   const membershipLevel = sessionUser?.subscription?.plan_name || sessionUser?.subscription?.level || sessionUser?.subscription?.status || "guest";
 
@@ -182,7 +325,7 @@ export function TerminalTopbar({
       <a className="testboard-brand" href="#dashboard" aria-label="SportsEdge dashboard">
         <img className="testboard-brand-logo" src={sportsEdgeMarketsLogo} alt="SportsEdge" />
       </a>
-      <nav className={`testboard-nav${inFootballMode ? " football-mode" : ""}`} aria-label={inFootballMode ? "Football navigation" : "SportsEdge navigation"}>
+      <nav className={`testboard-nav${sportNav ? " football-mode" : ""}`} aria-label={navLabel}>
         {navItems.map((item) => (
           <button
             className={[active === item.value ? "active" : "", "tone" in item && item.tone ? `nav-${item.tone}` : ""].filter(Boolean).join(" ")}

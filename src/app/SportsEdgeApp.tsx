@@ -65,15 +65,25 @@ function screenForHash(hash: string) {
   if (hash === "#oddsapi") return requireSession(<OddsApiDiagnostics />);
   if (hash === "#football") return <FootballDashboard />;
   if (hash === "#tennis") return <TennisDashboard />;
+  if (hash === "#tennis-dashboard") return requireSession(<TennisDashboard active="tennis-dashboard" />);
+  if (hash.startsWith("#tennis-")) return requireSession(<TennisDashboard active={hash.replace("#", "")} />);
   if (hash === "#horseracing" || hash === "#horse-racing") return <RacingDashboard />;
   if (hash === "#golf") return <GolfDashboard />;
+  if (hash.startsWith("#golf-")) return requireSession(<GolfDashboard active={hash.replace("#", "")} />);
   if (hash === "#basketball") return <BasketballDashboard />;
+  if (hash.startsWith("#basketball-")) return requireSession(<BasketballDashboard active={hash.replace("#", "")} />);
   if (hash === "#baseball") return <BaseballDashboard />;
+  if (hash.startsWith("#baseball-")) return requireSession(<BaseballDashboard active={hash.replace("#", "")} />);
   if (hash === "#american-football" || hash === "#nfl") return <AmericanFootballDashboard />;
+  if (hash.startsWith("#american-football-")) return requireSession(<AmericanFootballDashboard active={hash.replace("#", "")} />);
   if (hash === "#hockey" || hash === "#nhl") return <HockeyDashboard />;
+  if (hash.startsWith("#hockey-")) return requireSession(<HockeyDashboard active={hash.replace("#", "")} />);
   if (hash === "#motorsport" || hash === "#f1") return <MotorsportDashboard />;
+  if (hash.startsWith("#motorsport-")) return requireSession(<MotorsportDashboard active={hash.replace("#", "")} />);
   if (hash === "#rugby") return <RugbyDashboard />;
+  if (hash.startsWith("#rugby-")) return requireSession(<RugbyDashboard active={hash.replace("#", "")} />);
   if (hash === "#cricket") return <CricketDashboard />;
+  if (hash.startsWith("#cricket-")) return requireSession(<CricketDashboard active={hash.replace("#", "")} />);
   if (hash === "#liquidity" || hash === "#agtest") return requireSession(<FootballLiquidity />);
   if (hash === "#liquidity-compact") return requireSession(<FootballLiquidityCompactDemo />);
   if (hash === "#signal-demo") return requireSession(<FootballSignalDemo />);
@@ -85,7 +95,10 @@ function screenForHash(hash: string) {
   if (hash === "#arbs") return requireSession(<FootballArbs />);
   if (hash === "#football-tables" || hash === "#league-tables") return requireSession(<FootballLeagueTables />);
   if (hash === "#football-results" || hash === "#results") return requireSession(<FootballResults />);
-  if (hash === "#football-profiles" || hash === "#profile-mockup" || hash === "#profiles") return requireSession(<FootballProfiles />);
+  if (hash === "#football-teams" || hash === "#football-players" || hash === "#football-profiles" || hash === "#profile-mockup" || hash === "#profiles") {
+    return requireSession(<FootballProfiles active={hash === "#football-players" ? "football-players" : "football-teams"} />);
+  }
+  if (hash === "#football-injuries" || hash === "#football-news") return requireSession(<FootballDashboard active={hash.replace("#", "")} />);
   if (hash.startsWith("#team/")) return requireSession(<TeamProfile slug={hash.replace("#team/", "") || "chelsea"} />);
   if (hash.startsWith("#player/")) return requireSession(<PlayerProfile id={hash.replace("#player/", "")} />);
   return requireSession(<Dashboard />);

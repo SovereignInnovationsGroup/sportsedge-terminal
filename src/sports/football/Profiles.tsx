@@ -12,7 +12,7 @@ import {
   type FootballTeamAsset
 } from "./teamAssets";
 
-export default function Profiles() {
+export default function Profiles({ active = "football-teams" }: { active?: string }) {
   const cachedTeams = cachedFootballTeamAssets();
   const [teams, setTeams] = useState<FootballTeamAsset[]>(cachedTeams);
   const [loading, setLoading] = useState(cachedTeams.length === 0);
@@ -98,7 +98,7 @@ export default function Profiles() {
 
   return (
     <>
-      <TerminalTopbar active="football-profiles" onSearchChange={setQuery} searchPlaceholder="Filter football teams, country, league..." />
+      <TerminalTopbar active={active} onSearchChange={setQuery} searchPlaceholder="Filter football teams, country, league..." />
       <main className="football-profiles-page">
         <FootballScopeFilter
           dateScope={dateScope}
