@@ -1,0 +1,157 @@
+# Current SportsEdge News Sources
+
+Snapshot checked from `https://api.sportsedge.markets/api/news?limit=1&include_context=1` on 2026-05-21.
+
+Important current state: these source names exist in the news catalogue, but ClickHouse currently reports `enabled = 1` source-site feeds as `0`. Live recent ingest is coming from the Twitter/X high-level ingest worker.
+
+## Source Names
+
+- AFC Bournemouth RSS
+- Aberdeen News
+- Ajax News
+- Anderlecht News
+- Arsenal RSS
+- Aston Villa RSS
+- At The Races News
+- Australian Open News
+- Austrian Bundesliga News
+- Autosport F1 RSS
+- BBC Bayern Munich RSS
+- BBC Ligue 1 RSS
+- BBC Manchester City RSS
+- BBC Scottish Football RSS
+- BBC Sport RSS
+- BCCI News
+- BHA News RSS
+- BHA Press Releases RSS
+- Barcelona News
+- Billie Jean King Cup News
+- Borussia Dortmund News
+- Boxing News RSS
+- Braga News
+- Brighton News
+- Bundesliga RSS
+- Burnley RSS
+- Celtic News
+- Challenge Cup News
+- Champions Cup News
+- Chelsea News
+- Churchill Downs News
+- Club Brugge News
+- Copenhagen News
+- Cricket Australia News
+- Crystal Palace RSS
+- DP World Tour News
+- Davis Cup News
+- Dubai Racing Club News
+- ECB News
+- ESPNcricinfo Australia RSS
+- ESPNcricinfo Bangladesh RSS
+- ESPNcricinfo England RSS
+- ESPNcricinfo Global RSS
+- ESPNcricinfo India RSS
+- ESPNcricinfo New Zealand RSS
+- ESPNcricinfo Pakistan RSS
+- ESPNcricinfo Sri Lanka RSS
+- ESPNcricinfo Zimbabwe RSS
+- England Rugby News
+- Equibase
+- Evening Standard Sport RSS
+- Everton RSS
+- EyeFootball News RSS
+- EyeFootball Transfers RSS
+- FAW News
+- FIA RSS
+- Feyenoord News
+- Formula 1 Latest News RSS
+- France Galop News
+- Fulham RSS
+- GOLF.com RSS
+- Genk News
+- Gent News
+- GiveMeSport RSS
+- Golf Canada RSS
+- Golf Monthly News RSS
+- Golf News Net RSS
+- Golf365 RSS
+- HKJC Racing News
+- Hearts News
+- Horse Racing Ireland Press
+- ICC Cricket News
+- ICC Media Releases
+- Independent Sport RSS
+- IndyCar News
+- Inter News
+- Irish FA News
+- Irish Rugby News
+- JRA News
+- Juventus News
+- LIV Golf News
+- LaLiga News
+- Leeds United News
+- Liga Portugal News
+- Liverpool News
+- MLS News
+- Manchester City News
+- Manchester United News
+- Marseille News
+- Masters News
+- Milan News
+- Mirror Sport RSS
+- MotoGP News
+- Motorsport.com F1 RSS
+- Motorsport.com NASCAR RSS
+- NBA News
+- NFL News
+- NHL News
+- NRL News
+- NYRA News
+- NZC News
+- National Club Golfer RSS
+- Newcastle United News
+- Nottingham Forest RSS
+- Olympiacos News
+- PAOK News
+- PGA Championship News
+- PGA Tour News
+- PSG News
+- Panathinaikos News
+- Premier League Injuries
+- Premier League News
+- Premier League Transfers
+- Premiership Rugby News
+- Racing NSW News
+- Racing Post News
+- Rapid Wien News
+- Red Bull Salzburg News
+- Roland-Garros News
+- Roma News
+- Ryder Cup News
+- SPFL News
+- Scottish Rugby News
+- Servette News
+- Six Nations News
+- Sky Sports Cricket RSS
+- Sky Sports F1 RSS
+- Sky Sports RSS
+- Sporting CP News
+- SportsNewsIreland RSS
+- Sunderland RSS
+- Super League News
+- The FA News
+- The R&A News
+- The Sporting Blog RSS
+- Tottenham Hotspur News
+- Trabzonspor News
+- UCI News
+- UEFA News
+- UFC News
+- URC News
+- US Open News
+- USGA News
+- Union SG News
+- WTA News
+- West Ham United News
+- Wolves News RSS
+- World Rugby News
+- World Snooker Tour News
