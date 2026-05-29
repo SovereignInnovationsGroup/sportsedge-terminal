@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { readSnapshot, writeSnapshot } from "../../core/snapshotCache";
 import { fetchMarketSnapshotRows } from "../football/marketData";
 import {
   BackendPriceRow,
@@ -19,6 +20,24 @@ import {
   withTimeout
 } from "./sportDashboardUtils";
 
+type SportDashboardSnapshot = {
+  events: SportEventRow[];
+  news: NewsItem[];
+  standings: StandingRow[];
+  standingsStatus: string;
+  standingsProvider: string;
+};
+
+function emptySportDashboardSnapshot(): SportDashboardSnapshot {
+  return {
+    events: [],
+    news: [],
+    standings: [],
+    standingsStatus: "",
+    standingsProvider: ""
+  };
+}
+
 export function useSportDashboardData({
   normalizedSport,
   isFootball,
@@ -28,12 +47,14 @@ export function useSportDashboardData({
   isFootball: boolean;
   espnScopeKey: string;
 }) {
-  const [events, setEvents] = useState<SportEventRow[]>([]);
-  const [news, setNews] = useState<NewsItem[]>([]);
-  const [standings, setStandings] = useState<StandingRow[]>([]);
-  const [standingsStatus, setStandingsStatus] = useState("");
-  const [standingsProvider, setStandingsProvider] = useState("");
-  const [loading, setLoading] = useState(true);
+  const snapshotKey = `sport-dashboard.${normalizedSport}.${espnScopeKey || "default"}`;
+  const cachedSnapshot = readSnapshot<SportDashboardSnapshot>(snapshotKey, 90_000) || emptySportDashboardSnapshot();
+  const [events, setEvents] = useState<SportEventRow[]>(cachedSnapshot.events);
+  const [news, setNews] = useState<NewsItem[]>(cachedSnapshot.news);
+  const [standings, setStandings] = useState<StandingRow[]>(cachedSnapshot.standings);
+  const [standingsStatus, setStandingsStatus] = useState(cachedSnapshot.standingsStatus);
+  const [standingsProvider, setStandingsProvider] = useState(cachedSnapshot.standingsProvider);
+  const [loading, setLoading] = useState(cachedSnapshot.events.length === 0 && cachedSnapshot.news.length === 0 && cachedSnapshot.standings.length === 0);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -88,11 +109,19 @@ export function useSportDashboardData({
               .map(capturedSportEventToEvent)
               .filter(Boolean) as SportEventRow[]
             : [];
-          setEvents(isFootball ? mergeSportEvents([...fixtureEvents, ...exchangeEvents]) : mergeSportEvents([...capturedEvents, ...exchangeEvents]));
-          setNews(Array.isArray(newsPayload.items) ? newsPayload.items as NewsItem[] : []);
-          setStandings(Array.isArray(standingsPayload.rows) ? standingsPayload.rows : []);
-          setStandingsStatus(String(standingsPayload.sourceStatus || ""));
-          setStandingsProvider(String(standingsPayload.provider || ""));
+          const nextSnapshot: SportDashboardSnapshot = {
+            events: isFootball ? mergeSportEvents([...fixtureEvents, ...exchangeEvents]) : mergeSportEvents([...capturedEvents, ...exchangeEvents]),
+            news: Array.isArray(newsPayload.items) ? newsPayload.items as NewsItem[] : [],
+            standings: Array.isArray(standingsPayload.rows) ? standingsPayload.rows : [],
+            standingsStatus: String(standingsPayload.sourceStatus || ""),
+            standingsProvider: String(standingsPayload.provider || "")
+          };
+          writeSnapshot(snapshotKey, nextSnapshot);
+          setEvents(nextSnapshot.events);
+          setNews(nextSnapshot.news);
+          setStandings(nextSnapshot.standings);
+          setStandingsStatus(nextSnapshot.standingsStatus);
+          setStandingsProvider(nextSnapshot.standingsProvider);
           const failed = [
             oddsResult.status === "rejected" ? "markets" : "",
             newsResult.status === "rejected" ? "news" : "",

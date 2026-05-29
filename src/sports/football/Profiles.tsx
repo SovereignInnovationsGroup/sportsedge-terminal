@@ -6,7 +6,6 @@ import {
   cachedFootballTeamAssets,
   footballTeamAssetMatchesGroup,
   footballTeamAssetCacheIsComplete,
-  hydrateFootballTeamAssets,
   prefetchFootballTeamAssets,
   searchFootballTeamAssets,
   type FootballTeamAsset
@@ -16,7 +15,7 @@ export default function Profiles({ active = "football-teams" }: { active?: strin
   const cachedTeams = cachedFootballTeamAssets();
   const [teams, setTeams] = useState<FootballTeamAsset[]>(cachedTeams);
   const [loading, setLoading] = useState(cachedTeams.length === 0);
-  const [hydrating, setHydrating] = useState(!footballTeamAssetCacheIsComplete());
+  const [hydrating, setHydrating] = useState(false);
   const [serverSearchTeams, setServerSearchTeams] = useState<FootballTeamAsset[] | null>(null);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
@@ -34,12 +33,6 @@ export default function Profiles({ active = "football-teams" }: { active?: strin
           setTeams(teams);
           setError("");
         }
-        hydrateFootballTeamAssets().then((hydratedTeams) => {
-          if (!cancelled && hydratedTeams.length) {
-            setTeams(hydratedTeams);
-            setHydrating(!footballTeamAssetCacheIsComplete());
-          }
-        });
       } catch (err) {
         if (!cancelled) {
           setTeams([]);
@@ -57,14 +50,18 @@ export default function Profiles({ active = "football-teams" }: { active?: strin
     const trimmed = query.trim();
     if (trimmed.length < 2 || footballTeamAssetCacheIsComplete()) {
       setServerSearchTeams(null);
+      setHydrating(false);
       return;
     }
     let cancelled = false;
     const timer = window.setTimeout(() => {
+      setHydrating(true);
       searchFootballTeamAssets(trimmed).then((results) => {
         if (!cancelled) setServerSearchTeams(results);
       }).catch(() => {
         if (!cancelled) setServerSearchTeams(null);
+      }).finally(() => {
+        if (!cancelled) setHydrating(false);
       });
     }, 180);
     return () => {

@@ -1,5 +1,6 @@
 import { eventHasPassed, formatExchangeMoney, localEventTime, normalizeFixtureText } from "../../core/format";
 import { sportsEdgeWsUrl } from "../../core/news";
+import { readSnapshot, writeSnapshot } from "../../core/snapshotCache";
 import { footballTextMatchesGroup } from "./filters";
 
 export type BackendRunnerLevel = { odds: number; amount: number; level?: number };
@@ -152,9 +153,13 @@ export function cachedFootballLiquidityRows(maxAgeMs = 2 * 60 * 1000) {
 }
 
 async function fetchBackendPriceRows(url: string) {
+  const cacheKey = `marketRows.${withDemoMarketFeed(url)}`;
+  const cached = readSnapshot<{ rows: BackendPriceRow[] }>(cacheKey, 20_000);
+  if (cached?.rows?.length) return cached.rows;
   const response = await fetch(withDemoMarketFeed(url), { cache: "no-store" });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !Array.isArray(payload.rows)) throw new Error(payload.detail || "liquidity fetch failed");
+  writeSnapshot(cacheKey, { rows: payload.rows as BackendPriceRow[] });
   return payload.rows as BackendPriceRow[];
 }
 

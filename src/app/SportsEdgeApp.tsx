@@ -1,5 +1,6 @@
 import { lazy, Suspense, type ReactNode, useEffect, useState } from "react";
 import { hasTerminalSession } from "../core/session";
+import { preloadTerminalHotScreens } from "../core/preload";
 import { LoadingScreen } from "./LoadingScreen";
 import "../styles/dashboard.css";
 
@@ -112,6 +113,10 @@ export default function SportsEdgeApp() {
     const handleHash = () => setHash(window.location.hash);
     window.addEventListener("hashchange", handleHash);
     return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
+
+  useEffect(() => {
+    if (hasTerminalSession() || import.meta.env.DEV) preloadTerminalHotScreens();
   }, []);
 
   return (

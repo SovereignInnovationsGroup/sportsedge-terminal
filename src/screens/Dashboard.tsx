@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { TerminalTopbar } from "../app/TerminalTopbar";
 import { eventHasPassed, localDateKey, localEventTime } from "../core/format";
 import { terminalNewsHeadline, terminalNewsTag, terminalNewsTimeLabel, uniqueNewsItems, type NewsItem } from "../core/news";
+import { readSnapshot, refreshJsonSnapshot } from "../core/snapshotCache";
 
 const DASHBOARD_NEWS_WIDTH_KEY = "sportsedge.dashboard.newsRailWidth.v1";
 const DEFAULT_NEWS_WIDTH = 330;
@@ -44,6 +45,16 @@ type DashboardSportEvent = {
   updatedAt?: string | null;
 };
 
+type DashboardEventsPayload = {
+  items?: DashboardSportEvent[];
+  generatedAt?: string;
+  detail?: string;
+};
+
+type DashboardNewsPayload = {
+  items?: NewsItem[];
+};
+
 function clampNewsWidth(value: number) {
   return Math.min(MAX_NEWS_WIDTH, Math.max(MIN_NEWS_WIDTH, Math.round(value)));
 }
@@ -58,10 +69,12 @@ function readNewsRailWidth() {
 }
 
 export default function Dashboard() {
-  const [dashboardNews, setDashboardNews] = useState<NewsItem[]>([]);
-  const [events, setEvents] = useState<DashboardSportEvent[]>([]);
-  const [eventsGeneratedAt, setEventsGeneratedAt] = useState("");
-  const [eventsLoading, setEventsLoading] = useState(true);
+  const cachedEvents = readSnapshot<DashboardEventsPayload>("dashboard.events", 2 * 60 * 1000);
+  const cachedNews = readSnapshot<DashboardNewsPayload>("dashboard.news", 60 * 1000);
+  const [dashboardNews, setDashboardNews] = useState<NewsItem[]>(() => uniqueNewsItems(cachedNews?.items || []).slice(0, 60));
+  const [events, setEvents] = useState<DashboardSportEvent[]>(() => cachedEvents?.items || []);
+  const [eventsGeneratedAt, setEventsGeneratedAt] = useState(cachedEvents?.generatedAt || "");
+  const [eventsLoading, setEventsLoading] = useState(!cachedEvents?.items?.length);
   const [eventsError, setEventsError] = useState("");
   const [newsRailWidth, setNewsRailWidth] = useState(readNewsRailWidth);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -82,16 +95,18 @@ export default function Dashboard() {
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London",
           limit: "1200"
         });
-        const response = await fetch(`/api/sports/events?${params.toString()}`, { cache: "no-store", signal: controller.signal });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || !Array.isArray(payload.items)) throw new Error(payload.detail || "events unavailable");
+        const payload = await refreshJsonSnapshot<DashboardEventsPayload>("dashboard.events", `/api/sports/events?${params.toString()}`, {
+          signal: controller.signal,
+          timeoutMs: 5_000
+        });
+        if (!Array.isArray(payload.items)) throw new Error(payload.detail || "events unavailable");
         setEvents(payload.items as DashboardSportEvent[]);
         setEventsGeneratedAt(String(payload.generatedAt || ""));
         setEventsError("");
       } catch (err) {
         if (!controller.signal.aborted) {
-          setEvents([]);
-          setEventsGeneratedAt("");
+          setEvents((current) => current);
+          setEventsGeneratedAt((current) => current);
           setEventsError(err instanceof Error ? err.message : "events unavailable");
         }
       } finally {
@@ -111,13 +126,13 @@ export default function Dashboard() {
     async function loadDashboardNews() {
       try {
         const params = new URLSearchParams({ limit: "60" });
-        const response = await fetch(`/api/news?${params.toString()}`, { cache: "no-store", signal: controller.signal });
-        const payload = await response.json();
-        if (response.ok && Array.isArray(payload.items)) {
-          setDashboardNews(uniqueNewsItems(payload.items as NewsItem[]).slice(0, 60));
-        }
+        const payload = await refreshJsonSnapshot<DashboardNewsPayload>("dashboard.news", `/api/news?${params.toString()}`, {
+          signal: controller.signal,
+          timeoutMs: 4_000
+        });
+        if (Array.isArray(payload.items)) setDashboardNews(uniqueNewsItems(payload.items as NewsItem[]).slice(0, 60));
       } catch {
-        if (!controller.signal.aborted) setDashboardNews([]);
+        if (!controller.signal.aborted) setDashboardNews((current) => current);
       }
     }
     loadDashboardNews();
