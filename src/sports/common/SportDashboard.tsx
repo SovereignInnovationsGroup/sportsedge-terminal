@@ -717,6 +717,20 @@ export function SportDashboard({
   const tomorrowRows = useMemo(() => filteredEvents.filter((event) => isTomorrowLocal(event.startAt)), [filteredEvents]);
   const todayLiquidity = todayRows.reduce((sum, event) => sum + event.liquidity, 0);
   const exchangeCount = new Set(filteredEvents.flatMap((event) => event.exchanges)).size;
+  const nearTermRows = useMemo(() => [...todayRows, ...tomorrowRows]
+    .filter((event) => !eventHasPassed(event.startAt))
+    .sort((a, b) => {
+      const liquidityDiff = b.liquidity - a.liquidity;
+      if (liquidityDiff !== 0) return liquidityDiff;
+      return new Date(a.startAt || "").getTime() - new Date(b.startAt || "").getTime();
+    })
+    .slice(0, 6), [todayRows, tomorrowRows]);
+  const coveredRows = useMemo(() => filteredEvents.filter((event) => event.exchanges.length > 0), [filteredEvents]);
+  const exchangeLiquidityRows = useMemo(() => DASHBOARD_EXCHANGES.map((exchange) => ({
+    ...exchange,
+    liquidity: filteredEvents.reduce((sum, event) => sum + Number(event.liquidityByExchange[exchange.key] || 0), 0),
+    eventCount: filteredEvents.filter((event) => Number(event.liquidityByExchange[exchange.key] || 0) > 0).length
+  })).filter((row) => row.liquidity > 0 || row.eventCount > 0), [filteredEvents]);
   const latestTick = filteredEvents
     .map((event) => event.latestSeenAt ? new Date(event.latestSeenAt).getTime() : 0)
     .filter((value) => Number.isFinite(value) && value > 0)
@@ -752,8 +766,8 @@ export function SportDashboard({
         <section className="sport-summary-hero">
           <div>
             <span>SportsEdge / {label}</span>
-            <h1>{label} Dashboard</h1>
-            <p>Today and tomorrow fixtures, exchange coverage, available liquidity, and sport-specific news.</p>
+            <h1>{label}</h1>
+            <p>Today and tomorrow events, exchange coverage, available liquidity, and sport-specific intelligence.</p>
           </div>
           <div className="sport-summary-kpis">
             <article><span>Today</span><strong>{todayRows.length}</strong></article>
@@ -766,6 +780,45 @@ export function SportDashboard({
         {error && <div className="agtest-error">{error}</div>}
         <section className="sport-summary-layout">
           <div className="sport-summary-main">
+            <section className="sport-command-grid" aria-label={`${label} market overview`}>
+              <div className="sport-command-panel">
+                <header><span>Market Board</span><strong>{nearTermRows.length}</strong></header>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Event</th>
+                      <th>Competition</th>
+                      <th>Coverage</th>
+                      <th>Total Now</th>
+                      <th>Latest</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {nearTermRows.map((event) => (
+                      <tr key={`command-${event.id}-${event.startAt}`}>
+                        <td className="mono positive">{localEventTime(event.startAt)}</td>
+                        <td><strong>{event.name}</strong></td>
+                        <td>{event.competition || "-"}</td>
+                        <td><ExchangeCoverageCell event={event} /></td>
+                        <td className="mono liquidity-money total">{formatExchangeMoney(event.liquidity, "GBP")}</td>
+                        <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "-"}</td>
+                      </tr>
+                    ))}
+                    {!loading && nearTermRows.length === 0 && <tr><td className="empty" colSpan={6}>No near-term events returned for the current filter.</td></tr>}
+                    {loading && nearTermRows.length === 0 && <tr><td className="empty" colSpan={6}>Loading market board.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+              <div className="sport-command-panel sport-command-intel">
+                <header><span>Sport Intel</span><strong>{news.length}</strong></header>
+                <div>
+                  <article><span>Covered events</span><strong>{coveredRows.length}</strong><em>{filteredEvents.length} total in view</em></article>
+                  <article><span>Exchange venues</span><strong>{exchangeCount || "-"}</strong><em>{exchangeLiquidityRows.length ? "liquidity visible" : "waiting for venue rows"}</em></article>
+                  <article><span>News tape</span><strong>{news.length ? "Live" : loading ? "Loading" : "Quiet"}</strong><em>{news[0] ? newsHeadline(news[0]) : `${label} news rail remains filtered.`}</em></article>
+                </div>
+              </div>
+            </section>
             <StandingsPanel
               label={label}
               rows={standings}

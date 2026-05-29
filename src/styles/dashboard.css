@@ -8633,6 +8633,7 @@ button {
 
 .sport-summary-hero span,
 .sport-summary-kpis span,
+.sport-command-panel header span,
 .sport-summary-panel header span,
 .sport-summary-news header span {
   color: var(--gold);
@@ -8698,6 +8699,20 @@ button {
   border-bottom: 1px solid rgba(36, 50, 65, 0.62);
 }
 
+.sport-command-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 1px;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.72);
+  background: rgba(36, 50, 65, 0.72);
+}
+
+.sport-command-panel {
+  min-width: 0;
+  background: #05080d;
+}
+
+.sport-command-panel header,
 .sport-summary-panel header,
 .sport-summary-news header {
   display: flex;
@@ -8709,12 +8724,100 @@ button {
   padding: 0 12px;
 }
 
+.sport-command-panel header strong,
 .sport-summary-panel header strong,
 .sport-summary-news header strong {
   color: #86efac;
   font-family: var(--mono);
   font-size: 13px;
   font-weight: 950;
+}
+
+.sport-command-panel table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.sport-command-panel th,
+.sport-command-panel td {
+  height: 34px;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.46);
+  overflow: hidden;
+  padding: 0 10px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sport-command-panel th {
+  background: #081018;
+  color: rgba(203, 213, 225, 0.82);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.sport-command-panel tbody tr:nth-child(even) td {
+  background: #080d13;
+}
+
+.sport-command-panel th:nth-child(1),
+.sport-command-panel td:nth-child(1) { width: 78px; }
+.sport-command-panel th:nth-child(3),
+.sport-command-panel td:nth-child(3) { width: 180px; }
+.sport-command-panel th:nth-child(4),
+.sport-command-panel td:nth-child(4) { width: 176px; }
+.sport-command-panel th:nth-child(5),
+.sport-command-panel td:nth-child(5),
+.sport-command-panel th:nth-child(6),
+.sport-command-panel td:nth-child(6) { width: 98px; }
+
+.sport-command-intel > div {
+  display: grid;
+  gap: 1px;
+  background: rgba(36, 50, 65, 0.46);
+}
+
+.sport-command-intel article {
+  min-width: 0;
+  background: #05080d;
+  padding: 10px 12px;
+}
+
+.sport-command-intel span,
+.sport-command-intel strong,
+.sport-command-intel em {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sport-command-intel span {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.sport-command-intel strong {
+  margin-top: 5px;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.sport-command-intel em {
+  margin-top: 4px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 850;
 }
 
 .sport-summary-fixtures table {
@@ -10957,6 +11060,37 @@ button {
 .bb-today-kpis {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
+
+.bb-today-command-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(340px, 0.68fr);
+  gap: 1px;
+  border-bottom: 1px solid rgba(36, 50, 65, 0.72);
+  background: rgba(36, 50, 65, 0.72);
+}
+
+.bb-today-command-grid > div {
+  min-width: 0;
+  background: #05080d;
+}
+
+.bb-today-priority-table th:nth-child(1),
+.bb-today-priority-table td:nth-child(1) { width: 130px; }
+.bb-today-priority-table th:nth-child(2),
+.bb-today-priority-table td:nth-child(2),
+.bb-today-priority-table th:nth-child(3),
+.bb-today-priority-table td:nth-child(3),
+.bb-today-priority-table th:nth-child(4),
+.bb-today-priority-table td:nth-child(4) { width: 74px; }
+.bb-today-priority-table th:nth-child(6),
+.bb-today-priority-table td:nth-child(6) { width: 74px; }
+
+.bb-today-focus-table th:nth-child(1),
+.bb-today-focus-table td:nth-child(1) { width: 76px; }
+.bb-today-focus-table th:nth-child(2),
+.bb-today-focus-table td:nth-child(2) { width: 95px; }
+.bb-today-focus-table th:nth-child(4),
+.bb-today-focus-table td:nth-child(4) { width: 90px; }
 
 .bb-today-sports-table th:nth-child(1),
 .bb-today-sports-table td:nth-child(1) { width: 120px; }

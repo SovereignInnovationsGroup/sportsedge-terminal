@@ -207,6 +207,26 @@ export default function Dashboard() {
       })
       .sort((a, b) => b.total - a.total || a.label.localeCompare(b.label));
   }, [events, todayKey, tomorrowKey]);
+  const prioritySportRows = useMemo(() => {
+    const priority = ["football", "tennis", "baseball", "basketball", "golf"];
+    const bySport = new Map(sportRows.map((row) => [row.sport, row]));
+    return priority
+      .map((sport) => bySport.get(sport))
+      .filter(Boolean)
+      .concat(sportRows.filter((row) => !priority.includes(row.sport)).slice(0, 3)) as typeof sportRows;
+  }, [sportRows]);
+  const focusEvents = useMemo(() => {
+    const rows = [...todayRows, ...tomorrowRows]
+      .filter((event) => !event.completed && !eventHasPassed(event.startAt || null))
+      .sort((a, b) => {
+        const aLive = a.statusGroup === "live" ? 0 : 1;
+        const bLive = b.statusGroup === "live" ? 0 : 1;
+        if (aLive !== bLive) return aLive - bLive;
+        return new Date(a.startAt || "").getTime() - new Date(b.startAt || "").getTime();
+      });
+    return rows.slice(0, 8);
+  }, [todayRows, tomorrowRows]);
+  const liveCount = useMemo(() => events.filter((event) => event.statusGroup === "live").length, [events]);
 
   function rowStatus(event: DashboardSportEvent) {
     if (event.completed || event.statusGroup === "complete") return "Complete";
@@ -310,7 +330,7 @@ export default function Dashboard() {
                 ["Sports Captured", String(sportRows.length), "today/tomorrow"],
                 ["Today Events", String(todayRows.length), todayKey],
                 ["Tomorrow Events", String(tomorrowRows.length), tomorrowKey],
-                ["Live Now", String(events.filter((event) => event.statusGroup === "live").length), "captured"],
+                ["Live Now", String(liveCount), "captured"],
                 ["Feed Health", eventsError ? "Warn" : "Live", eventsError || "Postgres + API"]
               ].map(([label, value, delta]) => (
                 <div key={label}>
@@ -322,6 +342,60 @@ export default function Dashboard() {
             </div>
 
             {eventsError && <div className="agtest-error">{eventsError}</div>}
+
+            <section className="bb-today-command-grid" aria-label="SportsEdge all sports command overview">
+              <div>
+                <div className="bb-demo-strip"><span>SportsEdge Picture</span><strong>Priority sports today and coming</strong><em>Client login screen: markets first, news as intelligence.</em></div>
+                <table className="bb-demo-table bb-today-priority-table">
+                  <thead><tr>{["Sport", "Today", "Coming", "Live", "Latest", "Route"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+                  <tbody>
+                    {prioritySportRows.slice(0, 8).map((row) => (
+                      <tr
+                        key={`priority-${row.sport}`}
+                        onDoubleClick={() => {
+                          const route = DASHBOARD_SPORT_ROUTES[row.sport];
+                          if (route) window.location.hash = route;
+                        }}
+                      >
+                        <td>{row.label}</td>
+                        <td className="bb-mono">{row.today}</td>
+                        <td className="bb-mono">{row.tomorrow}</td>
+                        <td className={row.live ? "bb-pos" : "bb-mono"}>{row.live}</td>
+                        <td className="bb-mono">{row.latest ? localEventTime(new Date(row.latest).toISOString()) : "-"}</td>
+                        <td className="bb-flag">{DASHBOARD_SPORT_ROUTES[row.sport] ? "Open" : "Watch"}</td>
+                      </tr>
+                    ))}
+                    {!eventsLoading && prioritySportRows.length === 0 && <tr><td colSpan={6}>No priority sport rows returned yet.</td></tr>}
+                    {eventsLoading && prioritySportRows.length === 0 && <tr><td colSpan={6}>Loading priority sport rows.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+              <div>
+                <div className="bb-demo-strip"><span>Next Focus</span><strong>Live / upcoming event queue</strong><em>{focusEvents.length} near-term events</em></div>
+                <table className="bb-demo-table bb-today-focus-table">
+                  <thead><tr>{["Time", "Sport", "Event", "Status"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+                  <tbody>
+                    {focusEvents.map((event) => (
+                      <tr
+                        className={event.statusGroup === "live" ? "bb-event-live" : ""}
+                        key={`focus-${event.id || `${event.provider}-${event.providerEventId}`}`}
+                        onDoubleClick={() => {
+                          const route = DASHBOARD_SPORT_ROUTES[event.sport];
+                          if (route) window.location.hash = route;
+                        }}
+                      >
+                        <td>{localEventTime(event.startAt || null)}</td>
+                        <td>{event.sportLabel}</td>
+                        <td title={event.name}>{event.name}</td>
+                        <td className={event.statusGroup === "live" ? "bb-pos" : "bb-flag"}>{rowStatus(event)}</td>
+                      </tr>
+                    ))}
+                    {!eventsLoading && focusEvents.length === 0 && <tr><td colSpan={4}>No live or upcoming focus events returned.</td></tr>}
+                    {eventsLoading && focusEvents.length === 0 && <tr><td colSpan={4}>Loading focus queue.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </section>
 
             <div className="bb-demo-strip"><span>Sports Captured</span><strong>Today and tomorrow by sport</strong><em>Double-click rows below to open sport dashboards.</em></div>
             <table className="bb-demo-table bb-today-sports-table">
