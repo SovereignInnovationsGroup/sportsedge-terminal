@@ -56,9 +56,14 @@ const NEWS_FEED_SPORT_FILTERS = [
   ["all", "All"],
   ["football", "Football"],
   ["tennis", "Tennis"],
+  ["golf", "Golf"],
   ["basketball", "Basketball"],
   ["baseball", "Baseball"],
-  ["golf", "Golf"]
+  ["american-football", "NFL"],
+  ["hockey", "Hockey"],
+  ["motorsport", "Motorsport"],
+  ["rugby", "Rugby"],
+  ["cricket", "Cricket"]
 ] as const;
 
 function normalizeSport(value: string | null | undefined) {
@@ -195,13 +200,19 @@ function socialStory(row: TwitterNewsRow): NewsStory {
   };
 }
 
-export default function News() {
+export default function News({
+  initialSport = "football",
+  active = "news"
+}: {
+  initialSport?: string;
+  active?: string;
+}) {
   const [selectedId, setSelectedId] = useState("");
   const [items, setItems] = useState<NewsItem[]>([]);
   const [twitterRows, setTwitterRows] = useState<TwitterNewsRow[]>([]);
   const [feedMode, setFeedMode] = useState<FeedMode>("all");
   const [intelligenceView, setIntelligenceView] = useState("top");
-  const [sport, setSport] = useState("football");
+  const [sport, setSport] = useState(initialSport);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -384,7 +395,7 @@ export default function News() {
 
   return (
     <>
-      <TerminalTopbar active="news" onSearchChange={setQuery} searchPlaceholder="NEWS, ARS, EPL, PLAYER: SAKA, MATCH: ARS-TOT..." />
+      <TerminalTopbar active={active} onSearchChange={setQuery} searchPlaceholder="NEWS, ARS, EPL, PLAYER: SAKA, MATCH: ARS-TOT..." />
       <main className="agtest-page bb-news-page">
         <section className="agtest-subbar bb-demo-subbar" aria-label="News feed controls">
           <nav aria-label="News feed modes">

@@ -42,6 +42,19 @@ const FootballResults = lazy(() => import("../sports/football/Results"));
 const TeamProfile = lazy(() => import("../sports/football/TeamProfile"));
 const PlayerProfile = lazy(() => import("../sports/football/PlayerProfile"));
 
+const SPORT_NEWS_ROUTES: Record<string, string> = {
+  "#football-news": "football",
+  "#tennis-news": "tennis",
+  "#golf-news": "golf",
+  "#basketball-news": "basketball",
+  "#baseball-news": "baseball",
+  "#american-football-news": "american-football",
+  "#hockey-news": "hockey",
+  "#motorsport-news": "motorsport",
+  "#rugby-news": "rugby",
+  "#cricket-news": "cricket"
+};
+
 function requireSession(screen: ReactNode) {
   return hasTerminalSession() || import.meta.env.DEV ? screen : <Login />;
 }
@@ -58,6 +71,7 @@ function screenForHash(hash: string) {
   if (hash === "#settings") return requireSession(<SettingsScreen />);
   if (hash === "#terminal-about") return requireSession(<TerminalAbout />);
   if (hash === "#news" || hash === "#news-feed-mockup") return requireSession(<News />);
+  if (SPORT_NEWS_ROUTES[hash]) return requireSession(<News initialSport={SPORT_NEWS_ROUTES[hash]} active={hash.replace("#", "")} />);
   if (hash === "#news-console") return requireSession(<NewsConsole />);
   if (hash === "#simple-news") return <SimpleNews />;
   if (hash === "#social-news") return requireSession(<StandaloneNews />);
@@ -99,7 +113,7 @@ function screenForHash(hash: string) {
   if (hash === "#football-teams" || hash === "#football-players" || hash === "#football-profiles" || hash === "#profile-mockup" || hash === "#profiles") {
     return requireSession(<FootballProfiles active={hash === "#football-players" ? "football-players" : "football-teams"} />);
   }
-  if (hash === "#football-injuries" || hash === "#football-news") return requireSession(<FootballDashboard active={hash.replace("#", "")} />);
+  if (hash === "#football-injuries") return requireSession(<FootballDashboard active={hash.replace("#", "")} />);
   if (hash.startsWith("#team/")) return requireSession(<TeamProfile slug={hash.replace("#team/", "") || "chelsea"} />);
   if (hash.startsWith("#player/")) return requireSession(<PlayerProfile id={hash.replace("#player/", "")} />);
   return requireSession(<Dashboard />);
