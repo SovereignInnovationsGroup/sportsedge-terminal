@@ -147,7 +147,6 @@ export default function Results() {
       <main className="football-results-page">
         <section className="football-results-header">
           <div>
-            <span>SportsEdge / Football / Results</span>
             <h1>Results</h1>
             <p>Completed and scored football fixtures from the SportsEdge football fixture cache.</p>
           </div>

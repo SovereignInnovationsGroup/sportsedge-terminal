@@ -183,7 +183,6 @@ export default function LeagueTables() {
       <main className="football-tables-page">
         <section className="football-tables-header">
           <div>
-            <span>SportsEdge / Football / Tables</span>
             <h1>League Tables</h1>
             <p>Football standings grouped by competition. API-Football is the preferred source; ESPN fallback is shown where the API-Football standings cache is not populated yet.</p>
           </div>
