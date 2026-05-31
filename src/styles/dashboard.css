@@ -10060,6 +10060,45 @@ button {
   white-space: nowrap;
 }
 
+.player-photo-frame img {
+  object-fit: cover;
+}
+
+.football-player-team-inline {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: center;
+}
+
+.football-player-team-inline img {
+  grid-row: 1 / span 2;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.football-player-team-inline span,
+.football-player-team-inline em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.football-player-team-inline span {
+  color: rgba(241, 245, 249, 0.96);
+  font-weight: 900;
+}
+
+.football-player-team-inline em {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 850;
+}
+
 .arbs-page {
   overflow: hidden;
 }
