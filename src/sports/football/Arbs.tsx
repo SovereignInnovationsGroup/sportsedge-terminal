@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { eventHasPassed, formatExchangeMoney, localEventTime, normalizeFixtureText } from "../../core/format";
-import { FootballScopeFilter } from "./FootballScopeFilter";
-import { footballScopeMatches } from "./filters";
 import {
   fetchMarketSnapshotRows,
   type BackendExchangeMatch,
@@ -13,6 +11,7 @@ import {
 
 type ArbRow = {
   id: string;
+  sport?: string;
   fixture: string;
   competition: string;
   market: string;
@@ -54,11 +53,26 @@ type ArbHistorySummary = {
 
 type ArbHistoryEvent = {
   id: string;
+  sport?: string;
   fixture: string;
+  competition?: string;
+  market?: string;
+  startAt?: string | null;
   status: "EXECUTABLE" | "BLOCKED";
+  type?: string;
   edgePct: number;
+  roiPct?: number;
   venuePair: string;
+  sourceCoverage?: string;
   reason: string;
+  executableStake?: number;
+  maxProfit?: number;
+  maxLoss?: number;
+  staleMs?: number | null;
+  expectedRunners?: number | null;
+  validRunners?: number | null;
+  missingRunners?: number | null;
+  outcomes?: string;
   firstSeenAt: string;
   lastSeenAt: string;
   durationMs: number;
@@ -71,6 +85,27 @@ type ArbHistory = {
 
 const ARB_FRESH_MS = 2000;
 const MIN_EXECUTABLE_STAKE = 10;
+const ARB_SPORTS = [
+  "football",
+  "tennis",
+  "baseball",
+  "basketball",
+  "golf",
+  "american-football",
+  "hockey",
+  "rugby",
+  "cricket",
+  "motorsport"
+] as const;
+const ARB_DATE_FILTERS = [
+  { label: "All", value: "all" },
+  { label: "Today", value: "today" },
+  { label: "Tomorrow", value: "tomorrow" }
+] as const;
+const ARB_SPORT_FILTERS = [
+  { label: "All Sports", value: "all" },
+  ...ARB_SPORTS.map((sport) => ({ label: sport.replace("-", " "), value: sport }))
+] as const;
 const ARB_EXCHANGES = [
   { key: "betfair", label: "BF", currency: "GBP" },
   { key: "matchbook", label: "MB", currency: "GBP" },
@@ -554,7 +589,21 @@ function arbStatusClass(status: ArbRow["status"]) {
 function arbRiskClass(row: ArbRow) {
   const reason = row.reason.toLowerCase();
   if (row.status === "EXECUTABLE_ARB") return "is-executable";
-  if (reason.includes("cross-currency") || reason.includes("stale")) return "is-blocked";
+  if (
+    reason.includes("cross-currency")
+    || reason.includes("fx")
+    || reason.includes("stale")
+    || reason.includes("already started")
+    || reason.includes("started")
+    || reason.includes("past")
+    || reason.includes("no xref")
+    || reason.includes("settlement xref")
+    || reason.includes("below min")
+    || reason.includes("threshold")
+    || reason.includes("mismatch")
+    || reason.includes("ambiguous")
+    || reason.includes("missing start")
+  ) return "is-blocked";
   if (row.status === "ANOMALY") return "is-anomaly";
   return "is-watch";
 }
@@ -574,6 +623,54 @@ function arbDisplayStatus(row: ArbRow) {
   return row.status;
 }
 
+function historyTypeLabel(type: string | undefined): ArbRow["type"] {
+  if (type === "prop_cover_spread") return "cross_venue_runner";
+  if (type === "cross_venue_book") return "cross_venue_book";
+  if (type === "crossed_runner") return "crossed_runner";
+  if (type === "back_book") return "back_book";
+  if (type === "lay_book") return "lay_book";
+  return "watch";
+}
+
+function historyRowsFromEvents(events: ArbHistoryEvent[]): ArbRow[] {
+  return events.map((event) => {
+    const blocked = event.status !== "EXECUTABLE";
+    const staleMs = event.staleMs ?? null;
+    return {
+      id: `monitor:${event.sport || "all"}:${event.id}`,
+      sport: event.sport,
+      fixture: event.fixture,
+      competition: event.competition || "",
+      market: event.market || "Market",
+      startAt: event.startAt || null,
+      observedAt: event.lastSeenAt || event.firstSeenAt || null,
+      type: historyTypeLabel(event.type),
+      status: blocked ? "ANOMALY" : "EXECUTABLE_ARB",
+      edgePct: Number(event.edgePct || 0),
+      roiPct: Number(event.roiPct || event.edgePct || 0),
+      backBookPct: null,
+      layBookPct: null,
+      usableLiquidity: Number(event.executableStake || 0),
+      validRunners: Number(event.validRunners || 0),
+      expectedRunners: event.expectedRunners ?? null,
+      missingRunners: event.missingRunners ?? null,
+      marketComplete: !blocked,
+      staleMs,
+      executable: !blocked,
+      executableStake: Number(event.executableStake || 0),
+      maxProfit: Number(event.maxProfit || 0),
+      maxLoss: Number(event.maxLoss || 0),
+      reason: event.reason || (blocked ? "blocked by scanner" : "fresh + sized + no-loss spread"),
+      bestBack: "-",
+      bestLay: "-",
+      outcomes: event.outcomes || "",
+      liquidity: Number(event.executableStake || 0),
+      venuePair: event.venuePair || "-",
+      sourceCoverage: event.sourceCoverage || event.venuePair || "-"
+    };
+  });
+}
+
 export default function Arbs() {
   const [rows, setRows] = useState<ArbRow[]>([]);
   const [history, setHistory] = useState<ArbHistory | null>(null);
@@ -581,22 +678,26 @@ export default function Arbs() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [dateScope, setDateScope] = useState("all");
-  const [locationScope, setLocationScope] = useState("all");
+  const [sportScope, setSportScope] = useState("all");
   const [lastRefresh, setLastRefresh] = useState<string | null>(null);
   const [sourceMarkets, setSourceMarkets] = useState(0);
 
   async function loadArbs() {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        sport: "football",
-        exchanges: "betfair,matchbook,monaco,betdex",
-        segment: "upcoming4",
-        limit: "300"
-      });
-      const rows = await fetchMarketSnapshotRows(`/api/markets/snapshot?${params.toString()}`, `/api/exchange-odds?${params.toString()}`);
-      setSourceMarkets(rows.length);
-      setRows(buildArbRows((rows as BackendPriceRow[]).filter((row) => !eventHasPassed(row.startAt))));
+      const batches = await Promise.all(ARB_SPORTS.map(async (sport) => {
+        const params = new URLSearchParams({
+          sport,
+          exchanges: "betfair,matchbook,monaco,betdex,sx,betdaq",
+          segment: "upcoming4",
+          limit: "300"
+        });
+        const sportRows = await fetchMarketSnapshotRows(`/api/markets/snapshot?${params.toString()}`, `/api/exchange-odds?${params.toString()}`);
+        return (sportRows as BackendPriceRow[]).map((row) => ({ ...row, sportName: sport }));
+      }));
+      const allRows = batches.flat().filter((row) => !eventHasPassed(row.startAt));
+      setSourceMarkets(allRows.length);
+      setRows(buildArbRows(allRows));
       setLastRefresh(new Date().toISOString());
       setError("");
     } catch (err) {
@@ -608,7 +709,7 @@ export default function Arbs() {
 
   async function loadHistory() {
     try {
-      const response = await fetch("/api/arbs/history?sport=football&limit=80&sinceMs=86400000", { headers: { accept: "application/json" } });
+      const response = await fetch("/api/arbs/history?sport=all&limit=250&sinceMs=86400000", { headers: { accept: "application/json" } });
       if (!response.ok) return;
       const payload = await response.json();
       setHistory({
@@ -631,12 +732,34 @@ export default function Arbs() {
     };
   }, []);
 
+  const monitorRows = useMemo(() => historyRowsFromEvents(history?.events || []), [history]);
+  const screenRows = monitorRows.length ? monitorRows : rows;
+  const screenSource = monitorRows.length ? "server arb monitor" : "local football fallback";
+
   const filteredRows = useMemo(() => {
     const terms = normalizeFixtureText(query).split(" ").filter(Boolean);
-    const scopedRows = rows.filter((row) => footballScopeMatches(`${row.fixture} ${row.competition}`, null, row.startAt, dateScope, locationScope));
+    const scopedRows = screenRows.filter((row) => {
+      if (row.startAt && eventHasPassed(row.startAt)) return false;
+      if (!row.executableStake && !row.maxProfit && !row.outcomes) return false;
+      const rowSport = row.sport || "football";
+      if (sportScope !== "all" && rowSport !== sportScope) return false;
+      if (dateScope !== "all") {
+        const eventDate = new Date(row.startAt || 0);
+        if (!Number.isFinite(eventDate.getTime())) return false;
+        const target = new Date();
+        if (dateScope === "tomorrow") target.setDate(target.getDate() + 1);
+        if (
+          eventDate.getFullYear() !== target.getFullYear()
+          || eventDate.getMonth() !== target.getMonth()
+          || eventDate.getDate() !== target.getDate()
+        ) return false;
+      }
+      return true;
+    });
     if (!terms.length) return scopedRows;
     return scopedRows.filter((row) => {
       const haystack = normalizeFixtureText([
+        row.sport,
         row.fixture,
         row.competition,
         row.market,
@@ -647,38 +770,46 @@ export default function Arbs() {
       ].join(" "));
       return terms.every((term) => haystack.includes(term));
     });
-  }, [query, rows, dateScope, locationScope]);
+  }, [query, screenRows, dateScope, sportScope]);
 
   const executableRows = filteredRows.filter((row) => row.status === "EXECUTABLE_ARB");
   const anomalyRows = filteredRows.filter((row) => row.status === "ANOMALY");
   const blockedRows = filteredRows.filter((row) => arbRiskClass(row) === "is-blocked");
+  const reviewRows = anomalyRows.filter((row) => arbRiskClass(row) !== "is-blocked");
   const freshest = lastRefresh ? localEventTime(lastRefresh, { second: "2-digit" }) : "-";
 
   return (
     <>
       <TerminalTopbar active="arbs" onSearchChange={setQuery} searchPlaceholder="Filter arbs, fixture, market, runner..." />
       <main className="agtest-page arbs-page">
-        <FootballScopeFilter
-          dateScope={dateScope}
-          locationScope={locationScope}
-          onDateScopeChange={setDateScope}
-          onLocationScopeChange={setLocationScope}
-          meta={[
-            `${executableRows.length} executable`,
-            `${anomalyRows.length} anomalies`,
-            `${filteredRows.length} / ${rows.length} watched`,
-            `${sourceMarkets} private markets`,
-            "BF / MB / BetDEX",
-            loading ? "scanning" : `fresh ${freshest}`
-          ]}
-          ariaLabel="Football arbitrage filters"
-        />
+        <section className="agtest-subbar">
+          <nav aria-label="SportsEdge arbitrage filters">
+            {ARB_DATE_FILTERS.map((filter) => (
+              <button key={filter.value} className={dateScope === filter.value ? "active" : ""} type="button" onClick={() => setDateScope(filter.value)}>
+                {filter.label}
+              </button>
+            ))}
+            <span className="agtest-filter-divider" aria-hidden="true">/</span>
+            {ARB_SPORT_FILTERS.map((filter) => (
+              <button key={filter.value} className={sportScope === filter.value ? "active" : ""} type="button" onClick={() => setSportScope(filter.value)}>
+                {filter.label}
+              </button>
+            ))}
+          </nav>
+          <div>
+            <span>{executableRows.length} executable</span>
+            <span>{blockedRows.length} no-trade</span>
+            <span>{filteredRows.length} / {screenRows.length} watched</span>
+            <span>{screenSource}</span>
+            <span>{loading ? "scanning" : `fresh ${freshest}`}</span>
+          </div>
+        </section>
 
         <section className="arbs-summary">
-          <article className="arb-summary-executable"><span>Executable</span><strong>{executableRows.length}</strong></article>
-          <article className="arb-summary-anomaly"><span>Anomalies</span><strong>{anomalyRows.length}</strong></article>
-          <article className="arb-summary-blocked"><span>Blocked</span><strong>{blockedRows.length}</strong></article>
-          <article><span>Markets watched</span><strong>{rows.length}</strong></article>
+          <article className="arb-summary-executable"><span>Own-funds arb</span><strong>{executableRows.length}</strong></article>
+          <article className="arb-summary-anomaly"><span>Cover review</span><strong>{reviewRows.length}</strong></article>
+          <article className="arb-summary-blocked"><span>No trade</span><strong>{blockedRows.length}</strong></article>
+          <article><span>Events watched</span><strong>{screenRows.length}</strong></article>
         </section>
 
         <section className="arbs-monitor-memory" aria-label="Arbitrage monitor memory">
@@ -706,18 +837,18 @@ export default function Arbs() {
         </section>
 
         <section className="arbs-colour-key" aria-label="Arbitrage colour key">
-          <span className="exec">Green: live executable candidate</span>
-          <span className="warn">Amber: theoretical anomaly / review</span>
-          <span className="blocked">Red: blocked by stale data, fees or currency</span>
-          <span className="watch">Blue: watched market, no arb</span>
+          <span className="exec">Green: own-funds executable arb</span>
+          <span className="warn">Amber: cover candidate / needs review</span>
+          <span className="blocked">Red: no trade: stale, started, thin, FX, or no xref</span>
+          <span className="watch">Blue: watched market, no edge</span>
         </section>
 
         <section className={executableRows.length ? "arbs-state-banner live" : "arbs-state-banner flat"}>
           <strong>{executableRows.length ? `${executableRows.length} executable candidate${executableRows.length === 1 ? "" : "s"}` : "No executable arbs right now"}</strong>
           <span>
             {executableRows.length
-              ? "Green rows passed the current same-currency, freshness and minimum-size checks. Recheck price before ticket submit."
-              : "Negative arb % means no risk-free cross. Red rows are no-trade diagnostics, usually stale, same-venue only, cross-currency, fee-sensitive or too thin."}
+              ? "Green rows passed the same-currency, pre-start, freshness and minimum-size checks. Recheck price before ticket submit."
+              : "Red rows are not tradable. Started/past events, stale data, binary cover without settlement xref, FX mismatch, or low size are hard-blocked."}
           </span>
         </section>
 
@@ -726,30 +857,27 @@ export default function Arbs() {
           <table className="arbs-table">
             <thead>
               <tr>
+                <th>Sport</th>
                 <th>Time</th>
-                <th>Fixture</th>
+                <th>Event</th>
                 <th>Market</th>
                 <th>Venues</th>
-                <th>Signal</th>
+                <th>Mode</th>
                 <th>Status</th>
                 <th>Arb %</th>
                 <th>ROI</th>
-                <th>Back total</th>
-                <th>Lay total</th>
-                <th>expected_runners</th>
-                <th>valid_runners</th>
-                <th>missing_runners</th>
-                <th>stale_ms</th>
-                <th>executable_stake</th>
-                <th>max_profit</th>
-                <th>max_loss</th>
-                <th>Both sides</th>
+                <th>Stake</th>
+                <th>Profit</th>
+                <th>Loss</th>
+                <th>Validation</th>
+                <th>Cover detail</th>
                 <th>Fresh</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.map((row) => (
                 <tr className={arbRiskClass(row)} key={row.id}>
+                  <td className="mono">{(row.sport || "football").replace("-", " ")}</td>
                   <td className="mono">{row.startAt ? localEventTime(row.startAt, { day: "2-digit", month: "short" }) : "-"}</td>
                   <td><strong>{row.fixture}</strong><span>{row.competition}</span></td>
                   <td>{row.market}</td>
@@ -758,28 +886,27 @@ export default function Arbs() {
                   <td className={`arb-status-cell ${arbStatusTone(row)}`}><strong>{arbDisplayStatus(row)}</strong><span>{row.reason}</span></td>
                   <td className={row.status === "EXECUTABLE_ARB" ? "mono positive" : "mono"}>{row.edgePct > 0 ? `+${row.edgePct.toFixed(2)}%` : `${row.edgePct.toFixed(2)}%`}</td>
                   <td className={row.status === "EXECUTABLE_ARB" ? "mono positive" : "mono"}>{row.roiPct ? `${row.roiPct.toFixed(2)}%` : "-"}</td>
-                  <td className="mono">{row.bestBack}</td>
-                  <td className="mono">{row.bestLay}</td>
-                  <td className="mono">{row.expectedRunners ?? "-"}</td>
-                  <td className="mono">{row.validRunners}</td>
-                  <td className="mono">{row.missingRunners ?? "-"}</td>
-                  <td className="mono">{row.staleMs == null ? "-" : Math.max(0, Math.round(row.staleMs))}</td>
                   <td className="mono">{row.executableStake ? formatExchangeMoney(row.executableStake, "GBP") : "-"}</td>
                   <td className={row.maxProfit > 0 ? "mono positive" : "mono"}>{row.maxProfit ? formatExchangeMoney(row.maxProfit, "GBP") : "-"}</td>
                   <td className="mono">{row.maxLoss ? formatExchangeMoney(row.maxLoss, "GBP") : "£0"}</td>
+                  <td className="arbs-validation">
+                    <strong>{row.expectedRunners ?? "-"} expected / {row.validRunners || "-"} valid / {row.missingRunners ?? 0} missing</strong>
+                    <span>{row.staleMs == null ? "freshness unknown" : `${Math.max(0, Math.round(row.staleMs))}ms stale`}</span>
+                    <em>{eventHasPassed(row.startAt) ? "started/past: hard no trade" : "pre-start gate ok"}</em>
+                  </td>
                   <td className="arbs-outcomes">{row.outcomes}</td>
                   <td className="mono">{arbFreshnessLabel(row.staleMs)}</td>
                 </tr>
               ))}
               {!loading && filteredRows.length === 0 && (
-                <tr><td className="empty" colSpan={19}>
+                <tr><td className="empty" colSpan={15}>
                   {sourceMarkets > 0
-                    ? "Private markets returned, but none passed the cross-venue or complete-runner arb checks."
-                    : "No private football markets matched the BF / Matchbook / BetDEX arb scan."}
+                    ? "Markets returned, but none passed the all-venue cover or own-funds arb checks."
+                    : "No arb monitor rows matched BF / Matchbook / SX / Betdaq / BetDEX / Poly / Kalshi."}
                 </td></tr>
               )}
               {loading && filteredRows.length === 0 && (
-                <tr><td className="empty" colSpan={19}>Scanning BF, Matchbook and BetDEX books.</td></tr>
+                <tr><td className="empty" colSpan={15}>Scanning exchanges and cover venues.</td></tr>
               )}
             </tbody>
           </table>

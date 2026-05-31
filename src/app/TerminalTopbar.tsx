@@ -15,6 +15,9 @@ const TOP_NAV = [
   { label: "Motorsport", value: "motorsport", route: "#motorsport" },
   { label: "Rugby", value: "rugby", route: "#rugby" },
   { label: "Cricket", value: "cricket", route: "#cricket" },
+  { label: "|", value: "global-divider", route: "", divider: true },
+  { label: "Arbs", value: "arbs", route: "#arbs" },
+  { label: "XPoly", value: "xpoly", route: "#xpoly" },
   { label: "News", value: "news", route: "#news" }
 ] as const;
 
@@ -28,7 +31,6 @@ const FOOTBALL_NAV = [
   { label: "Teams", value: "football-teams", route: "#football-teams" },
   { label: "Players", value: "football-players", route: "#football-players" },
   { label: "Injuries", value: "football-injuries", route: "#football-injuries" },
-  { label: "Arbs", value: "arbs", route: "#arbs" },
   { label: "News", value: "football-news", route: "#football-news" }
 ] as const;
 
@@ -148,7 +150,7 @@ const CRICKET_NAV = [
   { label: "News", value: "cricket-news", route: "#cricket-news" }
 ] as const;
 
-const FOOTBALL_MODE = new Set(["football", "liquidity", "signal-demo", "signal-ticker-demo", "signal-ticker-v2", "signal-ticker-v3", "bias-matrix", "football-tables", "football-results", "football-teams", "football-players", "football-injuries", "arbs", "football-news", "football-profiles"]);
+const FOOTBALL_MODE = new Set(["football", "liquidity", "signal-demo", "signal-ticker-demo", "signal-ticker-v2", "signal-ticker-v3", "bias-matrix", "football-tables", "football-results", "football-teams", "football-players", "football-injuries", "football-news", "football-profiles"]);
 const TENNIS_MODE = new Set(["tennis", "tennis-dashboard", "tennis-liquidity", "tennis-bias-matrix", "tennis-rankings", "tennis-results", "tennis-players", "tennis-tournaments", "tennis-injuries", "tennis-news"]);
 const GOLF_MODE = new Set(GOLF_NAV.map((item) => item.value));
 const BASKETBALL_MODE = new Set(BASKETBALL_NAV.map((item) => item.value));
@@ -327,16 +329,21 @@ export function TerminalTopbar({
       </a>
       <nav className={`testboard-nav${sportNav ? " football-mode" : ""}`} aria-label={navLabel}>
         {navItems.map((item) => (
-          <button
-            className={[active === item.value ? "active" : "", "tone" in item && item.tone ? `nav-${item.tone}` : ""].filter(Boolean).join(" ")}
-            key={item.value}
-            type="button"
-            onClick={() => { window.location.hash = item.route; }}
-          >
-            {item.label}
-          </button>
+          "divider" in item && item.divider ? (
+            <span className="testboard-nav-divider" aria-hidden="true" key={item.value}>|</span>
+          ) : (
+            <button
+              className={[active === item.value ? "active" : "", "tone" in item && item.tone ? `nav-${item.tone}` : ""].filter(Boolean).join(" ")}
+              key={item.value}
+              type="button"
+              onClick={() => { window.location.hash = item.route; }}
+            >
+              {item.label}
+            </button>
+          )
         ))}
       </nav>
+      <span className="testboard-right-divider" aria-hidden="true" />
       <label className="testboard-search">
         <Search size={15} />
         <input

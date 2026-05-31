@@ -1,7 +1,18 @@
 import { lazy, Suspense, type ReactNode, useEffect, useState } from "react";
 import { hasTerminalSession } from "../core/session";
 import { preloadTerminalHotScreens } from "../core/preload";
-import { LoadingScreen } from "./LoadingScreen";
+import FootballDashboard from "../sports/football/FootballDashboard";
+import TennisDashboard from "../sports/tennis/TennisDashboard";
+import RacingDashboard from "../sports/racing/RacingDashboard";
+import GolfDashboard from "../sports/golf/GolfDashboard";
+import BasketballDashboard from "../sports/basketball/BasketballDashboard";
+import BaseballDashboard from "../sports/baseball/BaseballDashboard";
+import AmericanFootballDashboard from "../sports/american-football/AmericanFootballDashboard";
+import HockeyDashboard from "../sports/hockey/HockeyDashboard";
+import MotorsportDashboard from "../sports/motorsport/MotorsportDashboard";
+import RugbyDashboard from "../sports/rugby/RugbyDashboard";
+import CricketDashboard from "../sports/cricket/CricketDashboard";
+import { TerminalTopbar } from "./TerminalTopbar";
 import "../styles/dashboard.css";
 
 const Marketing = lazy(() => import("../screens/Marketing"));
@@ -17,17 +28,6 @@ const StandaloneNews = lazy(() => import("../screens/news/StandaloneNews"));
 const AdminConsole = lazy(() => import("../screens/admin/AdminConsole"));
 const AdminNewsSources = lazy(() => import("../screens/admin/AdminNewsSources"));
 const OddsApiDiagnostics = lazy(() => import("../screens/diagnostics/OddsApiDiagnostics"));
-const FootballDashboard = lazy(() => import("../sports/football/FootballDashboard"));
-const TennisDashboard = lazy(() => import("../sports/tennis/TennisDashboard"));
-const RacingDashboard = lazy(() => import("../sports/racing/RacingDashboard"));
-const GolfDashboard = lazy(() => import("../sports/golf/GolfDashboard"));
-const BasketballDashboard = lazy(() => import("../sports/basketball/BasketballDashboard"));
-const BaseballDashboard = lazy(() => import("../sports/baseball/BaseballDashboard"));
-const AmericanFootballDashboard = lazy(() => import("../sports/american-football/AmericanFootballDashboard"));
-const HockeyDashboard = lazy(() => import("../sports/hockey/HockeyDashboard"));
-const MotorsportDashboard = lazy(() => import("../sports/motorsport/MotorsportDashboard"));
-const RugbyDashboard = lazy(() => import("../sports/rugby/RugbyDashboard"));
-const CricketDashboard = lazy(() => import("../sports/cricket/CricketDashboard"));
 const FootballLiquidity = lazy(() => import("../sports/football/Liquidity"));
 const FootballLiquidityCompactDemo = lazy(() => import("../sports/football/LiquidityCompactDemo"));
 const FootballSignalDemo = lazy(() => import("../sports/football/SignalDemo"));
@@ -36,6 +36,7 @@ const FootballSignalTickerV2Demo = lazy(() => import("../sports/football/SignalT
 const FootballSignalTickerV3Demo = lazy(() => import("../sports/football/SignalTickerV3Demo"));
 const FootballBiasMatrix = lazy(() => import("../sports/football/BiasMatrix"));
 const FootballArbs = lazy(() => import("../sports/football/Arbs"));
+const FootballXPoly = lazy(() => import("../sports/football/XPoly"));
 const FootballProfiles = lazy(() => import("../sports/football/Profiles"));
 const FootballLeagueTables = lazy(() => import("../sports/football/LeagueTables"));
 const FootballResults = lazy(() => import("../sports/football/Results"));
@@ -57,6 +58,39 @@ const SPORT_NEWS_ROUTES: Record<string, string> = {
 
 function requireSession(screen: ReactNode) {
   return hasTerminalSession() || import.meta.env.DEV ? screen : <Login />;
+}
+
+function topbarActiveForHash(hash: string) {
+  const route = hash.replace("#", "") || "dashboard";
+  if (route === "agtest") return "liquidity";
+  if (route === "agtest2") return "bias-matrix";
+  if (route === "league-tables") return "football-tables";
+  if (route === "results") return "football-results";
+  if (route === "profiles" || route === "profile-mockup") return "football-teams";
+  if (hash.startsWith("#team/") || hash.startsWith("#player/")) return "football-teams";
+  return route;
+}
+
+function shouldShowTerminalFallback(hash: string) {
+  if (!hash) return false;
+  return ![
+    "#signup",
+    "#about",
+    "#terms",
+    "#privacy",
+    "#blog",
+    "#login"
+  ].includes(hash);
+}
+
+function RouteFallback({ hash }: { hash: string }) {
+  if (!shouldShowTerminalFallback(hash)) return null;
+  return (
+    <>
+      <TerminalTopbar active={topbarActiveForHash(hash)} />
+      <main className="terminal-route-fallback" aria-label="Loading screen body" />
+    </>
+  );
 }
 
 function screenForHash(hash: string) {
@@ -107,6 +141,7 @@ function screenForHash(hash: string) {
   if (hash === "#signal-ticker-v2") return requireSession(<FootballSignalTickerV2Demo />);
   if (hash === "#signal-ticker-v3") return requireSession(<FootballSignalTickerV3Demo />);
   if (hash === "#bias-matrix" || hash === "#agtest2") return requireSession(<FootballBiasMatrix />);
+  if (hash === "#xpoly") return requireSession(<FootballXPoly />);
   if (hash === "#arbs") return requireSession(<FootballArbs />);
   if (hash === "#football-tables" || hash === "#league-tables") return requireSession(<FootballLeagueTables />);
   if (hash === "#football-results" || hash === "#results") return requireSession(<FootballResults />);
@@ -134,7 +169,7 @@ export default function SportsEdgeApp() {
   }, []);
 
   return (
-    <Suspense fallback={<LoadingScreen />}>
+    <Suspense fallback={<RouteFallback hash={hash} />}>
       {screen}
     </Suspense>
   );

@@ -29,6 +29,5 @@ export function preloadTerminalHotScreens() {
     import("../sports/football/Liquidity");
     import("../sports/football/BiasMatrix");
     import("../sports/football/Profiles");
-    import("../sports/football/FootballDashboard");
   }, 1200);
 }
