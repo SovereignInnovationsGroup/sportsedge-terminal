@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { FootballScopeFilter } from "./FootballScopeFilter";
 import { normalizeFixtureText, teamInitials } from "../../core/format";
+import { SportNewsRail } from "../common/SportDashboardPanels";
+import type { NewsItem } from "../common/sportDashboardTypes";
 import {
   cachedFootballTeamAssets,
   footballTeamAssetMatchesGroup,
@@ -35,6 +37,21 @@ type FootballPlayerDirectoryRow = {
   } | null;
 };
 
+const FOOTBALL_FILTER_NEWS_TERMS: Record<string, string> = {
+  all: "",
+  today: "",
+  tomorrow: "",
+  uk: "UK football",
+  england: "England football",
+  scotland: "Scotland football",
+  wales: "Wales football",
+  "n-ireland": "Northern Ireland football",
+  europe: "European football",
+  uefa: "UEFA",
+  international: "international football",
+  world: "world football"
+};
+
 function playerMatchesGroup(player: FootballPlayerDirectoryRow, group: string) {
   if (group === "all" || group === "today" || group === "tomorrow") return true;
   const country = normalizeFixtureText([player.nationality, player.team?.country].filter(Boolean).join(" "));
@@ -53,8 +70,10 @@ export default function Profiles({ active = "football-teams" }: { active?: strin
   const cachedTeams = cachedFootballTeamAssets();
   const [teams, setTeams] = useState<FootballTeamAsset[]>(cachedTeams);
   const [players, setPlayers] = useState<FootballPlayerDirectoryRow[]>([]);
+  const [playerNews, setPlayerNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(cachedTeams.length === 0);
   const [playersLoading, setPlayersLoading] = useState(false);
+  const [playerNewsLoading, setPlayerNewsLoading] = useState(false);
   const [hydrating, setHydrating] = useState(false);
   const [serverSearchTeams, setServerSearchTeams] = useState<FootballTeamAsset[] | null>(null);
   const [error, setError] = useState("");
@@ -119,6 +138,35 @@ export default function Profiles({ active = "football-teams" }: { active?: strin
       window.clearTimeout(timer);
     };
   }, [playerMode, query, locationScope]);
+
+  useEffect(() => {
+    if (!playerMode) return undefined;
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setPlayerNewsLoading(true);
+      try {
+        const params = new URLSearchParams({
+          sport: "football",
+          limit: "24",
+          include_context: "1"
+        });
+        const newsQuery = query.trim() || FOOTBALL_FILTER_NEWS_TERMS[locationScope] || "";
+        if (newsQuery) params.set("q", newsQuery);
+        const response = await fetch(`/api/news?${params.toString()}`, { cache: "no-store", signal: controller.signal });
+        const payload = await response.json().catch(() => ({})) as { items?: NewsItem[] };
+        if (!response.ok || !Array.isArray(payload.items)) throw new Error("news failed");
+        setPlayerNews(payload.items);
+      } catch (err) {
+        if ((err as { name?: string })?.name !== "AbortError") setPlayerNews([]);
+      } finally {
+        setPlayerNewsLoading(false);
+      }
+    }, query.trim() ? 220 : 0);
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [playerMode, query, locationScope, dateScope]);
 
   useEffect(() => {
     if (playerMode) return undefined;
@@ -215,56 +263,59 @@ export default function Profiles({ active = "football-teams" }: { active?: strin
 
           {error && <div className="agtest-error">{error}</div>}
 
-          <section className="football-profiles-table-wrap">
-            <table className="football-profiles-table">
-              <thead>
-                <tr>
-                  <th>Player</th>
-                  <th>Team</th>
-                  <th>Nation</th>
-                  <th>Position</th>
-                  <th>Age</th>
-                  <th>Provider</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPlayers.map((player) => (
-                  <tr
-                    key={player.id}
-                    onDoubleClick={() => { window.location.hash = `#player/${player.id}`; }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") window.location.hash = `#player/${player.id}`;
-                    }}
-                    tabIndex={0}
-                  >
-                    <td className="football-profile-team-cell">
-                      <span className="team-logo-frame matrix-team-logo player-photo-frame">
-                        {player.photoUrl ? <img src={player.photoUrl} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
-                        <span>{teamInitials(player.name)}</span>
-                      </span>
-                      <strong>{player.name}</strong>
-                    </td>
-                    <td>
-                      <div className="football-player-team-inline">
-                        {player.team?.logoUrl ? <img src={player.team.logoUrl} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
-                        <span>{player.team?.name || "-"}</span>
-                        <em>{player.team?.league || ""}</em>
-                      </div>
-                    </td>
-                    <td>{player.nationality || player.team?.country || "-"}</td>
-                    <td>{[player.position, player.number ? `#${player.number}` : ""].filter(Boolean).join(" ") || "-"}</td>
-                    <td className="mono">{player.age ?? "-"}</td>
-                    <td className="mono">{player.providerPlayerId || "-"}</td>
+          <section className="football-profiles-split">
+            <div className="football-profiles-table-wrap">
+              <table className="football-profiles-table football-player-directory-table">
+                <thead>
+                  <tr>
+                    <th>Player</th>
+                    <th>Team</th>
+                    <th>Nation</th>
+                    <th>Position</th>
+                    <th>Age</th>
+                    <th>Provider</th>
                   </tr>
-                ))}
-                {!playersLoading && filteredPlayers.length === 0 && (
-                  <tr><td className="empty" colSpan={6}>No players matched this filter.</td></tr>
-                )}
-                {playersLoading && filteredPlayers.length === 0 && (
-                  <tr><td className="empty" colSpan={6}>Loading football players.</td></tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredPlayers.map((player) => (
+                    <tr
+                      key={player.id}
+                      onDoubleClick={() => { window.location.hash = `#player/${player.id}`; }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") window.location.hash = `#player/${player.id}`;
+                      }}
+                      tabIndex={0}
+                    >
+                      <td className="football-profile-team-cell">
+                        <span className="team-logo-frame matrix-team-logo player-photo-frame">
+                          {player.photoUrl ? <img src={player.photoUrl} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
+                          <span>{teamInitials(player.name)}</span>
+                        </span>
+                        <strong>{player.name}</strong>
+                      </td>
+                      <td>
+                        <div className="football-player-team-inline">
+                          {player.team?.logoUrl ? <img src={player.team.logoUrl} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
+                          <span>{player.team?.name || "-"}</span>
+                          <em>{player.team?.league || ""}</em>
+                        </div>
+                      </td>
+                      <td>{player.nationality || player.team?.country || "-"}</td>
+                      <td>{[player.position, player.number ? `#${player.number}` : ""].filter(Boolean).join(" ") || "-"}</td>
+                      <td className="mono">{player.age ?? "-"}</td>
+                      <td className="mono">{player.providerPlayerId || "-"}</td>
+                    </tr>
+                  ))}
+                  {!playersLoading && filteredPlayers.length === 0 && (
+                    <tr><td className="empty" colSpan={6}>No players matched this filter.</td></tr>
+                  )}
+                  {playersLoading && filteredPlayers.length === 0 && (
+                    <tr><td className="empty" colSpan={6}>Loading football players.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <SportNewsRail label="Football" news={playerNews} loading={playerNewsLoading} />
           </section>
         </main>
       </>
