@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { eventHasPassed, localEventTime } from "../../core/format";
 import { FootballScopeFilter } from "../football/FootballScopeFilter";
@@ -6,12 +6,13 @@ import { footballScopeMatches } from "../football/filters";
 import {
   ExchangeCoverageCell,
   FixtureTable,
+  SportEntitiesPanel,
   SportNewsRail,
   SportScopeFilter,
   SportStandingByBoard,
   StandingsPanel
 } from "./SportDashboardPanels";
-import { DASHBOARD_EXCHANGES, SportLocationFilter } from "./sportDashboardTypes";
+import { DASHBOARD_EXCHANGES, SportEntitiesPayload, SportEntityRow, SportLocationFilter } from "./sportDashboardTypes";
 import {
   apiSportValue,
   formatExchangeMoney,
@@ -43,6 +44,10 @@ export function SportDashboard({
   const isFootball = normalizedSport === "football";
   const [dateScope, setDateScope] = useState("all");
   const [locationScope, setLocationScope] = useState("all");
+  const [query, setQuery] = useState("");
+  const [entities, setEntities] = useState<SportEntityRow[]>([]);
+  const [entitiesLoading, setEntitiesLoading] = useState(false);
+  const [entitiesError, setEntitiesError] = useState("");
   const espnScopeKey = espnScopes.join(",");
   const {
     events,
@@ -84,10 +89,50 @@ export function SportDashboard({
     .filter((value) => Number.isFinite(value) && value > 0)
     .sort((a, b) => b - a)[0];
   const showDemoHolding = !loading && filteredEvents.length === 0;
+  const activeSection = active.replace(`${sport}-`, "");
+  const entityType = activeSection === "teams" ? "team" : activeSection === "players" || activeSection === "drivers" ? "player" : "";
+  const isEntityPage = Boolean(entityType);
+  const isStandingsPage = ["standings", "tables", "rankings", "leaderboards"].includes(activeSection);
+  const isResultsPage = activeSection === "results" || activeSection === "calendar" || activeSection === "tournaments" || activeSection === "series";
+  const isLiquidityPage = activeSection === "liquidity" || activeSection === "markets";
+  const isBiasPage = activeSection === "bias-matrix";
+  const isInjuriesPage = activeSection === "injuries";
+
+  useEffect(() => {
+    if (!isEntityPage) return;
+    let cancelled = false;
+    async function loadEntities() {
+      setEntitiesLoading(true);
+      setEntitiesError("");
+      try {
+        const params = new URLSearchParams({
+          sport: normalizedSport,
+          type: entityType,
+          limit: "500"
+        });
+        if (query.trim()) params.set("q", query.trim());
+        const response = await fetch(`/api/sports/entities?${params.toString()}`, { cache: "no-store" });
+        const payload = await response.json() as SportEntitiesPayload;
+        if (!response.ok) throw new Error((payload as { detail?: string }).detail || "sport entities failed");
+        if (!cancelled) setEntities(Array.isArray(payload.rows) ? payload.rows : []);
+      } catch (err) {
+        if (!cancelled) {
+          setEntities([]);
+          setEntitiesError(err instanceof Error ? err.message : "sport entities failed");
+        }
+      } finally {
+        if (!cancelled) setEntitiesLoading(false);
+      }
+    }
+    loadEntities();
+    return () => {
+      cancelled = true;
+    };
+  }, [isEntityPage, normalizedSport, entityType, query]);
 
   return (
     <>
-      <TerminalTopbar active={active} searchPlaceholder={`${label}: fixtures, news, liquidity...`} />
+      <TerminalTopbar active={active} searchPlaceholder={`${label}: fixtures, news, liquidity...`} onSearchChange={setQuery} />
       {isFootball && (
         <FootballScopeFilter
           dateScope={dateScope}
@@ -127,58 +172,78 @@ export function SportDashboard({
         {error && <div className="agtest-error">{error}</div>}
         <section className="sport-summary-layout">
           <div className="sport-summary-main">
-            <section className="sport-command-grid" aria-label={`${label} market overview`}>
-              <div className="sport-command-panel">
-                <header><span>Market Board</span><strong>{nearTermRows.length}</strong></header>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Time</th>
-                      <th>Event</th>
-                      <th>Competition</th>
-                      <th>Coverage</th>
-                      <th>Total Now</th>
-                      <th>Latest</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {nearTermRows.map((event) => (
-                      <tr key={`command-${event.id}-${event.startAt}`}>
-                        <td className="mono positive">{localEventTime(event.startAt)}</td>
-                        <td><strong>{event.name}</strong></td>
-                        <td>{event.competition || "-"}</td>
-                        <td><ExchangeCoverageCell event={event} /></td>
-                        <td className="mono liquidity-money total">{formatExchangeMoney(event.liquidity, "GBP")}</td>
-                        <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "-"}</td>
-                      </tr>
-                    ))}
-                    {!loading && nearTermRows.length === 0 && <tr><td className="empty" colSpan={6}>No near-term events returned for the current filter.</td></tr>}
-                    {loading && nearTermRows.length === 0 && <tr><td className="empty" colSpan={6}>Loading market board.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
-              <div className="sport-command-panel sport-command-intel">
-                <header><span>Sport Intel</span><strong>{news.length}</strong></header>
-                <div>
-                  <article><span>Covered events</span><strong>{coveredRows.length}</strong><em>{filteredEvents.length} total in view</em></article>
-                  <article><span>Exchange venues</span><strong>{exchangeCount || "-"}</strong><em>{exchangeLiquidityRows.length ? "liquidity visible" : "waiting for venue rows"}</em></article>
-                  <article><span>News tape</span><strong>{news.length ? "Live" : loading ? "Loading" : "Quiet"}</strong><em>{news[0] ? newsHeadline(news[0]) : `${label} news rail remains filtered.`}</em></article>
-                </div>
-              </div>
-            </section>
-            <StandingsPanel
-              label={label}
-              rows={standings}
-              provider={standingsProvider}
-              sourceStatus={standingsStatus}
-              loading={loading}
-            />
-            {showDemoHolding ? (
-              <SportStandingByBoard label={label} espnScopes={espnScopes} dataStatus={dataStatus} />
+            {isEntityPage ? (
+              <SportEntitiesPanel label={label} type={entityType} rows={entities} loading={entitiesLoading} error={entitiesError} />
+            ) : isStandingsPage ? (
+              <StandingsPanel
+                label={label}
+                rows={standings}
+                provider={standingsProvider}
+                sourceStatus={standingsStatus}
+                loading={loading}
+              />
+            ) : isLiquidityPage || isBiasPage ? (
+              <FixtureTable title={isBiasPage ? "Bias / Liquidity Board" : "Liquidity Board"} rows={filteredEvents} loading={loading} />
+            ) : isResultsPage ? (
+              <FixtureTable title="Event Calendar / Results" rows={filteredEvents} loading={loading} />
+            ) : isInjuriesPage ? (
+              <SportStandingByBoard label={label} espnScopes={espnScopes} dataStatus={`${label} injury feed configured when provider rows are available.`} />
             ) : (
               <>
-                <FixtureTable title="Today" rows={todayRows} loading={loading} />
-                <FixtureTable title="Tomorrow" rows={tomorrowRows} loading={loading} />
+                <section className="sport-command-grid" aria-label={`${label} market overview`}>
+                  <div className="sport-command-panel">
+                    <header><span>Market Board</span><strong>{nearTermRows.length}</strong></header>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Time</th>
+                          <th>Event</th>
+                          <th>Competition</th>
+                          <th>Coverage</th>
+                          <th>Total Now</th>
+                          <th>Latest</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {nearTermRows.map((event) => (
+                          <tr key={`command-${event.id}-${event.startAt}`}>
+                            <td className="mono positive">{localEventTime(event.startAt)}</td>
+                            <td><strong>{event.name}</strong></td>
+                            <td>{event.competition || "-"}</td>
+                            <td><ExchangeCoverageCell event={event} /></td>
+                            <td className="mono liquidity-money total">{formatExchangeMoney(event.liquidity, "GBP")}</td>
+                            <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "-"}</td>
+                          </tr>
+                        ))}
+                        {!loading && nearTermRows.length === 0 && <tr><td className="empty" colSpan={6}>No near-term events returned for the current filter.</td></tr>}
+                        {loading && nearTermRows.length === 0 && <tr><td className="empty" colSpan={6}>Loading market board.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="sport-command-panel sport-command-intel">
+                    <header><span>Sport Intel</span><strong>{news.length}</strong></header>
+                    <div>
+                      <article><span>Covered events</span><strong>{coveredRows.length}</strong><em>{filteredEvents.length} total in view</em></article>
+                      <article><span>Exchange venues</span><strong>{exchangeCount || "-"}</strong><em>{exchangeLiquidityRows.length ? "liquidity visible" : "waiting for venue rows"}</em></article>
+                      <article><span>News tape</span><strong>{news.length ? "Live" : loading ? "Loading" : "Quiet"}</strong><em>{news[0] ? newsHeadline(news[0]) : `${label} news rail remains filtered.`}</em></article>
+                    </div>
+                  </div>
+                </section>
+                <StandingsPanel
+                  label={label}
+                  rows={standings}
+                  provider={standingsProvider}
+                  sourceStatus={standingsStatus}
+                  loading={loading}
+                />
+                {showDemoHolding ? (
+                  <SportStandingByBoard label={label} espnScopes={espnScopes} dataStatus={dataStatus} />
+                ) : (
+                  <>
+                    <FixtureTable title="Today" rows={todayRows} loading={loading} />
+                    <FixtureTable title="Tomorrow" rows={tomorrowRows} loading={loading} />
+                  </>
+                )}
               </>
             )}
           </div>

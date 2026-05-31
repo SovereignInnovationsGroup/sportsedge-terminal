@@ -42,6 +42,7 @@ const FootballLeagueTables = lazy(() => import("../sports/football/LeagueTables"
 const FootballResults = lazy(() => import("../sports/football/Results"));
 const TeamProfile = lazy(() => import("../sports/football/TeamProfile"));
 const PlayerProfile = lazy(() => import("../sports/football/PlayerProfile"));
+const EntityProfile = lazy(() => import("../sports/common/EntityProfile"));
 
 const SPORT_NEWS_ROUTES: Record<string, string> = {
   "#football-news": "football",
@@ -151,6 +152,10 @@ function screenForHash(hash: string) {
   if (hash === "#football-injuries") return requireSession(<FootballDashboard active={hash.replace("#", "")} />);
   if (hash.startsWith("#team/")) return requireSession(<TeamProfile slug={hash.replace("#team/", "") || "chelsea"} />);
   if (hash.startsWith("#player/")) return requireSession(<PlayerProfile id={hash.replace("#player/", "")} />);
+  if (hash.startsWith("#profile/")) {
+    const [, provider = "", entityType = "", id = ""] = hash.replace("#", "").split("/").map((part) => decodeURIComponent(part));
+    return requireSession(<EntityProfile provider={provider} entityType={entityType} id={id} />);
+  }
   return requireSession(<Dashboard />);
 }
 

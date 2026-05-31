@@ -5,6 +5,7 @@ import {
   DEFAULT_DATE_SCOPE_FILTERS,
   NewsItem,
   SportEventRow,
+  SportEntityRow,
   SportLocationFilter,
   StandingRow
 } from "./sportDashboardTypes";
@@ -221,6 +222,88 @@ export function SportStandingByBoard({
           ].map((row) => (
             <tr key={row[0]}>{row.map((cell, index) => <td className={index === 1 || index === 3 ? "mono positive" : ""} key={`${row[0]}-${cell}`}>{cell}</td>)}</tr>
           ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function entityInitials(name: string) {
+  return String(name || "?")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "?";
+}
+
+export function SportEntitiesPanel({
+  label,
+  type,
+  rows,
+  loading,
+  error
+}: {
+  label: string;
+  type: string;
+  rows: SportEntityRow[];
+  loading: boolean;
+  error?: string;
+}) {
+  const title = type === "player" ? "Players" : "Teams";
+  return (
+    <section className="sport-summary-panel sport-entities-panel">
+      <header>
+        <span>{title}</span>
+        <strong>{rows.length}</strong>
+      </header>
+      {error && <div className="agtest-error">{error}</div>}
+      <table>
+        <thead>
+          <tr>
+            <th>{type === "player" ? "Player" : "Team"}</th>
+            <th>League</th>
+            <th>Country</th>
+            <th>{type === "player" ? "Position" : "Code"}</th>
+            <th>{type === "player" ? "Age" : "Provider"}</th>
+            <th>Synced</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr
+              key={`${row.provider}-${row.type}-${row.id}`}
+              tabIndex={0}
+              onDoubleClick={() => {
+                if (row.href) window.location.hash = row.href;
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && row.href) window.location.hash = row.href;
+              }}
+            >
+              <td>
+                <div className="sport-entity-name">
+                  <span className="sport-entity-logo">
+                    {row.imageUrl ? <img src={row.imageUrl} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
+                    <em>{entityInitials(row.name)}</em>
+                  </span>
+                  <strong>{row.name}</strong>
+                  {row.subtitle ? <small>{row.subtitle}</small> : null}
+                </div>
+              </td>
+              <td>{row.league || "-"}</td>
+              <td>{row.country || "-"}</td>
+              <td>{type === "player" ? row.position || "-" : row.abbreviation || "-"}</td>
+              <td className="mono">{type === "player" ? row.age ?? "-" : row.provider}</td>
+              <td className="mono">{row.syncedAt ? newsTime(row.syncedAt) : "-"}</td>
+            </tr>
+          ))}
+          {!loading && rows.length === 0 && (
+            <tr><td className="empty" colSpan={6}>{label} {title.toLowerCase()} rows are not populated yet.</td></tr>
+          )}
+          {loading && rows.length === 0 && (
+            <tr><td className="empty" colSpan={6}>Loading {label.toLowerCase()} {title.toLowerCase()}.</td></tr>
+          )}
         </tbody>
       </table>
     </section>

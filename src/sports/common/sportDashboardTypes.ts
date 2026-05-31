@@ -111,6 +111,31 @@ export type StandingsPayload = {
   rows?: StandingRow[];
 };
 
+export type SportEntityRow = {
+  id: string;
+  provider: string;
+  type: string;
+  sport: string;
+  league?: string | null;
+  name: string;
+  subtitle?: string | null;
+  abbreviation?: string | null;
+  position?: string | null;
+  country?: string | null;
+  age?: number | null;
+  imageUrl?: string | null;
+  href?: string | null;
+  syncedAt?: string | null;
+};
+
+export type SportEntitiesPayload = {
+  generatedAt?: string;
+  sport?: string;
+  type?: string;
+  total?: number;
+  rows?: SportEntityRow[];
+};
+
 export const DASHBOARD_EXCHANGES = [
   { key: "betfair", label: "Betfair", short: "BF" },
   { key: "matchbook", label: "Matchbook", short: "MB" },

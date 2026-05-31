@@ -266,6 +266,14 @@ export default function Profiles({ active = "football-teams" }: { active?: strin
           <section className="football-profiles-split">
             <div className="football-profiles-table-wrap">
               <table className="football-profiles-table football-player-directory-table">
+                <colgroup>
+                  <col className="football-player-col-name" />
+                  <col className="football-player-col-team" />
+                  <col className="football-player-col-nation" />
+                  <col className="football-player-col-position" />
+                  <col className="football-player-col-age" />
+                  <col className="football-player-col-provider" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th>Player</th>
