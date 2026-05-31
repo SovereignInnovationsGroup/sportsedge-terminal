@@ -588,7 +588,7 @@ function arbStatusClass(status: ArbRow["status"]) {
 
 function arbRiskClass(row: ArbRow) {
   const reason = row.reason.toLowerCase();
-  if (row.status === "EXECUTABLE_ARB") return "is-executable";
+  if (row.staleMs != null && row.staleMs > ARB_FRESH_MS) return "is-blocked";
   if (
     reason.includes("cross-currency")
     || reason.includes("fx")
@@ -604,6 +604,7 @@ function arbRiskClass(row: ArbRow) {
     || reason.includes("ambiguous")
     || reason.includes("missing start")
   ) return "is-blocked";
+  if (row.status === "EXECUTABLE_ARB") return "is-executable";
   if (row.status === "ANOMALY") return "is-anomaly";
   return "is-watch";
 }
@@ -634,8 +635,14 @@ function historyTypeLabel(type: string | undefined): ArbRow["type"] {
 
 function historyRowsFromEvents(events: ArbHistoryEvent[]): ArbRow[] {
   return events.map((event) => {
-    const blocked = event.status !== "EXECUTABLE";
-    const staleMs = event.staleMs ?? null;
+    const observedAt = event.lastSeenAt || event.firstSeenAt || null;
+    const currentStaleMs = observedAt ? staleMsFromObservedAt(observedAt) : null;
+    const staleMs = currentStaleMs ?? event.staleMs ?? null;
+    const stale = staleMs != null && staleMs > ARB_FRESH_MS;
+    const blocked = event.status !== "EXECUTABLE" || stale;
+    const reason = stale && event.status === "EXECUTABLE"
+      ? `stale ${arbFreshnessLabel(staleMs)}: no current executable quote`
+      : event.reason || (blocked ? "blocked by scanner" : "fresh + sized + no-loss spread");
     return {
       id: `monitor:${event.sport || "all"}:${event.id}`,
       sport: event.sport,
@@ -643,7 +650,7 @@ function historyRowsFromEvents(events: ArbHistoryEvent[]): ArbRow[] {
       competition: event.competition || "",
       market: event.market || "Market",
       startAt: event.startAt || null,
-      observedAt: event.lastSeenAt || event.firstSeenAt || null,
+      observedAt,
       type: historyTypeLabel(event.type),
       status: blocked ? "ANOMALY" : "EXECUTABLE_ARB",
       edgePct: Number(event.edgePct || 0),
@@ -660,7 +667,7 @@ function historyRowsFromEvents(events: ArbHistoryEvent[]): ArbRow[] {
       executableStake: Number(event.executableStake || 0),
       maxProfit: Number(event.maxProfit || 0),
       maxLoss: Number(event.maxLoss || 0),
-      reason: event.reason || (blocked ? "blocked by scanner" : "fresh + sized + no-loss spread"),
+      reason,
       bestBack: "-",
       bestLay: "-",
       outcomes: event.outcomes || "",
