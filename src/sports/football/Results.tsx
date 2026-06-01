@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
-import { localDateKey, localEventTime } from "../../core/format";
+import { localDateKey } from "../../core/format";
 
 type FootballResultFixture = {
   id?: string;
@@ -71,7 +71,6 @@ export default function Results() {
   const [activeFilter, setActiveFilter] = useState<(typeof RESULT_FILTERS)[number]["value"]>("week");
   const [fixtures, setFixtures] = useState<FootballResultFixture[]>([]);
   const [query, setQuery] = useState("");
-  const [generatedAt, setGeneratedAt] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const filter = RESULT_FILTERS.find((item) => item.value === activeFilter) || RESULT_FILTERS[2];
@@ -92,13 +91,11 @@ export default function Results() {
         if (!response.ok) throw new Error(payload.detail || "results failed");
         if (!cancelled) {
           setFixtures(Array.isArray(payload.fixtures) ? payload.fixtures : []);
-          setGeneratedAt(String(payload.generatedAt || ""));
           setError("");
         }
       } catch (err) {
         if (!cancelled) {
           setFixtures([]);
-          setGeneratedAt("");
           setError(err instanceof Error ? err.message : "results failed");
         }
       } finally {
@@ -135,12 +132,6 @@ export default function Results() {
     return Array.from(groups.entries()).sort((a, b) => b[0].localeCompare(a[0]));
   }, [resultRows]);
 
-  const latestSync = fixtures
-    .map((fixture) => fixture.updatedAt || fixture.syncedAt || "")
-    .map((value) => value ? new Date(value).getTime() : 0)
-    .filter((value) => Number.isFinite(value) && value > 0)
-    .sort((a, b) => b - a)[0];
-
   return (
     <>
       <TerminalTopbar active="football-results" searchPlaceholder="Filter football results, teams, leagues..." onSearchChange={setQuery} />
@@ -154,7 +145,6 @@ export default function Results() {
             <article><span>Results</span><strong>{resultRows.length}</strong></article>
             <article><span>Leagues</span><strong>{new Set(resultRows.map((row) => row.leagueName || "-")).size || "-"}</strong></article>
             <article><span>Window</span><strong>{filter.label}</strong></article>
-            <article><span>Synced</span><strong>{latestSync ? localEventTime(new Date(latestSync).toISOString()) : generatedAt ? localEventTime(generatedAt) : "-"}</strong></article>
           </div>
         </section>
 
@@ -191,7 +181,6 @@ export default function Results() {
                     <th>Competition</th>
                     <th>Status</th>
                     <th>Venue</th>
-                    <th>Synced</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -204,7 +193,6 @@ export default function Results() {
                       <td>{fixture.leagueName || "-"}</td>
                       <td className="mono">{fixture.statusShort || fixture.statusLong || "-"}</td>
                       <td>{fixture.venueName || "-"}</td>
-                      <td className="mono">{fixture.updatedAt || fixture.syncedAt ? localEventTime(fixture.updatedAt || fixture.syncedAt || null) : "-"}</td>
                     </tr>
                   ))}
                 </tbody>

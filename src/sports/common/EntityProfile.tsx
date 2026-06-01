@@ -79,7 +79,7 @@ export default function EntityProfile({ provider, entityType, id }: { provider: 
         )}
         {profile?.summary ? <section className="entity-profile-summary">{profile.summary}</section> : null}
         <section className="sport-summary-panel entity-profile-fields">
-          <header><span>Profile Data</span><strong>{profile?.provider || provider}</strong></header>
+          <header><span>Profile Data</span><strong>{profile?.fields?.length || 0}</strong></header>
           <table>
             <tbody>
               {(profile?.fields || []).map(([label, value]) => (

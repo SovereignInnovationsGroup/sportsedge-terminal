@@ -569,7 +569,7 @@ export function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendP
       competition: footballFixtureCompetition(fixture),
       country: fixture.country,
       coverage: exchangeCoverage(undefined),
-      outcomes: ["Provider fixture"],
+      outcomes: ["Fixture"],
       betfair: ["-"],
       matchbook: ["-"],
       smarkets: ["-"],

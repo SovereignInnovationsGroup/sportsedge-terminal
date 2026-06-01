@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
-import { localEventTime } from "../../core/format";
 
 type StandingRow = {
   id: string;
@@ -26,9 +25,6 @@ type StandingRow = {
 };
 
 type StandingsPayload = {
-  generatedAt?: string;
-  provider?: string;
-  sourceStatus?: string;
   rows?: StandingRow[];
 };
 
@@ -105,9 +101,6 @@ function leagueSortKey(league: string, scopeOrder: string[]) {
 export default function LeagueTables() {
   const [activeFilter, setActiveFilter] = useState<(typeof TABLE_FILTERS)[number]["value"]>("all");
   const [rows, setRows] = useState<StandingRow[]>([]);
-  const [provider, setProvider] = useState("");
-  const [sourceStatus, setSourceStatus] = useState("");
-  const [generatedAt, setGeneratedAt] = useState("");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -128,17 +121,11 @@ export default function LeagueTables() {
         if (!response.ok) throw new Error("league tables failed");
         if (!cancelled) {
           setRows(Array.isArray(payload.rows) ? payload.rows : []);
-          setProvider(String(payload.provider || ""));
-          setSourceStatus(String(payload.sourceStatus || ""));
-          setGeneratedAt(String(payload.generatedAt || ""));
           setError("");
         }
       } catch (err) {
         if (!cancelled) {
           setRows([]);
-          setProvider("");
-          setSourceStatus("");
-          setGeneratedAt("");
           setError(err instanceof Error ? err.message : "league tables failed");
         }
       } finally {
@@ -172,11 +159,6 @@ export default function LeagueTables() {
       .map(([leagueName, leagueRows]) => [leagueName, leagueRows.sort((a, b) => Number(a.rank || 999) - Number(b.rank || 999) || Number(b.points || 0) - Number(a.points || 0))] as const);
   }, [filteredRows, filter.scopes]);
 
-  const latestSyncedAt = rows
-    .map((row) => row.syncedAt ? new Date(row.syncedAt).getTime() : 0)
-    .filter((value) => Number.isFinite(value) && value > 0)
-    .sort((a, b) => b - a)[0];
-
   return (
     <>
       <TerminalTopbar active="football-tables" searchPlaceholder="Filter football tables, teams, leagues..." onSearchChange={setQuery} />
@@ -189,8 +171,6 @@ export default function LeagueTables() {
           <div className="football-tables-kpis">
             <article><span>Leagues</span><strong>{groupedRows.length}</strong></article>
             <article><span>Teams</span><strong>{filteredRows.length}</strong></article>
-            <article><span>Provider</span><strong>{provider || "-"}</strong></article>
-            <article><span>Synced</span><strong>{latestSyncedAt ? localEventTime(new Date(latestSyncedAt).toISOString()) : generatedAt ? localEventTime(generatedAt) : "-"}</strong></article>
           </div>
         </section>
 
@@ -203,7 +183,6 @@ export default function LeagueTables() {
             ))}
           </nav>
           <div>
-            <span>{sourceStatus || "standings source pending"}</span>
             {loading && <span>loading</span>}
           </div>
         </section>
@@ -263,7 +242,7 @@ export default function LeagueTables() {
           {!loading && groupedRows.length === 0 && (
             <div className="football-tables-empty">
               <strong>No league tables returned.</strong>
-              <span>{sourceStatus || "Provider configured, waiting for standings rows."}</span>
+              <span>Standings rows are not populated yet.</span>
             </div>
           )}
           {loading && groupedRows.length === 0 && (

@@ -88,14 +88,10 @@ function standingsNumber(value: number | null | undefined) {
 export function StandingsPanel({
   label,
   rows,
-  provider,
-  sourceStatus,
   loading
 }: {
   label: string;
   rows: StandingRow[];
-  provider: string;
-  sourceStatus: string;
   loading: boolean;
 }) {
   const groupedRows = useMemo(() => {
@@ -113,9 +109,8 @@ export function StandingsPanel({
     <section className="sport-summary-panel sport-standings-panel">
       <header>
         <span>Tables / Standings</span>
-        <strong>{provider ? provider.toUpperCase() : "SOURCE"}</strong>
+        <strong>{rows.length}</strong>
       </header>
-      <p className="sport-standings-source">{sourceStatus || `${label} standings source pending.`}</p>
       {groupedRows.map(([leagueName, leagueRows]) => (
         <div className="sport-standings-league" key={leagueName}>
           <div className="sport-standings-league-title">
@@ -157,13 +152,13 @@ export function StandingsPanel({
       {!loading && groupedRows.length === 0 && (
         <div className="sport-standings-empty">
           <strong>No standings rows returned.</strong>
-          <span>{sourceStatus || "Provider configured, waiting for normalized standings rows."}</span>
+          <span>{label} standings are not populated yet.</span>
         </div>
       )}
       {loading && groupedRows.length === 0 && (
         <div className="sport-standings-empty">
           <strong>Loading standings.</strong>
-          <span>Checking provider cache.</span>
+          <span>Checking standings cache.</span>
         </div>
       )}
     </section>
@@ -172,7 +167,7 @@ export function StandingsPanel({
 
 export function SportStandingByBoard({
   label,
-  espnScopes,
+  espnScopes: _espnScopes,
   dataStatus
 }: {
   label: string;
@@ -180,7 +175,6 @@ export function SportStandingByBoard({
   dataStatus: string;
 }) {
   const demoRows = [
-    ["Provider", "ESPN", espnScopes.length ? espnScopes.join(" / ") : "Scope pending"],
     ["Exchange Rows", "Standing by", "No live venue rows yet"],
     ["Routing", "Ready", "BF / MB / BX / SM / BD / SX slots"],
     ["News", "Live", "Rail remains real when sport news exists"]
@@ -265,8 +259,7 @@ export function SportEntitiesPanel({
             <th>League</th>
             <th>Country</th>
             <th>{type === "player" ? "Position" : "Code"}</th>
-            <th>{type === "player" ? "Age" : "Provider"}</th>
-            <th>Synced</th>
+            {type === "player" && <th>Age</th>}
           </tr>
         </thead>
         <tbody>
@@ -294,15 +287,14 @@ export function SportEntitiesPanel({
               <td>{row.league || "-"}</td>
               <td>{row.country || "-"}</td>
               <td>{type === "player" ? row.position || "-" : row.abbreviation || "-"}</td>
-              <td className="mono">{type === "player" ? row.age ?? "-" : row.provider}</td>
-              <td className="mono">{row.syncedAt ? newsTime(row.syncedAt) : "-"}</td>
+              {type === "player" && <td className="mono">{row.age ?? "-"}</td>}
             </tr>
           ))}
           {!loading && rows.length === 0 && (
-            <tr><td className="empty" colSpan={6}>{label} {title.toLowerCase()} rows are not populated yet.</td></tr>
+            <tr><td className="empty" colSpan={type === "player" ? 5 : 4}>{label} {title.toLowerCase()} rows are not populated yet.</td></tr>
           )}
           {loading && rows.length === 0 && (
-            <tr><td className="empty" colSpan={6}>Loading {label.toLowerCase()} {title.toLowerCase()}.</td></tr>
+            <tr><td className="empty" colSpan={type === "player" ? 5 : 4}>Loading {label.toLowerCase()} {title.toLowerCase()}.</td></tr>
           )}
         </tbody>
       </table>

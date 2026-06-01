@@ -216,7 +216,6 @@ export default function Dashboard() {
           tomorrow,
           total: rows.length,
           live,
-          source: Array.from(new Set(rows.map((row) => row.provider))).join(" / ").toUpperCase(),
           latest
         };
       })
@@ -414,7 +413,7 @@ export default function Dashboard() {
 
             <div className="bb-demo-strip"><span>Sports Captured</span><strong>Today and tomorrow by sport</strong><em>Double-click rows below to open sport dashboards.</em></div>
             <table className="bb-demo-table bb-today-sports-table">
-              <thead><tr>{["Sport", "Today", "Tomorrow", "Total", "Live", "Source", "Latest"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+              <thead><tr>{["Sport", "Today", "Tomorrow", "Total", "Live", "Latest"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
               <tbody>
                 {sportRows.map((row) => (
                   <tr
@@ -429,12 +428,11 @@ export default function Dashboard() {
                     <td className="bb-mono">{row.tomorrow}</td>
                     <td className="bb-mono">{row.total}</td>
                     <td className={row.live ? "bb-pos" : "bb-mono"}>{row.live}</td>
-                    <td className="bb-mono">{row.source || "-"}</td>
                     <td className="bb-mono">{row.latest ? localEventTime(new Date(row.latest).toISOString()) : "-"}</td>
                   </tr>
                 ))}
-                {!eventsLoading && sportRows.length === 0 && <tr><td colSpan={7}>No captured sport events returned for today or tomorrow.</td></tr>}
-                {eventsLoading && sportRows.length === 0 && <tr><td colSpan={7}>Loading captured sports.</td></tr>}
+                {!eventsLoading && sportRows.length === 0 && <tr><td colSpan={6}>No captured sport events returned for today or tomorrow.</td></tr>}
+                {eventsLoading && sportRows.length === 0 && <tr><td colSpan={6}>Loading captured sports.</td></tr>}
               </tbody>
             </table>
 

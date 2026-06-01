@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { FootballProfileShell } from "./ProfileShell";
-import { formatTimeAgo, teamInitials } from "./footballFormat";
+import { teamInitials } from "./footballFormat";
 import type { FootballPlayerProfile } from "./profileTypes";
 
 export default function PlayerProfile({ id }: { id: string }) {
@@ -39,13 +39,12 @@ export default function PlayerProfile({ id }: { id: string }) {
     ["Injury", profile?.injured ? "Flagged" : "Clear"]
   ];
   const playerStatus = loading ? "Loading" : error ? "Needs attention" : profile ? "Enriched" : "Waiting";
-  const statFreshness = latestStat?.syncedAt ? formatTimeAgo(latestStat.syncedAt) : stats.length ? "cached" : "not enriched";
   const playerSurfaceRows = [
-    ["Player Identity", name, profile ? "Enriched" : "Waiting", "api-football", statFreshness, profile ? "High" : "Pending", "PROFILE"],
-    ["Current Team", teamName, profile?.team ? "Enriched" : "Waiting", "api-football", statFreshness, profile?.team ? "High" : "Pending", "TEAM"],
-    ["Season Stats", `${stats.length} rows`, stats.length ? "Enriched" : "Waiting", "api-football", statFreshness, stats.length ? "Medium" : "Pending", "STATS"],
-    ["Fitness", profile?.injured ? "Injury flag" : "Clear", profile ? "Enriched" : "Waiting", "api-football", statFreshness, profile?.injured ? "High" : "Medium", profile?.injured ? "INJURY" : "CLEAR"],
-    ["Prop Market Link", "SE fair / edge / liquidity", "Waiting", "matrix", "not linked", "Pending", "NO FAKE PRICE"]
+    ["Player Identity", name, profile ? "Enriched" : "Waiting", profile ? "High" : "Pending", "PROFILE"],
+    ["Current Team", teamName, profile?.team ? "Enriched" : "Waiting", profile?.team ? "High" : "Pending", "TEAM"],
+    ["Season Stats", `${stats.length} rows`, stats.length ? "Enriched" : "Waiting", stats.length ? "Medium" : "Pending", "STATS"],
+    ["Fitness", profile?.injured ? "Injury flag" : "Clear", profile ? "Enriched" : "Waiting", profile?.injured ? "High" : "Medium", profile?.injured ? "INJURY" : "CLEAR"],
+    ["Prop Market Link", "SE fair / edge / liquidity", "Waiting", "Pending", "NO FAKE PRICE"]
   ];
 
   return (
@@ -73,7 +72,7 @@ export default function PlayerProfile({ id }: { id: string }) {
         <div className="bb-profile-score">
           <span>Profile Status</span>
           <strong>{playerStatus}</strong>
-          <em className={profile ? "bb-pos" : ""}>{statFreshness}</em>
+          <em className={profile ? "bb-pos" : ""}>{profile ? "ready" : "waiting"}</em>
         </div>
       </div>
 
@@ -98,11 +97,11 @@ export default function PlayerProfile({ id }: { id: string }) {
 
       <div className="bb-demo-strip"><span>SportsEdge Picture</span><strong>{name} profile and prop readiness</strong><em>Prop price fields stay blank until real data is linked.</em></div>
       <table className="bb-demo-table bb-profile-market-table">
-        <thead><tr>{["Surface", "Object", "Status", "Source", "Fresh", "Conf", "Flag"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+        <thead><tr>{["Surface", "Object", "Status", "Conf", "Flag"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
         <tbody>
           {playerSurfaceRows.map((row) => (
             <tr key={`${row[0]}-${row[1]}`}>
-              {row.map((cell, index) => <td className={index >= 4 ? "bb-mono" : index === 6 ? "bb-flag" : ""} key={`${cell}-${index}`}>{cell}</td>)}
+              {row.map((cell, index) => <td className={index >= 3 ? "bb-mono" : index === 4 ? "bb-flag" : ""} key={`${cell}-${index}`}>{cell}</td>)}
             </tr>
           ))}
         </tbody>
@@ -136,7 +135,6 @@ export default function PlayerProfile({ id }: { id: string }) {
             <div><span>Player Details</span><strong>{profileStats.map(([label, value]) => `${label}: ${value}`).join(" / ")}</strong></div>
             <div><span>Team Link</span><strong>{profile?.team ? `${profile.team.name}${profile.team.country ? ` / ${profile.team.country}` : ""}` : "Waiting for team link"}</strong></div>
             <div><span>Market Fields</span><strong>SE Fair, market price, edge, liquidity and confidence are reserved; values appear only when real prop data is linked.</strong></div>
-            <div><span>Provider</span><strong>{profile?.providerPlayerId || "waiting"} / {statFreshness}</strong></div>
           </div>
         </section>
       </div>

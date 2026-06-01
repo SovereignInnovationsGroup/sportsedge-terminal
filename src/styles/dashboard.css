@@ -10074,7 +10074,6 @@ button {
 .football-player-directory-table .football-player-col-nation { width: 180px; }
 .football-player-directory-table .football-player-col-position { width: 150px; }
 .football-player-directory-table .football-player-col-age { width: 72px; }
-.football-player-directory-table .football-player-col-provider { width: 160px; }
 
 .football-player-directory-table th:nth-child(1),
 .football-player-directory-table td:nth-child(1) { width: 330px; }

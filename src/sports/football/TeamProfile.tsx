@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { FootballProfileShell } from "./ProfileShell";
-import { formatTimeAgo, teamTicker } from "./footballFormat";
+import { teamTicker } from "./footballFormat";
 import type { FootballTeamProfile } from "./profileTypes";
 
 export default function TeamProfile({ slug }: { slug: string }) {
@@ -36,13 +36,12 @@ export default function TeamProfile({ slug }: { slug: string }) {
   const staffRows = profile?.staff || [];
   const statRowCount = squadRows.reduce((sum, player) => sum + (player.stats?.length || 0), 0);
   const profileStatus = loading ? "Loading" : error ? "Needs attention" : profile ? "Enriched" : "Waiting";
-  const enrichedFreshness = profile?.syncedAt ? formatTimeAgo(profile.syncedAt) : profile ? "seeded" : "not enriched";
   const enrichedRows = [
-    ["Team Identity", name, profile ? "Enriched" : "Waiting", profile?.provider || "api-football", enrichedFreshness, "High", "PROFILE"],
-    ["Squad", `${squadRows.length} players`, squadRows.length ? "Enriched" : "Waiting", "api-football", enrichedFreshness, squadRows.length ? "High" : "Pending", "SQUAD"],
-    ["Staff", `${staffRows.length} staff`, staffRows.length ? "Enriched" : "Waiting", "api-football", enrichedFreshness, staffRows.length ? "Medium" : "Pending", "STAFF"],
-    ["Stats", `${statRowCount} rows`, statRowCount ? "Enriched" : "Waiting", "api-football", enrichedFreshness, statRowCount ? "Medium" : "Pending", "STATS"],
-    ["Market Link", "SportsEdge fair", "Waiting", "matrix", "not linked", "Pending", "NO FAKE PRICE"]
+    ["Team Identity", name, profile ? "Enriched" : "Waiting", "High", "PROFILE"],
+    ["Squad", `${squadRows.length} players`, squadRows.length ? "Enriched" : "Waiting", squadRows.length ? "High" : "Pending", "SQUAD"],
+    ["Staff", `${staffRows.length} staff`, staffRows.length ? "Enriched" : "Waiting", staffRows.length ? "Medium" : "Pending", "STAFF"],
+    ["Stats", `${statRowCount} rows`, statRowCount ? "Enriched" : "Waiting", statRowCount ? "Medium" : "Pending", "STATS"],
+    ["Market Link", "SportsEdge fair", "Waiting", "Pending", "NO FAKE PRICE"]
   ];
   const venueAddress = [venue?.address, venue?.city].filter(Boolean).join(", ") || venue?.city || "Address unavailable";
   const venueCapacity = venue?.capacity ? `${venue.capacity.toLocaleString()} capacity` : "";
@@ -72,7 +71,7 @@ export default function TeamProfile({ slug }: { slug: string }) {
         <div className="bb-profile-score">
           <span>Profile Status</span>
           <strong>{profileStatus}</strong>
-          <em className={profile ? "bb-pos" : ""}>{enrichedFreshness}</em>
+          <em className={profile ? "bb-pos" : ""}>{profile ? "ready" : "waiting"}</em>
         </div>
       </div>
 
@@ -97,11 +96,11 @@ export default function TeamProfile({ slug }: { slug: string }) {
 
       <div className="bb-demo-strip"><span>SportsEdge Picture</span><strong>{name} profile enrichment surface</strong><em>Price fields remain reserved until real market data is linked.</em></div>
       <table className="bb-demo-table bb-profile-market-table">
-        <thead><tr>{["Surface", "Object", "Status", "Source", "Fresh", "Conf", "Flag"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
+        <thead><tr>{["Surface", "Object", "Status", "Conf", "Flag"].map((item) => <th key={item}>{item}</th>)}</tr></thead>
         <tbody>
           {enrichedRows.map((row) => (
             <tr key={`${row[0]}-${row[1]}`}>
-              {row.map((cell, index) => <td className={index >= 4 ? "bb-mono" : index === 6 ? "bb-flag" : ""} key={`${cell}-${index}`}>{cell}</td>)}
+              {row.map((cell, index) => <td className={index >= 3 ? "bb-mono" : index === 4 ? "bb-flag" : ""} key={`${cell}-${index}`}>{cell}</td>)}
             </tr>
           ))}
         </tbody>
@@ -138,7 +137,6 @@ export default function TeamProfile({ slug }: { slug: string }) {
             <div><span>Venue</span><strong>{[venueName, venueAddress, venueCapacity].filter(Boolean).join(" / ") || "Waiting for venue enrichment"}</strong></div>
             <div><span>Aliases</span><strong>{aliases.join(", ") || "Waiting"}</strong></div>
             <div><span>Market Fields</span><strong>SE Fair, market price, edge, liquidity and confidence are reserved; values appear only when real market data is linked.</strong></div>
-            <div><span>Provider</span><strong>{profile?.provider || "api-football"} / {profile?.providerTeamId || "waiting"}</strong></div>
           </div>
         </section>
       </div>

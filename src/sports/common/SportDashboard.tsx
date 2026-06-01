@@ -53,8 +53,6 @@ export function SportDashboard({
     events,
     news,
     standings,
-    standingsStatus,
-    standingsProvider,
     loading,
     error
   } = useSportDashboardData({ normalizedSport, isFootball, espnScopeKey });
@@ -178,8 +176,6 @@ export function SportDashboard({
               <StandingsPanel
                 label={label}
                 rows={standings}
-                provider={standingsProvider}
-                sourceStatus={standingsStatus}
                 loading={loading}
               />
             ) : isLiquidityPage || isBiasPage ? (
@@ -229,13 +225,11 @@ export function SportDashboard({
                     </div>
                   </div>
                 </section>
-                <StandingsPanel
-                  label={label}
-                  rows={standings}
-                  provider={standingsProvider}
-                  sourceStatus={standingsStatus}
-                  loading={loading}
-                />
+                  <StandingsPanel
+                    label={label}
+                    rows={standings}
+                    loading={loading}
+                  />
                 {showDemoHolding ? (
                   <SportStandingByBoard label={label} espnScopes={espnScopes} dataStatus={dataStatus} />
                 ) : (

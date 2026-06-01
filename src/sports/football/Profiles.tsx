@@ -258,7 +258,7 @@ export default function Profiles({ active = "football-teams" }: { active?: strin
             <div>
               <h1>Player Directory</h1>
             </div>
-            <p>Football player profiles with photos, current squad link, nationality, position and provider identity. Double-click any row to open the player profile.</p>
+            <p>Football player profiles with photos, current squad link, nationality and position. Double-click any row to open the player profile.</p>
           </section>
 
           {error && <div className="agtest-error">{error}</div>}
@@ -272,7 +272,6 @@ export default function Profiles({ active = "football-teams" }: { active?: strin
                   <col className="football-player-col-nation" />
                   <col className="football-player-col-position" />
                   <col className="football-player-col-age" />
-                  <col className="football-player-col-provider" />
                 </colgroup>
                 <thead>
                   <tr>
@@ -281,7 +280,6 @@ export default function Profiles({ active = "football-teams" }: { active?: strin
                     <th>Nation</th>
                     <th>Position</th>
                     <th>Age</th>
-                    <th>Provider</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -311,14 +309,13 @@ export default function Profiles({ active = "football-teams" }: { active?: strin
                       <td>{player.nationality || player.team?.country || "-"}</td>
                       <td>{[player.position, player.number ? `#${player.number}` : ""].filter(Boolean).join(" ") || "-"}</td>
                       <td className="mono">{player.age ?? "-"}</td>
-                      <td className="mono">{player.providerPlayerId || "-"}</td>
                     </tr>
                   ))}
                   {!playersLoading && filteredPlayers.length === 0 && (
-                    <tr><td className="empty" colSpan={6}>No players matched this filter.</td></tr>
+                    <tr><td className="empty" colSpan={5}>No players matched this filter.</td></tr>
                   )}
                   {playersLoading && filteredPlayers.length === 0 && (
-                    <tr><td className="empty" colSpan={6}>Loading football players.</td></tr>
+                    <tr><td className="empty" colSpan={5}>Loading football players.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -351,7 +348,7 @@ export default function Profiles({ active = "football-teams" }: { active?: strin
             <span>SportsEdge Football Profiles</span>
             <h1>Team Directory</h1>
           </div>
-          <p>Canonical team identity, logos, countries, leagues, provider ids and aliases. Double-click any row to open the detail profile.</p>
+          <p>Canonical team identity, logos, countries, leagues and aliases. Double-click any row to open the detail profile.</p>
         </section>
 
         {error && <div className="agtest-error">{error}</div>}
@@ -364,7 +361,6 @@ export default function Profiles({ active = "football-teams" }: { active?: strin
                 <th>Code</th>
                 <th>Country</th>
                 <th>League</th>
-                <th>Provider</th>
                 <th>Aliases</th>
               </tr>
             </thead>
@@ -388,15 +384,14 @@ export default function Profiles({ active = "football-teams" }: { active?: strin
                   <td className="mono">{team.ticker || "-"}</td>
                   <td>{team.country || "-"}</td>
                   <td>{team.currentLeague || "-"}</td>
-                  <td className="mono">{team.providerTeamId || team.provider || "-"}</td>
                   <td>{(team.aliases || []).slice(0, 4).join(" / ") || "-"}</td>
                 </tr>
               ))}
               {!loading && filteredTeams.length === 0 && (
-                <tr><td className="empty" colSpan={6}>No teams matched this filter.</td></tr>
+                <tr><td className="empty" colSpan={5}>No teams matched this filter.</td></tr>
               )}
               {loading && filteredTeams.length === 0 && (
-                <tr><td className="empty" colSpan={6}>Loading football teams.</td></tr>
+                <tr><td className="empty" colSpan={5}>Loading football teams.</td></tr>
               )}
             </tbody>
           </table>
