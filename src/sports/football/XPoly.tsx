@@ -149,6 +149,7 @@ async function fetchCoverEvents(venue: CoverVenue, sport: HedgeSport) {
   const payload = await fetchJson<{ rows?: Array<Omit<CoverEvent, "venue">> }>(`/api/exchange-sport-events?exchange=${venue}&sport=${sport}&limit=${COVER_EVENT_LIMIT}`);
   return (payload.rows || [])
     .map((event) => ({ ...event, venue }))
+    .filter((event) => event.startAt && !eventHasPassed(event.startAt))
     .filter((event) => Number(event.liquidity || 0) > 0)
     .sort((a, b) => Number(b.liquidity || 0) - Number(a.liquidity || 0))
     .slice(0, 12);
