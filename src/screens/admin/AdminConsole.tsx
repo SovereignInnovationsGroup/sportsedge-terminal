@@ -518,6 +518,8 @@ function exchangeRows(sport: AdminSportRow) {
 function AdminSportsPanel({ data, error }: { data: AdminSportsResponse | null; error?: string }) {
   const [selectedSportKey, setSelectedSportKey] = useState("football");
   const selectedSport = data?.sports.find((sport) => sport.key === selectedSportKey) || data?.sports[0] || null;
+  const profileRows = data?.profileData?.sports || [];
+  const selectedProfileData = profileRows.find((sport) => sport.key === selectedSport?.key) || null;
   const footballCountries = selectedSport?.key === "football" ? (selectedSport.profile?.countries || []) : [];
   const fixtureCountries = selectedSport?.key === "football" ? (selectedSport.fixturesByCountry || []) : [];
 
@@ -531,7 +533,7 @@ function AdminSportsPanel({ data, error }: { data: AdminSportsResponse | null; e
     <section className="news-panel admin-console-panel admin-sports-panel">
       <div className="news-panel-head">
         <span><Database size={15} /> Sports Data Control</span>
-        <strong>{data ? `${formatNumber(data.summary.liveSports)} live / ${formatNumber(data.summary.sports)} configured` : "loading"}</strong>
+        <strong>{data ? `${formatNumber(data.profileData?.summary.sportsWithData || 0)} sports with data / ${formatNumber(data.summary.sports)} configured` : "loading"}</strong>
       </div>
       {error && <div className="news-state error">{error}</div>}
       {!data && !error && <div className="news-state">Loading sport feed map.</div>}
@@ -539,11 +541,55 @@ function AdminSportsPanel({ data, error }: { data: AdminSportsResponse | null; e
       {data && (
         <>
           <div className="admin-console-grid compact admin-sports-kpis">
-            <article><span>Market Rows</span><strong>{formatNumber(data.summary.marketRows)}</strong><p>Redis market-state rows by sport.</p></article>
-            <article><span>Football Teams</span><strong>{formatNumber(data.summary.profileTeams)}</strong><p>Teams cached from API-Football.</p></article>
-            <article><span>Football Players</span><strong>{formatNumber(data.summary.profilePlayers)}</strong><p>Player profiles in local DB.</p></article>
-            <article><span>Unchecked Teams</span><strong>{formatNumber(data.summary.uncheckedFootballTeams)}</strong><p>Remaining profile backfill.</p></article>
+            <article><span>Profile Sports</span><strong>{formatNumber(data.profileData?.summary.sportsWithData || 0)}</strong><p>Sports with captured profile/entity rows.</p></article>
+            <article><span>Teams</span><strong>{formatNumber(data.profileData?.summary.teams || data.summary.profileTeams)}</strong><p>Team rows across API-Football, ESPN and Wikimedia.</p></article>
+            <article><span>Players</span><strong>{formatNumber(data.profileData?.summary.players || data.summary.profilePlayers)}</strong><p>Player/athlete rows across captured sports.</p></article>
+            <article><span>Sources Pending</span><strong>{formatNumber(data.profileData?.summary.unsyncedSources || 0)}</strong><p>Wikimedia source URLs still queued for enrichment.</p></article>
           </div>
+
+          <div className="news-panel-head admin-analytics-subhead">
+            <span>Profile / Entity Data</span>
+            <strong>{formatNumber(data.profileData?.summary.profiles || 0)} profile rows</strong>
+          </div>
+          <table className="admin-source-table admin-console-table admin-sports-table admin-profile-data-table">
+            <thead>
+              <tr>
+                <th>Sport</th>
+                <th>Teams</th>
+                <th>Players</th>
+                <th>Competitions</th>
+                <th>Profiles</th>
+                <th>Stats</th>
+                <th>Events</th>
+                <th>Standings</th>
+                <th>Sources</th>
+                <th>Pending</th>
+                <th>Errors</th>
+                <th>Providers</th>
+                <th>Latest</th>
+              </tr>
+            </thead>
+            <tbody>
+              {profileRows.map((sport) => (
+                <tr key={`profile-data-${sport.key}`}>
+                  <td><strong>{sport.name}</strong><span>{sport.key}</span></td>
+                  <td>{formatNumber(sport.teams)}</td>
+                  <td>{formatNumber(sport.players)}</td>
+                  <td>{formatNumber(sport.competitions)}</td>
+                  <td>{formatNumber(sport.profiles)}</td>
+                  <td>{formatNumber(sport.statsRows)}</td>
+                  <td>{formatNumber(sport.eventRows)}</td>
+                  <td>{formatNumber(sport.standingsRows)}</td>
+                  <td>{formatNumber(sport.sourceUrls)}</td>
+                  <td>{formatNumber(sport.unsyncedSources)}</td>
+                  <td>{formatNumber(sport.sourceErrors)}</td>
+                  <td><span>{sport.providers.join(" / ") || "-"}</span></td>
+                  <td>{formatDate(sport.latestAt)}</td>
+                </tr>
+              ))}
+              {!profileRows.length && <tr><td colSpan={13}>No captured sport profile/entity rows are visible yet.</td></tr>}
+            </tbody>
+          </table>
 
           <div className="admin-sport-selector" role="tablist" aria-label="Sport data selectors">
             {data.sports.map((sport) => (
@@ -575,7 +621,11 @@ function AdminSportsPanel({ data, error }: { data: AdminSportsResponse | null; e
                 <article>
                   <span>Profiles / Fixtures</span>
                   <strong>{selectedSport.profileProvider}</strong>
-                  <p>{selectedSport.fixtureProvider}</p>
+                  <p>
+                    {selectedProfileData
+                      ? `${formatNumber(selectedProfileData.teams)} teams, ${formatNumber(selectedProfileData.players)} players, ${formatNumber(selectedProfileData.profiles)} profile rows.`
+                      : selectedSport.fixtureProvider}
+                  </p>
                 </article>
                 <article>
                   <span>Latest Update</span>
@@ -585,7 +635,7 @@ function AdminSportsPanel({ data, error }: { data: AdminSportsResponse | null; e
               </div>
 
               <div className="news-panel-head admin-analytics-subhead">
-                <span>Consumed Feeds</span>
+                <span>Exchange / Market Feeds</span>
                 <strong>{selectedSport.feeds.length} configured routes</strong>
               </div>
               <table className="admin-source-table admin-console-table admin-sports-table">

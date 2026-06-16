@@ -14211,7 +14211,7 @@ button {
 
 .admin-sport-selector {
   display: grid;
-  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
   gap: 8px;
   min-width: 980px;
   margin: 12px 0;
@@ -14305,10 +14305,26 @@ button {
 
 .admin-sports-table td {
   font-size: 12px;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .admin-sports-table td > span {
   max-width: 360px;
+}
+
+.admin-profile-data-table {
+  min-width: 1480px;
+}
+
+.admin-profile-data-table td:first-child span {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .admin-overview-matrix {

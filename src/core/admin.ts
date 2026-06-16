@@ -166,6 +166,26 @@ export type AdminSportRow = {
   globalNews?: { sources: number; enabled: number; lastSuccessAt: string | null; eventsFetched: number } | null;
 };
 
+export type AdminSportProfileDataRow = {
+  key: string;
+  name: string;
+  teams: number;
+  players: number;
+  competitions: number;
+  profiles: number;
+  statsRows: number;
+  eventRows: number;
+  standingsRows: number;
+  sourceUrls: number;
+  unsyncedSources: number;
+  sourceErrors: number;
+  providers: string[];
+  latestAt: string | null;
+  apiFootball?: Record<string, unknown> | null;
+  wikimedia?: Record<string, unknown> | null;
+  espn?: Record<string, unknown> | null;
+};
+
 export type AdminSportsResponse = {
   generatedAt: string;
   summary: {
@@ -174,7 +194,27 @@ export type AdminSportsResponse = {
     marketRows: number;
     profileTeams: number;
     profilePlayers: number;
+    profileRows?: number;
     uncheckedFootballTeams: number;
+    profileSourceUrls?: number;
+    profileUnsyncedSources?: number;
+    profileSourceErrors?: number;
+    profileStatsRows?: number;
+  };
+  profileData?: {
+    summary: {
+      sportsWithData: number;
+      teams: number;
+      players: number;
+      profiles: number;
+      statsRows: number;
+      eventRows: number;
+      standingsRows: number;
+      sourceUrls: number;
+      unsyncedSources: number;
+      sourceErrors: number;
+    };
+    sports: AdminSportProfileDataRow[];
   };
   sports: AdminSportRow[];
 };
