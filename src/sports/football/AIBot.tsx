@@ -97,6 +97,7 @@ type PaperTrade = {
 };
 
 const PAPER_STORAGE_KEY = "sportsedge.footballAiBot.paper.v1";
+const PAPER_WORLD_CUP_RESET_KEY = "sportsedge.footballAiBot.worldCupReset.v1";
 const WATCH_HINTS = [
   "ecuador curacao",
   "ecuador curaçao",
@@ -104,6 +105,16 @@ const WATCH_HINTS = [
   "belgium iran",
   "uruguay cabo verde"
 ];
+
+const WORLD_CUP_TEAMS = new Set([
+  "algeria", "argentina", "australia", "austria", "belgium", "bosnia herzegovina",
+  "brazil", "cabo verde", "canada", "colombia", "cote divoire", "croatia", "curacao",
+  "czechia", "dr congo", "ecuador", "egypt", "england", "france", "germany", "ghana",
+  "haiti", "ir iran", "iraq", "japan", "jordan", "korea republic", "mexico", "morocco",
+  "netherlands", "new zealand", "norway", "panama", "paraguay", "portugal", "qatar",
+  "saudi arabia", "scotland", "senegal", "south africa", "spain", "sweden", "switzerland",
+  "tunisia", "turkiye", "united states", "uruguay", "uzbekistan"
+]);
 
 const GOAL_WORDS = /\b(goal|scores?|scored|equaliser|equalizer|takes? the lead|goes? ahead|netted|strikes?|finish(?:es)?|header|penalty converted)\b/i;
 const START_WORDS = /\b(kick[-\s]?off|kicked off|underway|we are underway|first half|first whistle|game has started|match has started|gets underway)\b/i;
@@ -144,6 +155,42 @@ function rowKey(name: string, startAt: string | null | undefined) {
   return normalizeFixtureText(`${name} ${String(startAt || "").slice(0, 10)}`);
 }
 
+function canonicalTeamPair(name: string) {
+  const teams = splitTeams(cleanPolyEventName(name));
+  const home = normalizeTeamKey(teams.home);
+  const away = normalizeTeamKey(teams.away);
+  return [home, away].filter(Boolean).sort().join(" v ");
+}
+
+function matchIdentity(name: string, startAt: string | null | undefined) {
+  return normalizeFixtureText(canonicalTeamPair(name) || `${name} ${String(startAt || "").slice(0, 10)}`);
+}
+
+function mergeWatchRows(rows: WatchRow[]) {
+  const deduped = new Map<string, WatchRow>();
+  rows.forEach((row) => {
+    const key = matchIdentity(row.eventName, row.startAt);
+    const existing = deduped.get(key);
+    if (!existing) {
+      deduped.set(key, row);
+      return;
+    }
+    deduped.set(key, {
+      ...existing,
+      startAt: existing.source === "fixture" ? existing.startAt : row.startAt || existing.startAt,
+      eventName: existing.eventName.length <= row.eventName.length ? existing.eventName : row.eventName,
+      competition: existing.competition === "FIFA World Cup" ? existing.competition : row.competition,
+      source: existing.source === "fixture" ? existing.source : row.source,
+      marketRow: existing.marketRow || row.marketRow,
+      polyEvent: existing.polyEvent || row.polyEvent,
+      polyBook: existing.polyBook || row.polyBook,
+      score: existing.score.home || existing.score.away ? existing.score : row.score,
+      signal: existing.signal === "In-play" || row.signal === "In-play" ? "In-play" : existing.signal
+    });
+  });
+  return [...deduped.values()];
+}
+
 function matchRowsByFixture(fixture: FootballFixture, marketRows: BackendPriceRow[]) {
   const home = normalizeFixtureText(fixture.home?.name || "");
   const away = normalizeFixtureText(fixture.away?.name || "");
@@ -165,10 +212,42 @@ function cleanPolyEventName(name: string) {
   return String(name || "").replace(/\s+-\s+(?:More Markets|Exact Score|Player Props|Halftime Result|Total Corners|First Team to Score|Second Half Result).*$/i, "").trim();
 }
 
+function isNoiseMarketName(name: string) {
+  const text = normalizeFixtureText(name);
+  return /\b(over|under|spread|handicap|corner|corners|card|cards|booking|penalty|exact score|correct score|both teams|player|halftime|half time|second half|first half|combo|to qualify|group winner|winning margin|total goals|team total|clean sheet)\b/.test(text);
+}
+
+function normalizeTeamKey(name: string) {
+  return normalizeFixtureText(name)
+    .replace(/\bir\b/g, "ir")
+    .replace(/\bcote d ivoire\b/g, "cote divoire")
+    .replace(/\bcuraçao\b/g, "curacao")
+    .replace(/\bturkiye\b/g, "turkiye")
+    .trim();
+}
+
+function isWorldCupMatchName(name: string) {
+  if (isNoiseMarketName(name)) return false;
+  const teams = splitTeams(cleanPolyEventName(name));
+  return WORLD_CUP_TEAMS.has(normalizeTeamKey(teams.home)) && WORLD_CUP_TEAMS.has(normalizeTeamKey(teams.away));
+}
+
+function isWorldCupFixture(fixture: FootballFixture) {
+  const context = normalizeFixtureText(`${fixture.country || ""} ${fixture.leagueName || ""} ${fixture.round || ""}`);
+  if (context.includes("world cup") || context.includes("fifa")) return true;
+  return isWorldCupMatchName(fixtureName(fixture));
+}
+
+function worldCupCompetitionLabel(fallback?: string | null) {
+  const text = normalizeFixtureText(fallback || "");
+  if (!fallback || text === "soccer" || text === "football" || text.includes("world cup") || text.includes("fifa")) return "FIFA World Cup";
+  return fallback;
+}
+
 function isPrimaryPolyEvent(event: PolyEvent) {
   const name = String(event.name || "");
   if (/\s+-\s+(?:More Markets|Exact Score|Player Props|Halftime Result|Total Corners|First Team to Score|Second Half Result)/i.test(name)) return false;
-  return /\s+(?:vs?\.?|versus|v)\s+/i.test(name);
+  return /\s+(?:vs?\.?|versus|v)\s+/i.test(name) && isWorldCupMatchName(name);
 }
 
 function eventTokenScore(a: string, b: string) {
@@ -489,6 +568,7 @@ export default function AIBot() {
     fixtures
       .filter((fixture) => fixture.kickoffAt && new Intl.DateTimeFormat("en-CA").format(new Date(fixture.kickoffAt)) === todayKey)
       .filter((fixture) => !eventHasPassed(fixture.kickoffAt))
+      .filter(isWorldCupFixture)
       .forEach((fixture) => {
         const name = fixtureName(fixture);
         const marketRow = matchRowsByFixture(fixture, displayMarketRows);
@@ -500,7 +580,7 @@ export default function AIBot() {
           home: fixture.home?.name || "",
           away: fixture.away?.name || "",
           startAt: fixture.kickoffAt,
-          competition: [fixture.country, fixture.leagueName].filter(Boolean).join(" / ") || "Football",
+          competition: worldCupCompetitionLabel([fixture.country, fixture.leagueName].filter(Boolean).join(" / ") || "Football"),
           source: "fixture",
           marketRow,
           polyEvent,
@@ -523,7 +603,7 @@ export default function AIBot() {
         home: teams.home,
         away: teams.away,
         startAt: event.startAt,
-        competition: event.competition || "Polymarket football",
+        competition: worldCupCompetitionLabel(event.competition),
         source: "market",
         polyEvent: event,
         polyBook: buildPolyBook(event, polyPricesByEvent),
@@ -538,7 +618,7 @@ export default function AIBot() {
       const teams = splitTeams(row.name);
       const hintHit = WATCH_HINTS.some((hint) => normalizeFixtureText(row.name).includes(hint));
       const startToday = row.startAt && new Intl.DateTimeFormat("en-CA").format(new Date(row.startAt)) === todayKey;
-      if (!hintHit && !startToday) return;
+      if ((!hintHit && !startToday) || !isWorldCupMatchName(row.name)) return;
       const polyEvent = matchPolyEvent(row.name, primaryPolyEvents);
       rows.set(key, {
         id: key,
@@ -546,7 +626,7 @@ export default function AIBot() {
         home: teams.home,
         away: teams.away,
         startAt: row.startAt,
-        competition: row.competitionName || "Exchange football",
+        competition: worldCupCompetitionLabel(row.competitionName),
         source: "market",
         marketRow: row,
         polyEvent,
@@ -557,7 +637,7 @@ export default function AIBot() {
     });
 
     const terms = normalizeFixtureText(query).split(" ").filter(Boolean);
-    return [...rows.values()]
+    return mergeWatchRows([...rows.values()])
       .filter((row) => !terms.length || terms.every((term) => normalizeFixtureText(`${row.eventName} ${row.competition}`).includes(term)))
       .sort((a, b) => new Date(a.startAt || 0).getTime() - new Date(b.startAt || 0).getTime())
       .slice(0, 120);
@@ -566,6 +646,26 @@ export default function AIBot() {
   useEffect(() => {
     watchRowsRef.current = watchRows;
   }, [watchRows]);
+
+  useEffect(() => {
+    if (window.localStorage.getItem(PAPER_WORLD_CUP_RESET_KEY) === "done") return;
+    window.localStorage.setItem(PAPER_WORLD_CUP_RESET_KEY, "done");
+    setTrades((current) => {
+      let released = 0;
+      const closed = current.map((trade) => {
+        if (trade.status !== "OPEN") return trade;
+        released += trade.stake + trade.pnl;
+        return {
+          ...trade,
+          status: "CLOSED" as const,
+          reason: `${trade.reason} / closed on World Cup-only bot reset`,
+          closedAt: new Date().toISOString()
+        };
+      });
+      if (released) setBalance((value) => value + released);
+      return closed;
+    });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -750,12 +850,31 @@ export default function AIBot() {
     });
   }
 
+  function closePaperTrade(tradeId: string) {
+    setTrades((current) => {
+      let released = 0;
+      const closed = current.map((trade) => {
+        if (trade.id !== tradeId || trade.status !== "OPEN") return trade;
+        released = trade.stake + trade.pnl;
+        return {
+          ...trade,
+          status: "CLOSED" as const,
+          closedAt: new Date().toISOString()
+        };
+      });
+      if (released) setBalance((value) => value + released);
+      return closed;
+    });
+  }
+
   function resetPaper() {
     setBalance(10000);
     setTrades([]);
   }
 
   const openPnl = trades.filter((trade) => trade.status === "OPEN").reduce((sum, trade) => sum + trade.pnl, 0);
+  const realisedPnl = trades.filter((trade) => trade.status === "CLOSED").reduce((sum, trade) => sum + trade.pnl, 0);
+  const totalPnl = openPnl + realisedPnl;
   const watchedWithMoney = watchRows.filter((row) => Number(row.polyBook?.totalMoney || 0) > 0).length;
   const nextMatch = watchRows.find((row) => row.startAt && !eventHasPassed(row.startAt));
 
@@ -766,6 +885,7 @@ export default function AIBot() {
         <section className="ai-bot-summary">
           <article><span>Paper Balance</span><strong>{formatExchangeMoney(balance, "GBP")}</strong><small>Starting bank £10,000</small></article>
           <article><span>Open P/L</span><strong className={openPnl >= 0 ? "positive" : "negative"}>{formatExchangeMoney(openPnl, "GBP")}</strong><small>Trailing stop marks locally</small></article>
+          <article><span>Total P/L</span><strong className={totalPnl >= 0 ? "positive" : "negative"}>{formatExchangeMoney(totalPnl, "GBP")}</strong><small>Realised {formatExchangeMoney(realisedPnl, "GBP")}</small></article>
           <article><span>Watching</span><strong>{watchRows.length}</strong><small>{watchedWithMoney} with live money</small></article>
           <article><span>Next Match</span><strong>{nextMatch ? localEventTime(nextMatch.startAt) : "-"}</strong><small>{nextMatch?.eventName || "Waiting for fixture"}</small></article>
           <article><span>Feeds</span><strong>{socketStatus.toUpperCase()}</strong><small>TalkSport 2s / Poly WSS + snapshot</small></article>
@@ -774,12 +894,12 @@ export default function AIBot() {
 
         <section className="ai-bot-warning">
           <strong>Paper mode only.</strong>
-          <span>Goal detection is from live audio transcript text. It must be confirmed against official score before any future real execution path.</span>
+          <span>World Cup-only. Goal detection is from live audio transcript text and paper trades fire from that wording without waiting for another score feed.</span>
         </section>
 
         <section className="ai-bot-grid">
           <div className="ai-bot-panel ai-bot-watch">
-            <div className="ai-bot-head"><span>Today watchlist</span><strong>{localEventTime(new Date(), { second: "2-digit" })} local</strong></div>
+            <div className="ai-bot-head"><span>World Cup watchlist</span><strong>{localEventTime(new Date(), { second: "2-digit" })} local</strong></div>
             <table>
               <thead>
                 <tr><th>Time</th><th>Match</th><th>Score</th><th>Home Yes/No</th><th>Draw Yes/No</th><th>Away Yes/No</th><th>Fav</th><th>Poly Money</th><th>Status</th></tr>
@@ -802,7 +922,7 @@ export default function AIBot() {
                     </tr>
                   );
                 })}
-                {!watchRows.length && <tr><td colSpan={9}>No current football matches in the watch window.</td></tr>}
+                {!watchRows.length && <tr><td colSpan={9}>No World Cup matches in the watch window.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -832,7 +952,7 @@ export default function AIBot() {
           <div className="ai-bot-head"><span>Paper trades</span><strong>{trades.filter((trade) => trade.status === "OPEN").length} open</strong></div>
           <table>
             <thead>
-              <tr><th>Opened</th><th>Event</th><th>Outcome</th><th>Stake</th><th>Entry</th><th>Now</th><th>P/L</th><th>Stop</th><th>Status</th></tr>
+              <tr><th>Opened</th><th>Event</th><th>Outcome</th><th>Stake</th><th>Entry</th><th>Now</th><th>P/L</th><th>Stop</th><th>Status</th><th>Action</th></tr>
             </thead>
             <tbody>
               {trades.map((trade) => (
@@ -846,9 +966,14 @@ export default function AIBot() {
                   <td className={`mono ${trade.pnl >= 0 ? "positive" : "negative"}`}>{formatExchangeMoney(trade.pnl, "GBP")}</td>
                   <td className="mono">{formatExchangeMoney(trade.stopPnl, "GBP")}</td>
                   <td><span className={`ai-pill ${trade.status === "OPEN" ? "live" : ""}`}>{trade.status}</span></td>
+                  <td>
+                    {trade.status === "OPEN"
+                      ? <button className="ai-close-button" type="button" onClick={() => closePaperTrade(trade.id)}>Close</button>
+                      : <span className="ai-closed-time">{trade.closedAt ? localEventTime(trade.closedAt, { second: "2-digit" }) : "-"}</span>}
+                  </td>
                 </tr>
               ))}
-              {!trades.length && <tr><td colSpan={9}>No paper trades yet. Waiting for goal signal plus available price.</td></tr>}
+              {!trades.length && <tr><td colSpan={10}>No paper trades yet. Waiting for World Cup goal signal plus Polymarket price.</td></tr>}
             </tbody>
           </table>
         </section>

@@ -256,7 +256,8 @@
 .ai-bot-trades th:nth-child(6),
 .ai-bot-trades th:nth-child(7),
 .ai-bot-trades th:nth-child(8),
-.ai-bot-trades th:nth-child(9) { width: 92px; }
+.ai-bot-trades th:nth-child(9),
+.ai-bot-trades th:nth-child(10) { width: 92px; }
 
 .ai-pill {
   border: 1px solid rgba(74, 115, 160, 0.45);
@@ -279,6 +280,28 @@
   background: rgba(59, 130, 246, 0.12);
   border-color: rgba(93, 155, 255, 0.4);
   color: #9cc7ff;
+}
+
+.ai-close-button {
+  background: rgba(255, 210, 66, 0.1);
+  border: 1px solid rgba(255, 210, 66, 0.48);
+  color: #ffd45f;
+  cursor: pointer;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 10px;
+  font-weight: 900;
+  padding: 4px 9px;
+  text-transform: uppercase;
+}
+
+.ai-close-button:hover {
+  background: rgba(255, 210, 66, 0.18);
+}
+
+.ai-closed-time {
+  color: #7f8da0;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 11px;
 }
 
 .ai-bot-trades tr.closed {
