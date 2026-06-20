@@ -22,6 +22,241 @@
   --brand-logo-width: 430px;
 }
 
+.ai-bot-page {
+  min-height: calc(100vh - 54px);
+  background: #03070b;
+  color: #eef4fb;
+  padding: 12px;
+}
+
+.ai-bot-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr)) 128px;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ai-bot-summary article,
+.ai-bot-summary button,
+.ai-bot-panel,
+.ai-bot-warning {
+  border: 1px solid rgba(80, 129, 177, 0.32);
+  background: #071018;
+}
+
+.ai-bot-summary article,
+.ai-bot-summary button {
+  min-height: 66px;
+  padding: 12px;
+}
+
+.ai-bot-summary article span,
+.ai-bot-head span {
+  color: #9aa8b7;
+  display: block;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.ai-bot-summary article strong {
+  display: block;
+  font-size: 25px;
+  line-height: 1.1;
+  margin-top: 5px;
+}
+
+.ai-bot-summary article small,
+.ai-bot-panel small {
+  color: #8291a1;
+  display: block;
+  font-size: 11px;
+  margin-top: 3px;
+}
+
+.ai-bot-summary button {
+  color: #ffd45f;
+  cursor: pointer;
+  font-family: var(--terminal-mono, monospace);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ai-bot-summary button:hover {
+  border-color: rgba(255, 212, 95, 0.7);
+}
+
+.ai-bot-warning {
+  align-items: center;
+  color: #d9e4ef;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+}
+
+.ai-bot-warning strong {
+  color: #ffd45f;
+  font-family: var(--terminal-mono, monospace);
+  text-transform: uppercase;
+}
+
+.ai-bot-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  gap: 8px;
+}
+
+.ai-bot-panel {
+  overflow: hidden;
+}
+
+.ai-bot-head {
+  align-items: center;
+  border-bottom: 1px solid rgba(80, 129, 177, 0.25);
+  display: flex;
+  justify-content: space-between;
+  min-height: 34px;
+  padding: 8px 10px;
+}
+
+.ai-bot-head strong {
+  color: #78ffad;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.ai-bot-panel table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.ai-bot-panel th,
+.ai-bot-panel td {
+  border-bottom: 1px solid rgba(80, 129, 177, 0.2);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.ai-bot-panel th {
+  background: #08141e;
+  color: #9aa8b7;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.ai-bot-panel td {
+  color: #dde7f2;
+  font-size: 13px;
+}
+
+.ai-bot-panel td strong {
+  display: block;
+  font-size: 13px;
+}
+
+.ai-bot-panel .mono {
+  font-family: var(--terminal-mono, monospace);
+}
+
+.ai-bot-watch th:nth-child(1) { width: 92px; }
+.ai-bot-watch th:nth-child(3) { width: 72px; }
+.ai-bot-watch th:nth-child(4) { width: 210px; }
+.ai-bot-watch th:nth-child(5) { width: 82px; }
+.ai-bot-watch th:nth-child(6) { width: 92px; }
+
+.ai-bot-feed {
+  max-height: 520px;
+  overflow: auto;
+}
+
+.ai-bot-feed article {
+  border-bottom: 1px solid rgba(80, 129, 177, 0.18);
+  padding: 10px;
+}
+
+.ai-bot-feed article.signal {
+  background: rgba(255, 210, 66, 0.08);
+}
+
+.ai-bot-feed article span {
+  color: #7d8b9c;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 11px;
+}
+
+.ai-bot-feed article strong {
+  color: #ffd45f;
+  display: block;
+  margin: 3px 0;
+}
+
+.ai-bot-feed p {
+  color: #d7e0ea;
+  display: -webkit-box;
+  line-height: 1.35;
+  margin: 0;
+  overflow: hidden;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+
+.ai-bot-trades {
+  margin-top: 8px;
+}
+
+.ai-bot-trades th:nth-child(1) { width: 90px; }
+.ai-bot-trades th:nth-child(3) { width: 150px; }
+.ai-bot-trades th:nth-child(4),
+.ai-bot-trades th:nth-child(5),
+.ai-bot-trades th:nth-child(6),
+.ai-bot-trades th:nth-child(7),
+.ai-bot-trades th:nth-child(8),
+.ai-bot-trades th:nth-child(9) { width: 92px; }
+
+.ai-pill {
+  border: 1px solid rgba(74, 115, 160, 0.45);
+  color: #8da0b5;
+  display: inline-flex;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 7px;
+  text-transform: uppercase;
+}
+
+.ai-pill.live {
+  background: rgba(35, 201, 111, 0.15);
+  border-color: rgba(35, 201, 111, 0.62);
+  color: #78ffad;
+}
+
+.ai-bot-trades tr.closed {
+  opacity: 0.55;
+}
+
+.ai-bot-page .positive {
+  color: #78ffad;
+}
+
+.ai-bot-page .negative {
+  color: #ff6f82;
+}
+
+@media (max-width: 1200px) {
+  .ai-bot-summary {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+  }
+
+  .ai-bot-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .sportsedge-boot-screen {
   display: grid;
   min-height: 100vh;

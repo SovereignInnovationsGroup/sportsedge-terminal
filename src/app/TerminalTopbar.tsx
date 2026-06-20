@@ -31,7 +31,8 @@ const FOOTBALL_NAV = [
   { label: "Teams", value: "football-teams", route: "#football-teams" },
   { label: "Players", value: "football-players", route: "#football-players" },
   { label: "Injuries", value: "football-injuries", route: "#football-injuries" },
-  { label: "News", value: "football-news", route: "#football-news" }
+  { label: "News", value: "football-news", route: "#football-news" },
+  { label: "AI Bot", value: "football-ai-bot", route: "#football-ai-bot" }
 ] as const;
 
 const TENNIS_NAV = [
@@ -150,7 +151,7 @@ const CRICKET_NAV = [
   { label: "News", value: "cricket-news", route: "#cricket-news" }
 ] as const;
 
-const FOOTBALL_MODE = new Set(["football", "liquidity", "signal-demo", "signal-ticker-demo", "signal-ticker-v2", "signal-ticker-v3", "bias-matrix", "football-tables", "football-results", "football-teams", "football-players", "football-injuries", "football-news", "football-profiles"]);
+const FOOTBALL_MODE = new Set(["football", "liquidity", "signal-demo", "signal-ticker-demo", "signal-ticker-v2", "signal-ticker-v3", "bias-matrix", "football-tables", "football-results", "football-teams", "football-players", "football-injuries", "football-news", "football-ai-bot", "football-profiles"]);
 const TENNIS_MODE = new Set(["tennis", "tennis-dashboard", "tennis-liquidity", "tennis-bias-matrix", "tennis-rankings", "tennis-results", "tennis-players", "tennis-tournaments", "tennis-injuries", "tennis-news"]);
 const GOLF_MODE = new Set(GOLF_NAV.map((item) => item.value));
 const BASKETBALL_MODE = new Set(BASKETBALL_NAV.map((item) => item.value));
