@@ -164,10 +164,50 @@
 }
 
 .ai-bot-watch th:nth-child(1) { width: 92px; }
-.ai-bot-watch th:nth-child(3) { width: 72px; }
-.ai-bot-watch th:nth-child(4) { width: 210px; }
-.ai-bot-watch th:nth-child(5) { width: 82px; }
-.ai-bot-watch th:nth-child(6) { width: 92px; }
+.ai-bot-watch th:nth-child(3) { width: 62px; }
+.ai-bot-watch th:nth-child(4),
+.ai-bot-watch th:nth-child(5),
+.ai-bot-watch th:nth-child(6) { width: 150px; }
+.ai-bot-watch th:nth-child(7) { width: 118px; }
+.ai-bot-watch th:nth-child(8) { width: 96px; }
+.ai-bot-watch th:nth-child(9) { width: 86px; }
+
+.ai-poly-cell {
+  display: grid;
+  gap: 2px;
+  min-width: 132px;
+}
+
+.ai-poly-cell strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-poly-cell span {
+  color: #e9f1fb;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.ai-poly-cell em {
+  color: #67e8a5;
+  font-style: normal;
+  margin-right: 4px;
+}
+
+.ai-poly-cell small {
+  color: #8190a3;
+  display: inline;
+  font-size: 10px;
+  margin-left: 4px;
+}
+
+.ai-poly-empty {
+  color: #586579;
+}
 
 .ai-bot-feed {
   max-height: 520px;
@@ -233,6 +273,12 @@
   background: rgba(35, 201, 111, 0.15);
   border-color: rgba(35, 201, 111, 0.62);
   color: #78ffad;
+}
+
+.ai-pill.watch {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(93, 155, 255, 0.4);
+  color: #9cc7ff;
 }
 
 .ai-bot-trades tr.closed {
