@@ -30,6 +30,13 @@ type BotRow = {
   away: string;
   startAt: string | null;
   competition: string;
+  sportsApiStatus?: {
+    provider: string;
+    state: string;
+    detail?: string;
+    completed?: boolean;
+    updatedAt?: string | null;
+  } | null;
   score: { home: number; away: number };
   signal: string;
   book?: BotBook | null;
@@ -76,6 +83,17 @@ type BotStatus = {
   trades: BotTrade[];
   signals: BotSignal[];
   segments: BotSegment[];
+  liveScoreFeed?: {
+    provider: string;
+    enabled: boolean;
+    connected: boolean;
+    lastConnectedAt?: string | null;
+    lastDisconnectedAt?: string | null;
+    lastMessageAt?: string | null;
+    lastError?: string;
+    liveRows: number;
+    reconnects: number;
+  };
 };
 
 function money(value: number | undefined | null) {
@@ -252,11 +270,16 @@ export default function AIBot() {
           <article><span>Total P/L</span><strong className={(status?.totalPnl || 0) >= 0 ? "positive" : "negative"}>{money(status?.totalPnl)}</strong><small>Realised {money(status?.realisedPnl)}</small></article>
           <article><span>Watching</span><strong>{rows.length}</strong><small>{watchedWithMoney} with Poly money</small></article>
           <article><span>Next Match</span><strong>{nextMatch ? fullTimestamp(nextMatch.startAt) : "-"}</strong><small>{nextMatch?.eventName || "Waiting for fixture"}</small></article>
+          <article>
+            <span>Score WSS</span>
+            <strong className={status?.liveScoreFeed?.connected ? "positive" : ""}>{status?.liveScoreFeed?.connected ? "Live" : status?.liveScoreFeed?.enabled ? "Waiting" : "Off"}</strong>
+            <small>{status?.liveScoreFeed?.lastMessageAt ? `${fullTimestamp(status.liveScoreFeed.lastMessageAt)} tick` : status?.liveScoreFeed?.lastError || "AllSportsAPI"}</small>
+          </article>
         </section>
 
         <section className="ai-bot-warning">
           <strong>Backend paper mode.</strong>
-          <span>The browser only displays backend state. Goal detection, fixed $500 entries, stops, closes, and P/L are executed by the API.</span>
+          <span>The browser only displays backend state. AllSportsAPI score WSS drives goal entries; fixed $500 entries, stops, closes, and P/L are executed by the API.</span>
           <button className="ai-close-button" type="button" onClick={resetPaper} disabled={busyAction === "reset"}>Reset Paper</button>
         </section>
         {error && <section className="ai-bot-warning error"><strong>API</strong><span>{error}</span></section>}
@@ -281,7 +304,10 @@ export default function AIBot() {
                       <td>{outcomeCell(book?.away)}</td>
                       <td>{book?.favourite ? <><strong>{book.favourite.label}</strong><small>{odds(book.favourite.yesOdds)} / {priceLabel(book.favourite.yesCents)}</small></> : "-"}</td>
                       <td className="mono">{money(book?.eventLiquidity)}</td>
-                      <td><span className={`ai-pill ${row.signal === "In-play" ? "live" : ""}`}>{row.signal}</span></td>
+                      <td>
+                        <span className={`ai-pill ${row.signal === "In-play" ? "live" : ""}`}>{row.signal}</span>
+                        <small>{row.sportsApiStatus?.provider || "fixture"} {row.sportsApiStatus?.detail || ""}</small>
+                      </td>
                     </tr>
                   );
                 })}
