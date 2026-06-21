@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { formatExchangeMoney, localEventTime } from "../../core/format";
+import { sportsEdgeWsUrl } from "../../core/news";
 
 type BotOutcome = {
   label: string;
@@ -129,6 +130,8 @@ export default function AIBot() {
   const [status, setStatus] = useState<BotStatus | null>(null);
   const [error, setError] = useState("");
   const [busyAction, setBusyAction] = useState("");
+  const socketRef = useRef<WebSocket | null>(null);
+  const reconnectTimerRef = useRef<number | null>(null);
 
   async function refresh() {
     try {
@@ -165,9 +168,70 @@ export default function AIBot() {
   }
 
   useEffect(() => {
+    let closedByEffect = false;
+
+    function clearReconnect() {
+      if (reconnectTimerRef.current) {
+        window.clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+    }
+
+    function connect() {
+      clearReconnect();
+      const token = window.localStorage.getItem("sportsedge.auth.token");
+      if (!token) {
+        setError("Login token missing for live AI bot stream.");
+        return;
+      }
+      const socket = new WebSocket(sportsEdgeWsUrl(token));
+      socketRef.current = socket;
+
+      socket.addEventListener("open", () => {
+        setError("");
+        socket.send(JSON.stringify({
+          type: "subscribe",
+          channel: "football.ai-bot",
+          filters: { sport: "football" }
+        }));
+      });
+
+      socket.addEventListener("message", (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message?.type !== "event" || String(message.channel || "") !== "football.ai-bot") return;
+          const next = message.payload?.status;
+          if (next?.mode === "backend-paper") {
+            setStatus(next);
+            setError("");
+          }
+        } catch {
+          // Ignore malformed live payloads.
+        }
+      });
+
+      socket.addEventListener("close", () => {
+        if (closedByEffect) return;
+        reconnectTimerRef.current = window.setTimeout(connect, 1500);
+      });
+
+      socket.addEventListener("error", () => {
+        setError("Live AI bot stream reconnecting.");
+      });
+    }
+
     refresh();
-    const timer = window.setInterval(refresh, 2000);
-    return () => window.clearInterval(timer);
+    connect();
+    const fallbackTimer = window.setInterval(() => {
+      if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) refresh();
+    }, 10000);
+    return () => {
+      closedByEffect = true;
+      clearReconnect();
+      window.clearInterval(fallbackTimer);
+      socketRef.current?.close();
+      socketRef.current = null;
+    };
   }, []);
 
   const rows = status?.rows || [];
