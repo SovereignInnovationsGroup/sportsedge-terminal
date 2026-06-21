@@ -146,6 +146,14 @@
   white-space: nowrap;
 }
 
+.ai-subtitle-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  min-width: max-content;
+}
+
 @keyframes aiSubtitleCrawl {
   from {
     transform: translateX(0);
@@ -498,6 +506,15 @@
 
   .ai-radio-monitor {
     grid-template-columns: 1fr;
+  }
+
+  .ai-subtitle-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-subtitle-actions {
+    justify-content: space-between;
+    min-width: 0;
   }
 }
 

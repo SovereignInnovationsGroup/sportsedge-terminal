@@ -376,7 +376,21 @@ export default function AIBot() {
               <span aria-hidden="true">{subtitleText}</span>
             </div>
           </div>
-          <button className="ai-close-button" type="button" onClick={resetPaper} disabled={busyAction === "reset"}>Reset Paper</button>
+          <div className="ai-subtitle-actions">
+            <div className="ai-audio-tabs" aria-label="Radio source">
+              {AUDIO_MONITORS.map((source) => (
+                <button
+                  key={source.id}
+                  className={source.id === audioMonitor.id ? "active" : ""}
+                  type="button"
+                  onClick={() => setAudioMonitorId(source.id)}
+                >
+                  {source.label}
+                </button>
+              ))}
+            </div>
+            <button className="ai-close-button" type="button" onClick={resetPaper} disabled={busyAction === "reset"}>Reset Paper</button>
+          </div>
         </section>
         {error && <section className="ai-bot-warning error"><strong>API</strong><span>{error}</span></section>}
 
@@ -485,19 +499,8 @@ export default function AIBot() {
 
         <section className="ai-bot-panel ai-audio-feed">
           <div className="ai-bot-head ai-audio-monitor-head">
-            <span>Live radio monitor</span>
-            <div className="ai-audio-tabs" aria-label="Radio source">
-              {AUDIO_MONITORS.map((source) => (
-                <button
-                  key={source.id}
-                  className={source.id === audioMonitor.id ? "active" : ""}
-                  type="button"
-                  onClick={() => setAudioMonitorId(source.id)}
-                >
-                  {source.label}
-                </button>
-              ))}
-            </div>
+            <span>SportsEdge relay monitor</span>
+            <strong>{audioMonitor.label}</strong>
           </div>
           <div className="ai-radio-monitor">
             <div className="ai-radio-card">
