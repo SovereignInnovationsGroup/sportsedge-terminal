@@ -134,7 +134,7 @@ const AUDIO_MONITORS = [
     id: "bbc-radio-5-live",
     label: "BBC 5 Live",
     logoUrl: "https://ukradiolive.com/public/uploads/radio_img/bbc-radio-5-live/play_250_250.webp",
-    playbackUrl: "/api/live-audio/hls/bbc-radio-5-live",
+    playbackUrl: "/api/live-audio/hls/bbc-radio-5-live/relay.m3u8",
     upstreamUrl: "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/hls/nonuk/mobile_wifi_main_sd_abr_v2/cfs/bbc_radio_five_live.m3u8",
     transcriptFeedId: "bbc-radio-5-live",
     codec: "HLS 101k",
