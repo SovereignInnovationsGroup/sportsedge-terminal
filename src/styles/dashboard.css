@@ -31,7 +31,7 @@
 
 .ai-bot-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(160px, 1fr)) 128px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 8px;
   margin-bottom: 8px;
 }
@@ -245,9 +245,20 @@
   -webkit-box-orient: vertical;
 }
 
+.ai-bot-orders,
 .ai-bot-trades {
   margin-top: 8px;
 }
+
+.ai-bot-orders th:nth-child(1) { width: 118px; }
+.ai-bot-orders th:nth-child(3) { width: 150px; }
+.ai-bot-orders th:nth-child(4),
+.ai-bot-orders th:nth-child(5),
+.ai-bot-orders th:nth-child(6),
+.ai-bot-orders th:nth-child(7),
+.ai-bot-orders th:nth-child(8),
+.ai-bot-orders th:nth-child(9) { width: 86px; }
+.ai-bot-orders th:nth-child(10) { width: 160px; }
 
 .ai-bot-trades th:nth-child(1) { width: 90px; }
 .ai-bot-trades th:nth-child(3) { width: 150px; }
@@ -308,11 +319,13 @@
   opacity: 0.55;
 }
 
-.ai-bot-page .positive {
+.ai-bot-page .positive,
+.ai-bot-screen .positive {
   color: #78ffad;
 }
 
-.ai-bot-page .negative {
+.ai-bot-page .negative,
+.ai-bot-screen .negative {
   color: #ff6f82;
 }
 

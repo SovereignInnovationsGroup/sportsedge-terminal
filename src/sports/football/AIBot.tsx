@@ -44,6 +44,7 @@ type BotRow = {
 
 type BotTrade = {
   id: string;
+  orderId?: string;
   openedAt: string;
   closedAt?: string;
   eventName: string;
@@ -56,6 +57,26 @@ type BotTrade = {
   stopPnl: number;
   status: "OPEN" | "CLOSED";
   pnl: number;
+};
+
+type BotOrder = {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  eventName: string;
+  outcome: string;
+  reason: string;
+  side: "BUY_YES";
+  stake: number;
+  remainingStake: number;
+  filledStake: number;
+  limitPrice: number;
+  limitCents: number;
+  availableAtCreate: number;
+  quoteAgeMs?: number | null;
+  status: "OPEN" | "PARTIAL" | "FILLED" | "CANCELLED" | "REJECTED";
+  rejectReason?: string;
+  cancelReason?: string;
 };
 
 type BotSignal = {
@@ -80,6 +101,7 @@ type BotStatus = {
   realisedPnl: number;
   totalPnl: number;
   rows: BotRow[];
+  orders: BotOrder[];
   trades: BotTrade[];
   signals: BotSignal[];
   segments: BotSegment[];
@@ -253,6 +275,7 @@ export default function AIBot() {
   }, []);
 
   const rows = status?.rows || [];
+  const orders = status?.orders || [];
   const trades = status?.trades || [];
   const signals = status?.signals || [];
   const segments = status?.segments || [];
@@ -275,11 +298,12 @@ export default function AIBot() {
             <strong className={status?.liveScoreFeed?.connected ? "positive" : ""}>{status?.liveScoreFeed?.connected ? "Live" : status?.liveScoreFeed?.enabled ? "Waiting" : "Off"}</strong>
             <small>{status?.liveScoreFeed?.lastMessageAt ? `${fullTimestamp(status.liveScoreFeed.lastMessageAt)} tick` : status?.liveScoreFeed?.lastError || "AllSportsAPI"}</small>
           </article>
+          <article><span>Orders</span><strong>{orders.filter((order) => ["OPEN", "PARTIAL"].includes(order.status)).length}</strong><small>{orders.filter((order) => order.status === "FILLED").length} filled</small></article>
         </section>
 
         <section className="ai-bot-warning">
           <strong>Backend paper mode.</strong>
-          <span>The browser only displays backend state. AllSportsAPI score WSS drives goal entries; fixed $500 entries, stops, closes, and P/L are executed by the API.</span>
+          <span>The browser only displays backend state. Score WSS creates paper limit orders; only orders with fresh Polymarket price and visible size become filled positions.</span>
           <button className="ai-close-button" type="button" onClick={resetPaper} disabled={busyAction === "reset"}>Reset Paper</button>
         </section>
         {error && <section className="ai-bot-warning error"><strong>API</strong><span>{error}</span></section>}
@@ -329,8 +353,34 @@ export default function AIBot() {
           </div>
         </section>
 
+        <section className="ai-bot-panel ai-bot-orders">
+          <div className="ai-bot-head"><span>Backend paper orders</span><strong>{orders.filter((order) => ["OPEN", "PARTIAL"].includes(order.status)).length} working</strong></div>
+          <table>
+            <thead>
+              <tr><th>Created</th><th>Event</th><th>Outcome</th><th>Limit</th><th>Stake</th><th>Filled</th><th>Left</th><th>Avail</th><th>Status</th><th>Reason</th></tr>
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <tr key={order.id} className={order.status === "CANCELLED" || order.status === "REJECTED" ? "closed" : ""}>
+                  <td className="mono">{fullTimestamp(order.createdAt)}</td>
+                  <td><strong>{order.eventName}</strong><small>{order.reason}</small></td>
+                  <td>{order.outcome}</td>
+                  <td className="mono">{priceLabel(order.limitCents)}</td>
+                  <td className="mono">{money(order.stake)}</td>
+                  <td className="mono">{money(order.filledStake)}</td>
+                  <td className="mono">{money(order.remainingStake)}</td>
+                  <td className="mono">{money(order.availableAtCreate)}</td>
+                  <td><span className={`ai-pill ${order.status === "OPEN" || order.status === "PARTIAL" ? "live" : order.status === "FILLED" ? "watch" : ""}`}>{order.status}</span></td>
+                  <td><small>{order.rejectReason || order.cancelReason || `${Math.round(Number(order.quoteAgeMs || 0) / 1000)}s quote`}</small></td>
+                </tr>
+              ))}
+              {!orders.length && <tr><td colSpan={10}>No backend paper orders yet. A score WSS goal signal will create the first order.</td></tr>}
+            </tbody>
+          </table>
+        </section>
+
         <section className="ai-bot-panel ai-bot-trades">
-          <div className="ai-bot-head"><span>Backend paper trades</span><strong>{trades.filter((trade) => trade.status === "OPEN").length} open</strong></div>
+          <div className="ai-bot-head"><span>Filled positions</span><strong>{trades.filter((trade) => trade.status === "OPEN").length} open</strong></div>
           <table>
             <thead>
               <tr><th>Opened</th><th>Event</th><th>Outcome</th><th>Stake</th><th>Entry</th><th>Now</th><th>P/L</th><th>Stop</th><th>Status</th><th>Action</th></tr>
@@ -354,7 +404,7 @@ export default function AIBot() {
                   </td>
                 </tr>
               ))}
-              {!trades.length && <tr><td colSpan={10}>No backend paper trades yet. Waiting for score WSS goal signal plus Polymarket price.</td></tr>}
+              {!trades.length && <tr><td colSpan={10}>No filled positions yet. Orders fill only when fresh Polymarket price and size are available.</td></tr>}
             </tbody>
           </table>
         </section>
