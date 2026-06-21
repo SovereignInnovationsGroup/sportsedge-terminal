@@ -261,7 +261,7 @@ export default function AIBot() {
 
   return (
     <div className="terminal-shell">
-      <TerminalTopbar activeSport="football" activeScreen="ai-bot" searchPlaceholder="AI Bot: World Cup, audio goals, paper trades..." />
+      <TerminalTopbar activeSport="football" activeScreen="ai-bot" searchPlaceholder="AI Bot: live football scores, Poly prices, paper trades..." />
       <main className="terminal-content ai-bot-screen">
         <section className="ai-bot-summary">
           <article><span>Paper Balance</span><strong>{money(status?.balance)}</strong><small>Backend-owned account</small></article>
@@ -286,7 +286,7 @@ export default function AIBot() {
 
         <section className="ai-bot-grid">
           <div className="ai-bot-panel ai-bot-watch">
-            <div className="ai-bot-head"><span>World Cup watchlist</span><strong>{status ? fullTimestamp(status.generatedAt) : "-"} backend</strong></div>
+            <div className="ai-bot-head"><span>Football watchlist</span><strong>{status ? fullTimestamp(status.generatedAt) : "-"} backend</strong></div>
             <table>
               <thead>
                 <tr><th>Time</th><th>Match</th><th>Score</th><th>Home Yes/No</th><th>Draw Yes/No</th><th>Away Yes/No</th><th>Fav</th><th>Poly $ Now</th><th>Status</th></tr>
@@ -311,7 +311,7 @@ export default function AIBot() {
                     </tr>
                   );
                 })}
-                {!rows.length && <tr><td colSpan={9}>No World Cup matches in the backend watch window.</td></tr>}
+                {!rows.length && <tr><td colSpan={9}>No football matches in the backend watch window.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -354,7 +354,7 @@ export default function AIBot() {
                   </td>
                 </tr>
               ))}
-              {!trades.length && <tr><td colSpan={10}>No backend paper trades yet. Waiting for World Cup goal signal plus Polymarket price.</td></tr>}
+              {!trades.length && <tr><td colSpan={10}>No backend paper trades yet. Waiting for score WSS goal signal plus Polymarket price.</td></tr>}
             </tbody>
           </table>
         </section>
