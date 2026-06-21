@@ -35,6 +35,14 @@ type BotBook = {
   latest?: string | null;
   source?: string;
   recentTrades?: BotMarketTrade[];
+  priceHistory?: BotPriceTick[];
+};
+
+type BotPriceTick = {
+  at: string;
+  home: number;
+  draw: number;
+  away: number;
 };
 
 type BotMarketTrade = {
@@ -187,6 +195,13 @@ function money(value: number | undefined | null) {
   return Number(value || 0) > 0 ? formatExchangeMoney(Number(value || 0), "USD") : "-";
 }
 
+function pnlMoney(value: number | undefined | null) {
+  const amount = Number(value || 0);
+  if (amount === 0) return "$0";
+  const formatted = formatExchangeMoney(Math.abs(amount), "USD");
+  return amount > 0 ? formatted : `-${formatted}`;
+}
+
 function odds(value: number | undefined | null) {
   return Number(value || 0) > 1 ? Number(value).toFixed(2) : "-";
 }
@@ -274,10 +289,15 @@ function buildLadder(outcome?: BotOutcome | null): LadderLevel[] {
 }
 
 function chartPoints(row: BotRow) {
-  const series = (base: number) => Array.from({ length: 2 }, () => Math.max(4, Math.min(96, base)));
-  const home = series(Number(row.book?.home?.yesCents || 0));
-  const draw = series(Number(row.book?.draw?.yesCents || 0));
-  const away = series(Number(row.book?.away?.yesCents || 0));
+  const history = (row.book?.priceHistory || []).filter((tick) => Number(tick.home || tick.draw || tick.away) > 0).slice(-60);
+  const series = (key: "home" | "draw" | "away", fallback: number) => {
+    const values = history.map((tick) => Number(tick[key] || 0)).filter((value) => value > 0);
+    if (values.length >= 2) return values.map((value) => Math.max(4, Math.min(96, value)));
+    return Array.from({ length: 2 }, () => Math.max(4, Math.min(96, fallback)));
+  };
+  const home = series("home", Number(row.book?.home?.yesCents || 0));
+  const draw = series("draw", Number(row.book?.draw?.yesCents || 0));
+  const away = series("away", Number(row.book?.away?.yesCents || 0));
   const toPoints = (values: number[]) => values.map((value, index) => {
     const x = 20 + (index / Math.max(1, values.length - 1)) * 560;
     const y = 240 - (value / 100) * 210;
@@ -677,8 +697,8 @@ export default function AIBot() {
                     <td className="mono">{money(trade.stake)}</td>
                     <td className="mono">{priceLabel(Number(trade.entryPrice || 0) * 100)}</td>
                     <td className="mono">{priceLabel(Number(trade.currentPrice || 0) * 100)}</td>
-                    <td className={`mono ${trade.pnl >= 0 ? "positive" : "negative"}`}>{money(trade.pnl)}</td>
-                    <td className="mono">{money(trade.stopPnl)}</td>
+                    <td className={`mono ${trade.pnl >= 0 ? "positive" : "negative"}`}>{pnlMoney(trade.pnl)}</td>
+                    <td className="mono">{pnlMoney(trade.stopPnl)}</td>
                     <td><span className={`ai-pill ${trade.status === "OPEN" ? "live" : ""}`}>{trade.status}</span></td>
                     <td>
                       {trade.status === "OPEN"
