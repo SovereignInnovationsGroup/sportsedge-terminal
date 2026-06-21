@@ -101,6 +101,60 @@
   text-transform: uppercase;
 }
 
+.ai-subtitle-strip {
+  align-items: center;
+  background: #050b11;
+  border: 1px solid rgba(80, 129, 177, 0.38);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: 38px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  padding: 6px 10px;
+}
+
+.ai-subtitle-strip strong {
+  color: #ffd45f;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 11px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ai-subtitle-window {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ai-subtitle-track {
+  align-items: center;
+  display: flex;
+  gap: 42px;
+  min-width: max-content;
+  animation: aiSubtitleCrawl 42s linear infinite;
+}
+
+.ai-subtitle-track span {
+  color: #eef4fb;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@keyframes aiSubtitleCrawl {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-50% - 21px));
+  }
+}
+
 .ai-bot-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 390px;

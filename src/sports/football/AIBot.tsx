@@ -308,6 +308,7 @@ export default function AIBot() {
   const watchedWithMoney = rows.filter((row) => Number(row.book?.eventLiquidity || 0) > 0).length;
   const nextMatch = rows.find((row) => row.startAt && new Date(row.startAt).getTime() > Date.now());
   const audioMonitor = AUDIO_MONITORS.find((source) => source.id === audioMonitorId) || AUDIO_MONITORS[0];
+  const subtitleText = segments.map((segment) => segment.text).filter(Boolean).slice(0, 12).join("     /     ") || "Awaiting live transcript feed";
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -367,9 +368,14 @@ export default function AIBot() {
           <article><span>Orders</span><strong>{orders.filter((order) => ["OPEN", "PARTIAL"].includes(order.status)).length}</strong><small>{orders.filter((order) => order.status === "FILLED").length} filled</small></article>
         </section>
 
-        <section className="ai-bot-warning">
-          <strong>Backend paper mode.</strong>
-          <span>The browser only displays backend state. Score WSS creates paper limit orders; only orders with fresh Polymarket price and visible size become filled positions.</span>
+        <section className="ai-subtitle-strip" aria-label="Live transcript subtitles">
+          <strong>Live transcript</strong>
+          <div className="ai-subtitle-window">
+            <div className="ai-subtitle-track">
+              <span>{subtitleText}</span>
+              <span aria-hidden="true">{subtitleText}</span>
+            </div>
+          </div>
           <button className="ai-close-button" type="button" onClick={resetPaper} disabled={busyAction === "reset"}>Reset Paper</button>
         </section>
         {error && <section className="ai-bot-warning error"><strong>API</strong><span>{error}</span></section>}
@@ -506,14 +512,6 @@ export default function AIBot() {
               <small>Upstream held server-side: {audioMonitor.upstreamUrl}</small>
             </div>
           </div>
-          <div className="ai-bot-head"><span>Transcript input</span><strong>{segments.length}</strong></div>
-          {segments.map((segment) => (
-            <div className="ai-transcript" key={segment.id}>
-              <span>{segment.createdAt ? fullTimestamp(segment.createdAt) : "-"}</span>
-              <p>{segment.text}</p>
-            </div>
-          ))}
-          {!segments.length && <p className="ai-empty">No recent transcript rows from backend.</p>}
         </section>
       </main>
     </div>
