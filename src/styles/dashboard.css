@@ -542,25 +542,33 @@
   stroke-width: 2.5;
 }
 
-.ai-market-chart polyline.yes {
+.ai-market-chart polyline.home {
   stroke: #2f8cff;
 }
 
-.ai-market-chart polyline.no {
+.ai-market-chart polyline.draw {
+  stroke: #ffd45f;
+}
+
+.ai-market-chart polyline.away {
   stroke: #ff376d;
 }
 
 .ai-market-chart text {
   font-family: var(--terminal-mono, monospace);
-  font-size: 16px;
+  font-size: 12px;
   font-weight: 900;
 }
 
-.ai-market-chart .yes-label {
+.ai-market-chart .home-label {
   fill: #2f8cff;
 }
 
-.ai-market-chart .no-label {
+.ai-market-chart .draw-label {
+  fill: #ffd45f;
+}
+
+.ai-market-chart .away-label {
   fill: #ff376d;
 }
 

@@ -196,6 +196,11 @@ function pctLabel(cents: number | undefined | null) {
   return `${value}%`;
 }
 
+function shortLabel(value: string) {
+  const clean = String(value || "").trim();
+  return clean.length > 14 ? `${clean.slice(0, 13)}.` : clean;
+}
+
 function buildLadder(outcome?: BotOutcome | null): LadderLevel[] {
   const yes = Math.max(1, Math.min(99, Math.round(Number(outcome?.yesCents || 50))));
   const no = Math.max(1, Math.min(99, Math.round(Number(outcome?.noCents || (100 - yes)))));
@@ -218,20 +223,22 @@ function buildLadder(outcome?: BotOutcome | null): LadderLevel[] {
   });
 }
 
-function chartPoints(row: BotRow, yesCents: number, noCents: number) {
+function chartPoints(row: BotRow) {
   const seed = Array.from(row.id).reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  const yes = Array.from({ length: 34 }, (_item, index) => {
-    const drift = Math.sin((seed + index) / 4) * 1.8 + Math.cos((seed + index * 3) / 11) * 1.2;
-    const lateMove = index > 28 ? (index - 28) * 1.5 : 0;
-    return Math.max(4, Math.min(96, yesCents + drift + lateMove));
+  const series = (base: number, phase: number) => Array.from({ length: 34 }, (_item, index) => {
+    const drift = Math.sin((seed + index + phase) / 4) * 1.5 + Math.cos((seed + index * 3 + phase) / 11) * 1.1;
+    const lateMove = index > 28 ? Math.sin((index + phase) / 2) * 1.2 : 0;
+    return Math.max(4, Math.min(96, base + drift + lateMove));
   });
-  const no = yes.map((value) => Math.max(4, Math.min(96, 100 - value)));
+  const home = series(Number(row.book?.home?.yesCents || 0), 0);
+  const draw = series(Number(row.book?.draw?.yesCents || 0), 17);
+  const away = series(Number(row.book?.away?.yesCents || 0), 31);
   const toPoints = (values: number[]) => values.map((value, index) => {
     const x = 20 + (index / Math.max(1, values.length - 1)) * 560;
     const y = 240 - (value / 100) * 210;
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(" ");
-  return { yes: toPoints(yes), no: toPoints(no) };
+  return { home: toPoints(home), draw: toPoints(draw), away: toPoints(away) };
 }
 
 function selectedMatchPrints(row: BotRow, outcome?: BotOutcome | null) {
@@ -415,7 +422,7 @@ export default function AIBot() {
   }, [audioMonitor]);
 
   const selectedOutcome = selectedRow ? currentOutcome(selectedRow) : null;
-  const selectedChart = selectedRow ? chartPoints(selectedRow, Number(selectedOutcome?.yesCents || 50), Number(selectedOutcome?.noCents || 50)) : null;
+  const selectedChart = selectedRow ? chartPoints(selectedRow) : null;
   const selectedLadder = selectedRow ? buildLadder(selectedOutcome) : [];
   const selectedPrints = selectedRow ? selectedMatchPrints(selectedRow, selectedOutcome) : [];
 
@@ -576,19 +583,21 @@ export default function AIBot() {
             <div className="ai-match-market-grid">
               <div className="ai-market-chart">
                 <div className="ai-market-panel-head">
-                  <span>Dual outcome chart</span>
-                  <strong>{selectedOutcome?.label || "Market"} / live snapshot</strong>
+                  <span>1X2 outcome chart</span>
+                  <strong>{selectedRow.home} / Draw / {selectedRow.away}</strong>
                 </div>
-                <svg viewBox="0 0 620 280" role="img" aria-label="Selected market yes no chart">
+                <svg viewBox="0 0 620 280" role="img" aria-label="Selected match home draw away chart">
                   <g className="grid">
                     {[0, 25, 50, 75, 100].map((tick) => (
                       <line key={tick} x1="20" x2="580" y1={240 - tick * 2.1} y2={240 - tick * 2.1} />
                     ))}
                   </g>
-                  <polyline className="yes" points={selectedChart?.yes || ""} />
-                  <polyline className="no" points={selectedChart?.no || ""} />
-                  <text x="590" y="88" className="no-label">No {pctLabel(selectedOutcome?.noCents)}</text>
-                  <text x="590" y="220" className="yes-label">Yes {pctLabel(selectedOutcome?.yesCents)}</text>
+                  <polyline className="home" points={selectedChart?.home || ""} />
+                  <polyline className="draw" points={selectedChart?.draw || ""} />
+                  <polyline className="away" points={selectedChart?.away || ""} />
+                  <text x="430" y="78" className="home-label">{shortLabel(selectedRow.home)} {pctLabel(selectedRow.book?.home?.yesCents)}</text>
+                  <text x="430" y="142" className="draw-label">Draw {pctLabel(selectedRow.book?.draw?.yesCents)}</text>
+                  <text x="430" y="206" className="away-label">{shortLabel(selectedRow.away)} {pctLabel(selectedRow.book?.away?.yesCents)}</text>
                 </svg>
               </div>
 
