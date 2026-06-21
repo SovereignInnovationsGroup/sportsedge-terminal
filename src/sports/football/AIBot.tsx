@@ -89,6 +89,17 @@ function priceLabel(cents: number | undefined | null) {
   return Number(cents || 0) > 0 ? `${Math.round(Number(cents))}c` : "-";
 }
 
+function fullTimestamp(value: string | null | undefined) {
+  if (!value) return "-";
+  return localEventTime(value, {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+}
+
 function outcomeCell(outcome?: BotOutcome | null) {
   if (!outcome) return <span className="ai-poly-empty">-</span>;
   return (
@@ -176,7 +187,7 @@ export default function AIBot() {
           <article><span>Open P/L</span><strong className={(status?.openPnl || 0) >= 0 ? "positive" : "negative"}>{money(status?.openPnl)}</strong><small>Marked on backend</small></article>
           <article><span>Total P/L</span><strong className={(status?.totalPnl || 0) >= 0 ? "positive" : "negative"}>{money(status?.totalPnl)}</strong><small>Realised {money(status?.realisedPnl)}</small></article>
           <article><span>Watching</span><strong>{rows.length}</strong><small>{watchedWithMoney} with Poly money</small></article>
-          <article><span>Next Match</span><strong>{nextMatch ? localEventTime(nextMatch.startAt) : "-"}</strong><small>{nextMatch?.eventName || "Waiting for fixture"}</small></article>
+          <article><span>Next Match</span><strong>{nextMatch ? fullTimestamp(nextMatch.startAt) : "-"}</strong><small>{nextMatch?.eventName || "Waiting for fixture"}</small></article>
         </section>
 
         <section className="ai-bot-warning">
@@ -188,7 +199,7 @@ export default function AIBot() {
 
         <section className="ai-bot-grid">
           <div className="ai-bot-panel ai-bot-watch">
-            <div className="ai-bot-head"><span>World Cup watchlist</span><strong>{status ? localEventTime(status.generatedAt, { second: "2-digit" }) : "-"} backend</strong></div>
+            <div className="ai-bot-head"><span>World Cup watchlist</span><strong>{status ? fullTimestamp(status.generatedAt) : "-"} backend</strong></div>
             <table>
               <thead>
                 <tr><th>Time</th><th>Match</th><th>Score</th><th>Home Yes/No</th><th>Draw Yes/No</th><th>Away Yes/No</th><th>Fav</th><th>Poly $ Now</th><th>Status</th></tr>
@@ -198,7 +209,7 @@ export default function AIBot() {
                   const book = row.book;
                   return (
                     <tr key={row.id}>
-                      <td className="mono">{localEventTime(row.startAt)}</td>
+                      <td className="mono">{fullTimestamp(row.startAt)}</td>
                       <td><strong>{row.eventName}</strong><small>{row.competition}</small></td>
                       <td className="mono">{row.score.home}-{row.score.away}</td>
                       <td>{outcomeCell(book?.home)}</td>
@@ -219,7 +230,7 @@ export default function AIBot() {
             <div className="ai-bot-head"><span>Backend audio signals</span><strong>{signals.length}</strong></div>
             {signals.map((signal) => (
               <div className="ai-signal" key={signal.id}>
-                <span>{localEventTime(signal.at, { second: "2-digit" })}</span>
+                <span>{fullTimestamp(signal.at)}</span>
                 <strong>{signal.action}</strong>
                 <p>{signal.text}</p>
               </div>
@@ -237,7 +248,7 @@ export default function AIBot() {
             <tbody>
               {trades.map((trade) => (
                 <tr key={trade.id} className={trade.status === "CLOSED" ? "closed" : ""}>
-                  <td className="mono">{localEventTime(trade.openedAt, { second: "2-digit" })}</td>
+                  <td className="mono">{fullTimestamp(trade.openedAt)}</td>
                   <td><strong>{trade.eventName}</strong><small>{trade.reason}</small></td>
                   <td>{trade.outcome}</td>
                   <td className="mono">{money(trade.stake)}</td>
@@ -249,7 +260,7 @@ export default function AIBot() {
                   <td>
                     {trade.status === "OPEN"
                       ? <button className="ai-close-button" type="button" disabled={busyAction === trade.id} onClick={() => closeTrade(trade.id)}>Close</button>
-                      : <span className="ai-closed-time">{trade.closedAt ? localEventTime(trade.closedAt, { second: "2-digit" }) : "-"}</span>}
+                      : <span className="ai-closed-time">{trade.closedAt ? fullTimestamp(trade.closedAt) : "-"}</span>}
                   </td>
                 </tr>
               ))}
@@ -262,7 +273,7 @@ export default function AIBot() {
           <div className="ai-bot-head"><span>TalkSport transcript input</span><strong>{segments.length}</strong></div>
           {segments.map((segment) => (
             <div className="ai-transcript" key={segment.id}>
-              <span>{segment.createdAt ? localEventTime(segment.createdAt, { second: "2-digit" }) : "-"}</span>
+              <span>{segment.createdAt ? fullTimestamp(segment.createdAt) : "-"}</span>
               <p>{segment.text}</p>
             </div>
           ))}
