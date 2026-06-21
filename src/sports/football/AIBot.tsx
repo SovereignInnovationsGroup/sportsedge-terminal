@@ -338,6 +338,18 @@ async function postAction(url: string) {
   return payload as BotStatus;
 }
 
+async function postManualOrder(eventId: string, outcome: "home" | "draw" | "away") {
+  const response = await fetch(`/api/football/ai-bot/events/${encodeURIComponent(eventId)}/manual-order`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ outcome, side: "BUY_YES" }),
+    cache: "no-store"
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.detail || payload.error || "Manual paper order failed");
+  return payload as BotStatus;
+}
+
 async function fetchTranscriptSegments(feedId: string) {
   const params = new URLSearchParams({
     feed_id: feedId,
@@ -399,6 +411,52 @@ export default function AIBot() {
     } finally {
       setBusyAction("");
     }
+  }
+
+  async function manualOrder(row: BotRow, outcome: "home" | "draw" | "away") {
+    const busyKey = `manual:${row.id}:${outcome}`;
+    setBusyAction(busyKey);
+    try {
+      setStatus(await postManualOrder(row.id, outcome));
+      setError("");
+      setSelectedRowId(row.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Manual paper order failed");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  function manualButtons(row: BotRow, layout: "compact" | "detail" = "compact") {
+    const book = row.book;
+    const choices: { key: "home" | "draw" | "away"; label: string; quote?: BotOutcome | null }[] = [
+      { key: "home", label: row.home, quote: book?.home },
+      { key: "draw", label: "Draw", quote: book?.draw },
+      { key: "away", label: row.away, quote: book?.away }
+    ];
+    return (
+      <div className={layout === "detail" ? "ai-selected-manual" : "ai-manual-buttons"}>
+        {choices.map((choice) => {
+          const busyKey = `manual:${row.id}:${choice.key}`;
+          const disabled = busyAction === busyKey || !choice.quote?.yesCents;
+          return (
+            <button
+              key={choice.key}
+              type="button"
+              disabled={disabled}
+              onClick={(event) => {
+                event.stopPropagation();
+                manualOrder(row, choice.key);
+              }}
+            >
+              <span>{layout === "detail" ? "Buy Yes" : "Buy"}</span>
+              <strong>{layout === "detail" ? choice.label : shortLabel(choice.label)}</strong>
+              <em>{priceLabel(choice.quote?.yesCents)}</em>
+            </button>
+          );
+        })}
+      </div>
+    );
   }
 
   useEffect(() => {
@@ -648,6 +706,8 @@ export default function AIBot() {
               <article><span>Trade read</span><strong>{selectedOutcome?.label || "-"}</strong><small>{selectedRow.signal}</small></article>
             </div>
 
+            {manualButtons(selectedRow, "detail")}
+
             <div className="ai-match-market-grid">
               <div className="ai-market-chart">
                 <div className="ai-market-panel-head">
@@ -703,7 +763,7 @@ export default function AIBot() {
             <div className="ai-bot-head"><span>Football watchlist</span><strong>{status ? fullTimestamp(status.generatedAt) : "-"} backend</strong></div>
             <table>
               <thead>
-                <tr><th>Time</th><th>Match</th><th>Score</th><th>Home Yes/No</th><th>Draw Yes/No</th><th>Away Yes/No</th><th>Fav</th><th>Poly $ Now</th><th>Status</th></tr>
+                <tr><th>Time</th><th>Match</th><th>Score</th><th>Home Yes/No</th><th>Draw Yes/No</th><th>Away Yes/No</th><th>Fav</th><th>Poly $ Now</th><th>Status</th><th>Manual</th></tr>
               </thead>
               <tbody>
                 {rows.map((row) => {
@@ -722,10 +782,11 @@ export default function AIBot() {
                         <span className={`ai-pill ${row.signal === "In-play" ? "live" : ""}`}>{row.signal}</span>
                         <small>{row.sportsApiStatus?.provider || "fixture"} {row.sportsApiStatus?.detail || ""}</small>
                       </td>
+                      <td>{manualButtons(row)}</td>
                     </tr>
                   );
                 })}
-                {!rows.length && <tr><td colSpan={9}>No football matches in the backend watch window.</td></tr>}
+                {!rows.length && <tr><td colSpan={10}>No football matches in the backend watch window.</td></tr>}
               </tbody>
             </table>
           </div>
