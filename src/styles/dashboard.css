@@ -132,7 +132,7 @@
   display: flex;
   gap: 42px;
   min-width: max-content;
-  animation: aiSubtitleCrawl 42s linear infinite;
+  animation: aiSubtitleCrawl 160s linear infinite;
 }
 
 .ai-subtitle-track span {
@@ -152,6 +152,12 @@
   gap: 8px;
   justify-content: flex-end;
   min-width: max-content;
+}
+
+.ai-strip-audio {
+  display: block;
+  height: 28px;
+  width: 220px;
 }
 
 @keyframes aiSubtitleCrawl {
@@ -444,9 +450,12 @@
   width: 82px;
 }
 
-.ai-radio-card audio {
-  height: 34px;
-  width: 100%;
+.ai-radio-card span {
+  color: #ffd45f;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .ai-radio-meta {
@@ -513,8 +522,14 @@
   }
 
   .ai-subtitle-actions {
+    flex-wrap: wrap;
     justify-content: space-between;
     min-width: 0;
+  }
+
+  .ai-strip-audio {
+    flex: 1 1 220px;
+    width: 100%;
   }
 }
 

@@ -126,6 +126,7 @@ const AUDIO_MONITORS = [
     logoUrl: "https://ukradiolive.com/public/uploads/radio_img/talksport/play_250_250.webp",
     playbackUrl: "/api/live-audio/stream/talksport",
     upstreamUrl: "https://radio.talksport.com/stream#.mp3",
+    transcriptFeedId: "talksport",
     codec: "MP3 64k",
     kind: "mp3"
   },
@@ -135,6 +136,7 @@ const AUDIO_MONITORS = [
     logoUrl: "https://ukradiolive.com/public/uploads/radio_img/bbc-radio-5-live/play_250_250.webp",
     playbackUrl: "/api/live-audio/hls/bbc-radio-5-live",
     upstreamUrl: "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/hls/nonuk/mobile_wifi_main_sd_abr_v2/cfs/bbc_radio_five_live.m3u8",
+    transcriptFeedId: "bbc-radio-5-live",
     codec: "HLS 101k",
     kind: "hls"
   }
@@ -188,12 +190,30 @@ async function postAction(url: string) {
   return payload as BotStatus;
 }
 
+async function fetchTranscriptSegments(feedId: string) {
+  const params = new URLSearchParams({
+    feed_id: feedId,
+    sinceSeconds: "240",
+    limit: "40"
+  });
+  const response = await fetch(`/api/live-audio/segments?${params.toString()}`, { cache: "no-store" });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.detail || "Transcript feed failed");
+  return (payload.segments || []).map((segment: { id: string; text: string; createdAt: string | null }) => ({
+    id: String(segment.id),
+    text: String(segment.text || ""),
+    createdAt: segment.createdAt || null
+  })) as BotSegment[];
+}
+
 export default function AIBot() {
   const [status, setStatus] = useState<BotStatus | null>(null);
   const [error, setError] = useState("");
   const [busyAction, setBusyAction] = useState("");
   const [audioMonitorId, setAudioMonitorId] = useState<(typeof AUDIO_MONITORS)[number]["id"]>("talksport");
   const [audioError, setAudioError] = useState("");
+  const [subtitleSegments, setSubtitleSegments] = useState<BotSegment[]>([]);
+  const [subtitleError, setSubtitleError] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
@@ -304,11 +324,12 @@ export default function AIBot() {
   const orders = status?.orders || [];
   const trades = status?.trades || [];
   const signals = status?.signals || [];
-  const segments = status?.segments || [];
   const watchedWithMoney = rows.filter((row) => Number(row.book?.eventLiquidity || 0) > 0).length;
   const nextMatch = rows.find((row) => row.startAt && new Date(row.startAt).getTime() > Date.now());
   const audioMonitor = AUDIO_MONITORS.find((source) => source.id === audioMonitorId) || AUDIO_MONITORS[0];
-  const subtitleText = segments.map((segment) => segment.text).filter(Boolean).slice(0, 12).join("     /     ") || "Awaiting live transcript feed";
+  const subtitleText = subtitleSegments.map((segment) => segment.text).filter(Boolean).slice(-8).join("     /     ")
+    || subtitleError
+    || `No recent ${audioMonitor.label} transcript rows`;
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -349,6 +370,30 @@ export default function AIBot() {
     };
   }, [audioMonitor]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSelectedTranscripts() {
+      try {
+        const next = await fetchTranscriptSegments(audioMonitor.transcriptFeedId);
+        if (cancelled) return;
+        setSubtitleSegments(next);
+        setSubtitleError("");
+      } catch (err) {
+        if (cancelled) return;
+        setSubtitleSegments([]);
+        setSubtitleError(err instanceof Error ? err.message : "Transcript feed failed");
+      }
+    }
+
+    loadSelectedTranscripts();
+    const timer = window.setInterval(loadSelectedTranscripts, 6000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [audioMonitor]);
+
   return (
     <div className="terminal-shell">
       <TerminalTopbar activeSport="football" activeScreen="ai-bot" searchPlaceholder="AI Bot: live football scores, Poly prices, paper trades..." />
@@ -369,7 +414,7 @@ export default function AIBot() {
         </section>
 
         <section className="ai-subtitle-strip" aria-label="Live transcript subtitles">
-          <strong>Live transcript</strong>
+          <strong>{audioMonitor.label} transcript</strong>
           <div className="ai-subtitle-window">
             <div className="ai-subtitle-track">
               <span>{subtitleText}</span>
@@ -389,6 +434,7 @@ export default function AIBot() {
                 </button>
               ))}
             </div>
+            <audio className="ai-strip-audio" ref={audioRef} controls preload="none" />
             <button className="ai-close-button" type="button" onClick={resetPaper} disabled={busyAction === "reset"}>Reset Paper</button>
           </div>
         </section>
@@ -505,7 +551,7 @@ export default function AIBot() {
           <div className="ai-radio-monitor">
             <div className="ai-radio-card">
               <img src={audioMonitor.logoUrl} alt={`${audioMonitor.label} logo`} />
-              <audio ref={audioRef} controls preload="none" />
+              <span>{audioMonitor.label}</span>
             </div>
             <div className="ai-radio-meta">
               <strong>{audioMonitor.label}</strong>
