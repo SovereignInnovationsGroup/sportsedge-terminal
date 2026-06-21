@@ -299,7 +299,7 @@ export default function AIBot() {
                 <p>{signal.text}</p>
               </div>
             ))}
-            {!signals.length && <p className="ai-empty">No backend goal/start signals yet.</p>}
+            {!signals.length && <p className="ai-empty">No backend goal signals yet.</p>}
           </div>
         </section>
 
