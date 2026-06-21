@@ -188,8 +188,8 @@ async function postAction(url: string) {
 async function fetchTranscriptSegments(feedId: string) {
   const params = new URLSearchParams({
     feed_id: feedId,
-    sinceSeconds: "240",
-    limit: "40"
+    sinceSeconds: "45",
+    limit: "12"
   });
   const response = await fetch(`/api/live-audio/segments?${params.toString()}`, { cache: "no-store" });
   const payload = await response.json().catch(() => ({}));
@@ -198,7 +198,7 @@ async function fetchTranscriptSegments(feedId: string) {
     id: String(segment.id),
     text: String(segment.text || ""),
     createdAt: segment.createdAt || null
-  })) as BotSegment[];
+  })).reverse() as BotSegment[];
 }
 
 export default function AIBot() {
@@ -321,7 +321,7 @@ export default function AIBot() {
   const watchedWithMoney = rows.filter((row) => Number(row.book?.eventLiquidity || 0) > 0).length;
   const nextMatch = rows.find((row) => row.startAt && new Date(row.startAt).getTime() > Date.now());
   const audioMonitor = AUDIO_MONITORS.find((source) => source.id === audioMonitorId) || AUDIO_MONITORS[0];
-  const subtitleText = subtitleSegments.map((segment) => segment.text).filter(Boolean).slice(-8).join("     /     ")
+  const subtitleText = subtitleSegments.map((segment) => segment.text).filter(Boolean).slice(-6).join("     /     ")
     || subtitleError
     || `No recent ${audioMonitor.label} transcript rows`;
 
