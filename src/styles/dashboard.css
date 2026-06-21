@@ -494,7 +494,7 @@
 
 .ai-match-market-grid {
   display: grid;
-  grid-template-columns: minmax(420px, 1fr) 320px 330px;
+  grid-template-columns: minmax(360px, 1fr) repeat(3, minmax(190px, 240px)) minmax(260px, 320px);
   min-height: 520px;
 }
 
@@ -576,6 +576,13 @@
   display: grid;
   max-height: 485px;
   overflow: auto;
+}
+
+.ai-ladder-empty {
+  color: #8fa0b2;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 11px;
+  padding: 12px 10px;
 }
 
 .ai-ladder-row {

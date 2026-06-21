@@ -11,6 +11,18 @@ type BotOutcome = {
   noCents: number;
   yesMoney: number;
   noMoney: number;
+  yesLevels?: BotPriceLevel[];
+  noLevels?: BotPriceLevel[];
+  yesLayLevels?: BotPriceLevel[];
+  noLayLevels?: BotPriceLevel[];
+};
+
+type BotPriceLevel = {
+  odds: number;
+  cents: number;
+  amount: number;
+  level: number;
+  observedAt?: string | null;
 };
 
 type BotBook = {
@@ -21,6 +33,7 @@ type BotBook = {
   eventLiquidity: number;
   visibleMoney: number;
   latest?: string | null;
+  source?: string;
 };
 
 type BotRow = {
@@ -122,8 +135,9 @@ type LadderLevel = {
   price: number;
   yesSize: number;
   noSize: number;
-  yesHere: boolean;
-  noHere: boolean;
+  yesLevel?: number;
+  noLevel?: number;
+  observedAt?: string | null;
 };
 
 const AUDIO_MONITORS = [
@@ -202,37 +216,39 @@ function shortLabel(value: string) {
 }
 
 function buildLadder(outcome?: BotOutcome | null): LadderLevel[] {
-  const yes = Math.max(1, Math.min(99, Math.round(Number(outcome?.yesCents || 50))));
-  const no = Math.max(1, Math.min(99, Math.round(Number(outcome?.noCents || (100 - yes)))));
-  const prices = Array.from(new Set([
-    ...Array.from({ length: 11 }, (_item, index) => yes + 5 - index),
-    ...Array.from({ length: 11 }, (_item, index) => no + 5 - index)
-  ])).filter((price) => price > 0 && price < 100).sort((a, b) => b - a);
-  const yesMoney = Number(outcome?.yesMoney || 0);
-  const noMoney = Number(outcome?.noMoney || 0);
-  return prices.map((price, index) => {
-    const yesDistance = Math.abs(price - yes);
-    const noDistance = Math.abs(price - no);
-    return {
-      price,
-      yesHere: price === yes,
-      noHere: price === no,
-      yesSize: yesDistance <= 5 ? Math.max(5, yesMoney / (yesDistance + 1)) * (index % 3 === 0 ? 1.4 : 0.55) : 0,
-      noSize: noDistance <= 5 ? Math.max(5, noMoney / (noDistance + 1)) * (index % 2 === 0 ? 1.15 : 0.42) : 0
-    };
-  });
+  const grouped = new Map<number, LadderLevel>();
+  const add = (level: BotPriceLevel, side: "yes" | "no") => {
+    const price = Math.max(1, Math.min(99, Math.round(Number(level.cents || 0))));
+    if (!price) return;
+    const current = grouped.get(price) || { price, yesSize: 0, noSize: 0 };
+    if (side === "yes") {
+      current.yesSize += Number(level.amount || 0);
+      current.yesLevel = Math.min(current.yesLevel || Number(level.level || 99), Number(level.level || 99));
+    } else {
+      current.noSize += Number(level.amount || 0);
+      current.noLevel = Math.min(current.noLevel || Number(level.level || 99), Number(level.level || 99));
+    }
+    current.observedAt = level.observedAt || current.observedAt || null;
+    grouped.set(price, current);
+  };
+  (outcome?.yesLevels || []).forEach((level) => add(level, "yes"));
+  (outcome?.noLevels || []).forEach((level) => add(level, "no"));
+  if (!grouped.size && outcome) {
+    if (Number(outcome.yesMoney || 0) > 0 && Number(outcome.yesCents || 0) > 0) {
+      add({ odds: outcome.yesOdds, cents: outcome.yesCents, amount: outcome.yesMoney, level: 1, observedAt: null }, "yes");
+    }
+    if (Number(outcome.noMoney || 0) > 0 && Number(outcome.noCents || 0) > 0) {
+      add({ odds: outcome.noOdds, cents: outcome.noCents, amount: outcome.noMoney, level: 1, observedAt: null }, "no");
+    }
+  }
+  return Array.from(grouped.values()).sort((a, b) => b.price - a.price);
 }
 
 function chartPoints(row: BotRow) {
-  const seed = Array.from(row.id).reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  const series = (base: number, phase: number) => Array.from({ length: 34 }, (_item, index) => {
-    const drift = Math.sin((seed + index + phase) / 4) * 1.5 + Math.cos((seed + index * 3 + phase) / 11) * 1.1;
-    const lateMove = index > 28 ? Math.sin((index + phase) / 2) * 1.2 : 0;
-    return Math.max(4, Math.min(96, base + drift + lateMove));
-  });
-  const home = series(Number(row.book?.home?.yesCents || 0), 0);
-  const draw = series(Number(row.book?.draw?.yesCents || 0), 17);
-  const away = series(Number(row.book?.away?.yesCents || 0), 31);
+  const series = (base: number) => Array.from({ length: 2 }, () => Math.max(4, Math.min(96, base)));
+  const home = series(Number(row.book?.home?.yesCents || 0));
+  const draw = series(Number(row.book?.draw?.yesCents || 0));
+  const away = series(Number(row.book?.away?.yesCents || 0));
   const toPoints = (values: number[]) => values.map((value, index) => {
     const x = 20 + (index / Math.max(1, values.length - 1)) * 560;
     const y = 240 - (value / 100) * 210;
@@ -241,18 +257,43 @@ function chartPoints(row: BotRow) {
   return { home: toPoints(home), draw: toPoints(draw), away: toPoints(away) };
 }
 
-function selectedMatchPrints(row: BotRow, outcome?: BotOutcome | null) {
-  const baseTime = Date.now();
-  const yes = Math.max(1, Math.round(Number(outcome?.yesCents || 50)));
-  const no = Math.max(1, Math.round(Number(outcome?.noCents || 50)));
-  const labels = [outcome?.label || row.home, row.away, row.home, outcome?.label || row.home];
-  return Array.from({ length: 18 }, (_item, index) => ({
-    at: new Date(baseTime - index * 1200).toISOString(),
-    outcome: labels[index % labels.length],
-    side: index % 5 === 0 ? "SELL" : "BUY",
-    price: index % 5 === 0 ? no : yes,
-    size: Math.max(2, Number(outcome?.yesMoney || row.book?.eventLiquidity || 100) / (index + 9))
-  }));
+function outcomeDepth(outcome?: BotOutcome | null) {
+  if (!outcome) return 0;
+  return [...(outcome.yesLevels || []), ...(outcome.noLevels || [])]
+    .reduce((sum, level) => sum + Number(level.amount || 0), 0);
+}
+
+function quoteRows(row: BotRow) {
+  return [
+    { key: "home", outcome: row.book?.home },
+    { key: "draw", outcome: row.book?.draw },
+    { key: "away", outcome: row.book?.away }
+  ].flatMap(({ key, outcome }) => [
+    ...(outcome?.yesLevels || []).map((level) => ({ key: `${key}:yes:${level.level}:${level.cents}`, at: level.observedAt || row.book?.latest || null, outcome: outcome.label, side: "YES", price: level.cents, size: level.amount, level: level.level })),
+    ...(outcome?.noLevels || []).map((level) => ({ key: `${key}:no:${level.level}:${level.cents}`, at: level.observedAt || row.book?.latest || null, outcome: outcome.label, side: "NO", price: level.cents, size: level.amount, level: level.level }))
+  ]).sort((a, b) => Number(a.level || 0) - Number(b.level || 0)).slice(0, 24);
+}
+
+function ContractLadder({ outcome }: { outcome?: BotOutcome | null }) {
+  const ladder = buildLadder(outcome);
+  return (
+    <div className="ai-market-ladder">
+      <div className="ai-market-panel-head">
+        <span>{outcome?.label || "Contract"}</span>
+        <strong>Yes / No live</strong>
+      </div>
+      <div className="ai-ladder-table">
+        {ladder.map((level) => (
+          <div className="ai-ladder-row" key={`${outcome?.label || "contract"}:${level.price}`}>
+            <span className={level.yesLevel === 1 ? "hot yes-size" : "yes-size"}>{level.yesSize ? compactMoney(level.yesSize) : ""}</span>
+            <strong>{level.price}c</strong>
+            <span className={level.noLevel === 1 ? "hot no-size" : "no-size"}>{level.noSize ? compactMoney(level.noSize) : ""}</span>
+          </div>
+        ))}
+        {!ladder.length && <div className="ai-ladder-empty">No live WSS ladder levels</div>}
+      </div>
+    </div>
+  );
 }
 
 async function fetchStatus() {
@@ -423,8 +464,7 @@ export default function AIBot() {
 
   const selectedOutcome = selectedRow ? currentOutcome(selectedRow) : null;
   const selectedChart = selectedRow ? chartPoints(selectedRow) : null;
-  const selectedLadder = selectedRow ? buildLadder(selectedOutcome) : [];
-  const selectedPrints = selectedRow ? selectedMatchPrints(selectedRow, selectedOutcome) : [];
+  const selectedQuotes = selectedRow ? quoteRows(selectedRow) : [];
 
   useEffect(() => {
     let cancelled = false;
@@ -560,7 +600,7 @@ export default function AIBot() {
               <div>
                 <span>Selected match</span>
                 <strong>{selectedRow.eventName}</strong>
-                <small>{selectedRow.competition} / {selectedRow.signal} / {selectedRow.sportsApiStatus?.provider || "fixture"} {selectedRow.sportsApiStatus?.detail || ""}</small>
+                <small>{selectedRow.competition} / {selectedRow.signal} / {selectedRow.sportsApiStatus?.provider || "fixture"} {selectedRow.sportsApiStatus?.detail || ""} / {selectedRow.book?.source || "price feed"}</small>
               </div>
               <div className="ai-match-scorebox">
                 <span>Score</span>
@@ -575,7 +615,7 @@ export default function AIBot() {
               <article><span>Outcome B</span><strong>{selectedRow.away}</strong><small>{priceLabel(selectedRow.book?.away?.yesCents)} / {priceLabel(selectedRow.book?.away?.noCents)}</small></article>
               <article><span>Draw</span><strong>{priceLabel(selectedRow.book?.draw?.yesCents)}</strong><small>Yes / No {priceLabel(selectedRow.book?.draw?.noCents)}</small></article>
               <article><span>Last print</span><strong>{selectedOutcome?.label || "-"}</strong><small>Yes {priceLabel(selectedOutcome?.yesCents)}</small></article>
-              <article><span>Near depth</span><strong>{compactMoney(selectedOutcome?.yesMoney)} / {compactMoney(selectedOutcome?.noMoney)}</strong><small>Yes / No visible</small></article>
+              <article><span>Near depth</span><strong>{compactMoney(outcomeDepth(selectedOutcome))}</strong><small>Full live levels visible</small></article>
               <article><span>24h volume</span><strong>{compactMoney(selectedRow.book?.eventLiquidity)}</strong><small>SportsEdge liquidity</small></article>
               <article><span>Trade read</span><strong>{selectedOutcome?.label || "-"}</strong><small>{selectedRow.signal}</small></article>
             </div>
@@ -601,39 +641,28 @@ export default function AIBot() {
                 </svg>
               </div>
 
-              <div className="ai-market-ladder">
-                <div className="ai-market-panel-head">
-                  <span>Yes / No ladder</span>
-                  <strong>tick 0.01</strong>
-                </div>
-                <div className="ai-ladder-table">
-                  {selectedLadder.map((level) => (
-                    <div className="ai-ladder-row" key={level.price}>
-                      <span className={level.yesHere ? "hot yes-size" : "yes-size"}>{level.yesSize ? compactMoney(level.yesSize) : ""}</span>
-                      <strong>{level.price}c</strong>
-                      <span className={level.noHere ? "hot no-size" : "no-size"}>{level.noSize ? compactMoney(level.noSize) : ""}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <ContractLadder outcome={selectedRow.book?.home} />
+              <ContractLadder outcome={selectedRow.book?.draw} />
+              <ContractLadder outcome={selectedRow.book?.away} />
 
               <div className="ai-market-sales">
                 <div className="ai-market-panel-head">
-                  <span>Time & sales</span>
-                  <strong>{selectedPrints.length} prints</strong>
+                  <span>Live quote levels</span>
+                  <strong>{selectedQuotes.length} levels</strong>
                 </div>
                 <table>
                   <thead><tr><th>Time</th><th>Outcome</th><th>Side</th><th>Price</th><th>Size</th></tr></thead>
                   <tbody>
-                    {selectedPrints.map((print, index) => (
-                      <tr key={`${print.at}-${index}`}>
-                        <td className="mono">{fullTimestamp(print.at).split(",").pop()?.trim() || fullTimestamp(print.at)}</td>
-                        <td>{print.outcome}</td>
-                        <td className={print.side === "BUY" ? "positive" : "negative"}>{print.side}</td>
-                        <td className="mono">{print.price}c</td>
-                        <td className="mono">{compactMoney(print.size)}</td>
+                    {selectedQuotes.map((quote) => (
+                      <tr key={quote.key}>
+                        <td className="mono">{fullTimestamp(quote.at).split(",").pop()?.trim() || fullTimestamp(quote.at)}</td>
+                        <td>{quote.outcome}</td>
+                        <td className={quote.side === "YES" ? "positive" : "negative"}>{quote.side}</td>
+                        <td className="mono">{quote.price}c</td>
+                        <td className="mono">{compactMoney(quote.size)}</td>
                       </tr>
                     ))}
+                    {!selectedQuotes.length && <tr><td colSpan={5}>No live WSS quote levels for this match yet.</td></tr>}
                   </tbody>
                 </table>
               </div>
