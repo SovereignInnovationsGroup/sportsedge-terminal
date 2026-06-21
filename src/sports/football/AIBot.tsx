@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import Hls from "hls.js";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { formatExchangeMoney, localEventTime } from "../../core/format";
 import { sportsEdgeWsUrl } from "../../core/news";
@@ -125,20 +124,16 @@ const AUDIO_MONITORS = [
     label: "talkSPORT",
     logoUrl: "https://ukradiolive.com/public/uploads/radio_img/talksport/play_250_250.webp",
     playbackUrl: "/api/live-audio/stream/talksport",
-    upstreamUrl: "https://radio.talksport.com/stream#.mp3",
     transcriptFeedId: "talksport",
-    codec: "MP3 64k",
-    kind: "mp3"
+    codec: "SE MP3 relay"
   },
   {
     id: "bbc-radio-5-live",
     label: "BBC 5 Live",
     logoUrl: "https://ukradiolive.com/public/uploads/radio_img/bbc-radio-5-live/play_250_250.webp",
-    playbackUrl: "/api/live-audio/hls/bbc-radio-5-live/relay.m3u8",
-    upstreamUrl: "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/hls/nonuk/mobile_wifi_main_sd_abr_v2/cfs/bbc_radio_five_live.m3u8",
+    playbackUrl: "/api/live-audio/stream/bbc-radio-5-live",
     transcriptFeedId: "bbc-radio-5-live",
-    codec: "HLS 101k",
-    kind: "hls"
+    codec: "SE MP3 relay"
   }
 ] as const;
 
@@ -215,7 +210,6 @@ export default function AIBot() {
   const [subtitleSegments, setSubtitleSegments] = useState<BotSegment[]>([]);
   const [subtitleError, setSubtitleError] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const hlsRef = useRef<Hls | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
 
@@ -335,39 +329,10 @@ export default function AIBot() {
     const audio = audioRef.current;
     if (!audio) return;
     setAudioError("");
-    if (hlsRef.current) {
-      hlsRef.current.destroy();
-      hlsRef.current = null;
-    }
     audio.pause();
     audio.removeAttribute("src");
+    audio.src = audioMonitor.playbackUrl;
     audio.load();
-
-    if (audioMonitor.kind === "hls") {
-      if (audio.canPlayType("application/vnd.apple.mpegurl")) {
-        audio.src = audioMonitor.playbackUrl;
-      } else if (Hls.isSupported()) {
-        const hls = new Hls({ lowLatencyMode: true });
-        hlsRef.current = hls;
-        hls.loadSource(audioMonitor.playbackUrl);
-        hls.attachMedia(audio);
-        hls.on(Hls.Events.ERROR, (_event, data) => {
-          if (data.fatal) setAudioError("BBC HLS playback failed. Try reselecting the source.");
-        });
-      } else {
-        setAudioError("This browser cannot play BBC HLS audio.");
-      }
-    } else {
-      audio.src = audioMonitor.playbackUrl;
-    }
-    audio.load();
-
-    return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-    };
   }, [audioMonitor]);
 
   useEffect(() => {
@@ -558,7 +523,6 @@ export default function AIBot() {
               <span>{audioMonitor.codec} via SportsEdge relay</span>
               {audioError && <small className="negative">{audioError}</small>}
               <code>{audioMonitor.playbackUrl}</code>
-              <small>Upstream held server-side: {audioMonitor.upstreamUrl}</small>
             </div>
           </div>
         </section>

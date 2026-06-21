@@ -45,7 +45,6 @@
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.1.8",
-    "hls.js": "^1.6.16",
     "input-otp": "^1.2.4",
     "lucide-react": "^0.400.0",
     "next-themes": "^0.3.0",
