@@ -38,6 +38,7 @@ const FootballBiasMatrix = lazy(() => import("../sports/football/BiasMatrix"));
 const FootballArbs = lazy(() => import("../sports/football/Arbs"));
 const FootballXPoly = lazy(() => import("../sports/football/XPoly"));
 const FootballAIBot = lazy(() => import("../sports/football/AIBot"));
+const FootballManualTrading = lazy(() => import("../sports/football/ManualTrading"));
 const FootballProfiles = lazy(() => import("../sports/football/Profiles"));
 const FootballLeagueTables = lazy(() => import("../sports/football/LeagueTables"));
 const FootballResults = lazy(() => import("../sports/football/Results"));
@@ -145,6 +146,7 @@ function screenForHash(hash: string) {
   if (hash === "#bias-matrix" || hash === "#agtest2") return requireSession(<FootballBiasMatrix />);
   if (hash === "#xpoly") return requireSession(<FootballXPoly />);
   if (hash === "#football-ai-bot") return requireSession(<FootballAIBot />);
+  if (hash === "#manual-trading") return requireSession(<FootballManualTrading />);
   if (hash === "#arbs") return requireSession(<FootballArbs />);
   if (hash === "#football-tables" || hash === "#league-tables") return requireSession(<FootballLeagueTables />);
   if (hash === "#football-results" || hash === "#results") return requireSession(<FootballResults />);

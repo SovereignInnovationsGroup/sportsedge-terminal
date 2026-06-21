@@ -22,6 +22,122 @@
   --brand-logo-width: 430px;
 }
 
+.manual-trading-shell {
+  background: #03080d;
+  color: #dce7f3;
+  min-height: 100vh;
+}
+
+.manual-trading-page {
+  display: grid;
+  gap: 10px;
+  margin: 0 auto;
+  max-width: 520px;
+  padding: 8px;
+}
+
+.manual-wallet {
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.manual-wallet article,
+.manual-ticket,
+.manual-positions article {
+  background: #07111a;
+  border: 1px solid rgba(80, 129, 177, 0.32);
+}
+
+.manual-wallet article {
+  min-height: 68px;
+  padding: 10px;
+}
+
+.manual-wallet span,
+.manual-ticket label,
+.manual-positions span,
+.manual-positions label,
+.manual-positions small {
+  color: #8fa0b2;
+  display: block;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.manual-wallet strong {
+  color: #eef4fb;
+  display: block;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 22px;
+  margin-top: 4px;
+}
+
+.manual-ticket {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+.manual-ticket-row,
+.manual-position-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.manual-ticket input,
+.manual-positions input {
+  background: #02070c;
+  border: 1px solid rgba(80, 129, 177, 0.45);
+  color: #eef4fb;
+  font: 900 16px var(--terminal-mono, monospace);
+  height: 42px;
+  margin-top: 4px;
+  padding: 0 8px;
+  width: 100%;
+}
+
+.manual-ticket button,
+.manual-positions button {
+  background: #d6ad34;
+  border: 0;
+  color: #06090d;
+  font: 900 12px var(--terminal-mono, monospace);
+  min-height: 44px;
+  text-transform: uppercase;
+}
+
+.manual-positions {
+  display: grid;
+  gap: 8px;
+}
+
+.manual-positions article {
+  display: grid;
+  gap: 9px;
+  padding: 10px;
+}
+
+.manual-positions article.closed {
+  opacity: 0.62;
+}
+
+.manual-positions article > div:first-child strong {
+  color: #eef4fb;
+  display: block;
+  font-size: 17px;
+}
+
+.manual-position-grid b {
+  color: #eef4fb;
+  display: block;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
 .ai-bot-page {
   min-height: calc(100vh - 54px);
   background: #03070b;
