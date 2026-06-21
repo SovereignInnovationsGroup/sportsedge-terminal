@@ -595,7 +595,7 @@ export default function AIBot() {
             <div className="ai-bot-head"><span>Open positions / P&L</span><strong>{trades.filter((trade) => trade.status === "OPEN").length} open</strong></div>
             <table>
               <thead>
-                <tr><th>Opened</th><th>Event</th><th>Outcome</th><th>Stake</th><th>Entry</th><th>Now</th><th>P/L</th><th>Stop</th><th>Status</th><th>Action</th></tr>
+                <tr><th>Opened</th><th>Event</th><th>Outcome</th><th>Stake</th><th>Entry</th><th>Exit/Now</th><th>P/L</th><th>Trail</th><th>Status</th><th>Action</th></tr>
               </thead>
               <tbody>
                 {trades.map((trade) => (
