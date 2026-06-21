@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import Hls from "hls.js";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { formatExchangeMoney, localEventTime } from "../../core/format";
 import { sportsEdgeWsUrl } from "../../core/news";
@@ -118,6 +119,27 @@ type BotStatus = {
   };
 };
 
+const AUDIO_MONITORS = [
+  {
+    id: "talksport",
+    label: "talkSPORT",
+    logoUrl: "https://ukradiolive.com/public/uploads/radio_img/talksport/play_250_250.webp",
+    playbackUrl: "/api/live-audio/stream/talksport",
+    upstreamUrl: "https://radio.talksport.com/stream#.mp3",
+    codec: "MP3 64k",
+    kind: "mp3"
+  },
+  {
+    id: "bbc-radio-5-live",
+    label: "BBC 5 Live",
+    logoUrl: "https://ukradiolive.com/public/uploads/radio_img/bbc-radio-5-live/play_250_250.webp",
+    playbackUrl: "/api/live-audio/hls/bbc-radio-5-live",
+    upstreamUrl: "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/hls/nonuk/mobile_wifi_main_sd_abr_v2/cfs/bbc_radio_five_live.m3u8",
+    codec: "HLS 101k",
+    kind: "hls"
+  }
+] as const;
+
 function money(value: number | undefined | null) {
   return Number(value || 0) > 0 ? formatExchangeMoney(Number(value || 0), "USD") : "-";
 }
@@ -170,6 +192,10 @@ export default function AIBot() {
   const [status, setStatus] = useState<BotStatus | null>(null);
   const [error, setError] = useState("");
   const [busyAction, setBusyAction] = useState("");
+  const [audioMonitorId, setAudioMonitorId] = useState<(typeof AUDIO_MONITORS)[number]["id"]>("talksport");
+  const [audioError, setAudioError] = useState("");
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
 
@@ -281,6 +307,46 @@ export default function AIBot() {
   const segments = status?.segments || [];
   const watchedWithMoney = rows.filter((row) => Number(row.book?.eventLiquidity || 0) > 0).length;
   const nextMatch = rows.find((row) => row.startAt && new Date(row.startAt).getTime() > Date.now());
+  const audioMonitor = AUDIO_MONITORS.find((source) => source.id === audioMonitorId) || AUDIO_MONITORS[0];
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    setAudioError("");
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
+
+    if (audioMonitor.kind === "hls") {
+      if (audio.canPlayType("application/vnd.apple.mpegurl")) {
+        audio.src = audioMonitor.playbackUrl;
+      } else if (Hls.isSupported()) {
+        const hls = new Hls({ lowLatencyMode: true });
+        hlsRef.current = hls;
+        hls.loadSource(audioMonitor.playbackUrl);
+        hls.attachMedia(audio);
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) setAudioError("BBC HLS playback failed. Try reselecting the source.");
+        });
+      } else {
+        setAudioError("This browser cannot play BBC HLS audio.");
+      }
+    } else {
+      audio.src = audioMonitor.playbackUrl;
+    }
+    audio.load();
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [audioMonitor]);
 
   return (
     <div className="terminal-shell">
@@ -412,7 +478,35 @@ export default function AIBot() {
         </section>
 
         <section className="ai-bot-panel ai-audio-feed">
-          <div className="ai-bot-head"><span>TalkSport transcript input</span><strong>{segments.length}</strong></div>
+          <div className="ai-bot-head ai-audio-monitor-head">
+            <span>Live radio monitor</span>
+            <div className="ai-audio-tabs" aria-label="Radio source">
+              {AUDIO_MONITORS.map((source) => (
+                <button
+                  key={source.id}
+                  className={source.id === audioMonitor.id ? "active" : ""}
+                  type="button"
+                  onClick={() => setAudioMonitorId(source.id)}
+                >
+                  {source.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="ai-radio-monitor">
+            <div className="ai-radio-card">
+              <img src={audioMonitor.logoUrl} alt={`${audioMonitor.label} logo`} />
+              <audio ref={audioRef} controls preload="none" />
+            </div>
+            <div className="ai-radio-meta">
+              <strong>{audioMonitor.label}</strong>
+              <span>{audioMonitor.codec} via SportsEdge relay</span>
+              {audioError && <small className="negative">{audioError}</small>}
+              <code>{audioMonitor.playbackUrl}</code>
+              <small>Upstream held server-side: {audioMonitor.upstreamUrl}</small>
+            </div>
+          </div>
+          <div className="ai-bot-head"><span>Transcript input</span><strong>{segments.length}</strong></div>
           {segments.map((segment) => (
             <div className="ai-transcript" key={segment.id}>
               <span>{segment.createdAt ? fullTimestamp(segment.createdAt) : "-"}</span>

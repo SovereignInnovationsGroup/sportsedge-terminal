@@ -325,6 +325,100 @@
   opacity: 0.55;
 }
 
+.ai-audio-monitor-head {
+  gap: 12px;
+}
+
+.ai-audio-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.ai-audio-tabs button {
+  background: rgba(80, 129, 177, 0.08);
+  border: 1px solid rgba(80, 129, 177, 0.34);
+  color: #9aa8b7;
+  cursor: pointer;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 10px;
+  font-weight: 900;
+  min-height: 26px;
+  padding: 4px 8px;
+  text-transform: uppercase;
+}
+
+.ai-audio-tabs button:hover,
+.ai-audio-tabs button.active {
+  background: rgba(255, 210, 66, 0.12);
+  border-color: rgba(255, 210, 66, 0.58);
+  color: #ffd45f;
+}
+
+.ai-radio-monitor {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px;
+}
+
+.ai-radio-card {
+  align-items: center;
+  background: #03070b;
+  border: 1px solid rgba(80, 129, 177, 0.32);
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  min-height: 160px;
+  padding: 14px;
+}
+
+.ai-radio-card img {
+  aspect-ratio: 1;
+  display: block;
+  height: 82px;
+  object-fit: contain;
+  width: 82px;
+}
+
+.ai-radio-card audio {
+  height: 34px;
+  width: 100%;
+}
+
+.ai-radio-meta {
+  align-content: start;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.ai-radio-meta strong {
+  color: #eef4fb;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.ai-radio-meta span {
+  color: #78ffad;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 11px;
+}
+
+.ai-radio-meta code {
+  background: rgba(5, 10, 16, 0.8);
+  border: 1px solid rgba(80, 129, 177, 0.24);
+  color: #9cc7ff;
+  display: block;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 10px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  padding: 8px;
+}
+
 .ai-bot-page .positive,
 .ai-bot-screen .positive {
   color: #78ffad;
@@ -345,6 +439,10 @@
   }
 
   .ai-bot-risk-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-radio-monitor {
     grid-template-columns: 1fr;
   }
 }
