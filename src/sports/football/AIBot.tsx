@@ -34,6 +34,16 @@ type BotBook = {
   visibleMoney: number;
   latest?: string | null;
   source?: string;
+  recentTrades?: BotMarketTrade[];
+};
+
+type BotMarketTrade = {
+  label: string;
+  runnerName: string;
+  odds: number;
+  cents: number;
+  amount: number;
+  observedAt?: string | null;
 };
 
 type BotRow = {
@@ -66,6 +76,8 @@ type BotTrade = {
   stake: number;
   entryOdds: number;
   currentOdds: number;
+  entryPrice?: number;
+  currentPrice?: number;
   bestPnl: number;
   stopPnl: number;
   status: "OPEN" | "CLOSED";
@@ -168,7 +180,12 @@ function odds(value: number | undefined | null) {
 }
 
 function priceLabel(cents: number | undefined | null) {
-  return Number(cents || 0) > 0 ? `${Math.round(Number(cents))}c` : "-";
+  const value = Number(cents || 0);
+  if (value <= 0) return "-";
+  const formatted = Number.isInteger(value)
+    ? String(value)
+    : value.toFixed(value < 10 ? 2 : 1).replace(/0+$/, "").replace(/\.$/, "");
+  return `${formatted}c`;
 }
 
 function fullTimestamp(value: string | null | undefined) {
@@ -264,13 +281,24 @@ function outcomeDepth(outcome?: BotOutcome | null) {
 }
 
 function quoteRows(row: BotRow) {
+  const trades = (row.book?.recentTrades || []).map((trade, index) => ({
+    key: `trade:${index}:${trade.observedAt || ""}:${trade.label}:${trade.cents}`,
+    at: trade.observedAt || row.book?.latest || null,
+    outcome: trade.label,
+    side: trade.runnerName || "TRADE",
+    price: trade.cents,
+    size: trade.amount,
+    level: 0,
+    isTrade: true
+  }));
+  if (trades.length) return trades.slice(0, 30);
   return [
     { key: "home", outcome: row.book?.home },
     { key: "draw", outcome: row.book?.draw },
     { key: "away", outcome: row.book?.away }
   ].flatMap(({ key, outcome }) => [
-    ...(outcome?.yesLevels || []).map((level) => ({ key: `${key}:yes:${level.level}:${level.cents}`, at: level.observedAt || row.book?.latest || null, outcome: outcome.label, side: "YES", price: level.cents, size: level.amount, level: level.level })),
-    ...(outcome?.noLevels || []).map((level) => ({ key: `${key}:no:${level.level}:${level.cents}`, at: level.observedAt || row.book?.latest || null, outcome: outcome.label, side: "NO", price: level.cents, size: level.amount, level: level.level }))
+    ...(outcome?.yesLevels || []).map((level) => ({ key: `${key}:yes:${level.level}:${level.cents}`, at: level.observedAt || row.book?.latest || null, outcome: outcome.label, side: "YES", price: level.cents, size: level.amount, level: level.level, isTrade: false })),
+    ...(outcome?.noLevels || []).map((level) => ({ key: `${key}:no:${level.level}:${level.cents}`, at: level.observedAt || row.book?.latest || null, outcome: outcome.label, side: "NO", price: level.cents, size: level.amount, level: level.level, isTrade: false }))
   ]).sort((a, b) => Number(a.level || 0) - Number(b.level || 0)).slice(0, 24);
 }
 
@@ -549,7 +577,7 @@ export default function AIBot() {
                     <td className="mono">{fullTimestamp(order.createdAt)}</td>
                     <td><strong>{order.eventName}</strong><small>{order.reason}</small></td>
                     <td>{order.outcome}</td>
-                    <td className="mono">{priceLabel(order.limitCents)}</td>
+                    <td className="mono">{priceLabel(Number(order.limitPrice || 0) * 100 || order.limitCents)}</td>
                     <td className="mono">{money(order.stake)}</td>
                     <td className="mono">{money(order.filledStake)}</td>
                     <td className="mono">{money(order.remainingStake)}</td>
@@ -576,8 +604,8 @@ export default function AIBot() {
                     <td><strong>{trade.eventName}</strong><small>{trade.reason}</small></td>
                     <td>{trade.outcome}</td>
                     <td className="mono">{money(trade.stake)}</td>
-                    <td className="mono">{odds(trade.entryOdds)}</td>
-                    <td className="mono">{odds(trade.currentOdds)}</td>
+                    <td className="mono">{priceLabel(Number(trade.entryPrice || 0) * 100)}</td>
+                    <td className="mono">{priceLabel(Number(trade.currentPrice || 0) * 100)}</td>
                     <td className={`mono ${trade.pnl >= 0 ? "positive" : "negative"}`}>{money(trade.pnl)}</td>
                     <td className="mono">{money(trade.stopPnl)}</td>
                     <td><span className={`ai-pill ${trade.status === "OPEN" ? "live" : ""}`}>{trade.status}</span></td>
@@ -647,8 +675,8 @@ export default function AIBot() {
 
               <div className="ai-market-sales">
                 <div className="ai-market-panel-head">
-                  <span>Live quote levels</span>
-                  <strong>{selectedQuotes.length} levels</strong>
+                  <span>{selectedRow.book?.recentTrades?.length ? "Polymarket trades" : "Live quote levels"}</span>
+                  <strong>{selectedQuotes.length} rows</strong>
                 </div>
                 <table>
                   <thead><tr><th>Time</th><th>Outcome</th><th>Side</th><th>Price</th><th>Size</th></tr></thead>
@@ -657,7 +685,7 @@ export default function AIBot() {
                       <tr key={quote.key}>
                         <td className="mono">{fullTimestamp(quote.at).split(",").pop()?.trim() || fullTimestamp(quote.at)}</td>
                         <td>{quote.outcome}</td>
-                        <td className={quote.side === "YES" ? "positive" : "negative"}>{quote.side}</td>
+                        <td className={quote.side === "YES" || quote.isTrade ? "positive" : "negative"}>{quote.side}</td>
                         <td className="mono">{quote.price}c</td>
                         <td className="mono">{compactMoney(quote.size)}</td>
                       </tr>
