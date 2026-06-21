@@ -308,6 +308,64 @@ export default function AIBot() {
         </section>
         {error && <section className="ai-bot-warning error"><strong>API</strong><span>{error}</span></section>}
 
+        <section className="ai-bot-risk-grid">
+          <div className="ai-bot-panel ai-bot-orders">
+            <div className="ai-bot-head"><span>Working orders</span><strong>{orders.filter((order) => ["OPEN", "PARTIAL"].includes(order.status)).length} working</strong></div>
+            <table>
+              <thead>
+                <tr><th>Created</th><th>Event</th><th>Outcome</th><th>Limit</th><th>Stake</th><th>Filled</th><th>Left</th><th>Avail</th><th>Status</th><th>Reason</th></tr>
+              </thead>
+              <tbody>
+                {orders.map((order) => (
+                  <tr key={order.id} className={order.status === "CANCELLED" || order.status === "REJECTED" ? "closed" : ""}>
+                    <td className="mono">{fullTimestamp(order.createdAt)}</td>
+                    <td><strong>{order.eventName}</strong><small>{order.reason}</small></td>
+                    <td>{order.outcome}</td>
+                    <td className="mono">{priceLabel(order.limitCents)}</td>
+                    <td className="mono">{money(order.stake)}</td>
+                    <td className="mono">{money(order.filledStake)}</td>
+                    <td className="mono">{money(order.remainingStake)}</td>
+                    <td className="mono">{money(order.availableAtCreate)}</td>
+                    <td><span className={`ai-pill ${order.status === "OPEN" || order.status === "PARTIAL" ? "live" : order.status === "FILLED" ? "watch" : ""}`}>{order.status}</span></td>
+                    <td><small>{order.rejectReason || order.cancelReason || `${Math.round(Number(order.quoteAgeMs || 0) / 1000)}s quote`}</small></td>
+                  </tr>
+                ))}
+                {!orders.length && <tr><td colSpan={10}>No working orders. A score WSS goal signal creates the first backend order.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="ai-bot-panel ai-bot-trades">
+            <div className="ai-bot-head"><span>Open positions / P&L</span><strong>{trades.filter((trade) => trade.status === "OPEN").length} open</strong></div>
+            <table>
+              <thead>
+                <tr><th>Opened</th><th>Event</th><th>Outcome</th><th>Stake</th><th>Entry</th><th>Now</th><th>P/L</th><th>Stop</th><th>Status</th><th>Action</th></tr>
+              </thead>
+              <tbody>
+                {trades.map((trade) => (
+                  <tr key={trade.id} className={trade.status === "CLOSED" ? "closed" : ""}>
+                    <td className="mono">{fullTimestamp(trade.openedAt)}</td>
+                    <td><strong>{trade.eventName}</strong><small>{trade.reason}</small></td>
+                    <td>{trade.outcome}</td>
+                    <td className="mono">{money(trade.stake)}</td>
+                    <td className="mono">{odds(trade.entryOdds)}</td>
+                    <td className="mono">{odds(trade.currentOdds)}</td>
+                    <td className={`mono ${trade.pnl >= 0 ? "positive" : "negative"}`}>{money(trade.pnl)}</td>
+                    <td className="mono">{money(trade.stopPnl)}</td>
+                    <td><span className={`ai-pill ${trade.status === "OPEN" ? "live" : ""}`}>{trade.status}</span></td>
+                    <td>
+                      {trade.status === "OPEN"
+                        ? <button className="ai-close-button" type="button" disabled={busyAction === trade.id} onClick={() => closeTrade(trade.id)}>Close</button>
+                        : <span className="ai-closed-time">{trade.closedAt ? fullTimestamp(trade.closedAt) : "-"}</span>}
+                    </td>
+                  </tr>
+                ))}
+                {!trades.length && <tr><td colSpan={10}>No filled positions. Orders fill only when fresh Polymarket price and size are available.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         <section className="ai-bot-grid">
           <div className="ai-bot-panel ai-bot-watch">
             <div className="ai-bot-head"><span>Football watchlist</span><strong>{status ? fullTimestamp(status.generatedAt) : "-"} backend</strong></div>
@@ -351,62 +409,6 @@ export default function AIBot() {
             ))}
             {!signals.length && <p className="ai-empty">No backend goal signals yet.</p>}
           </div>
-        </section>
-
-        <section className="ai-bot-panel ai-bot-orders">
-          <div className="ai-bot-head"><span>Backend paper orders</span><strong>{orders.filter((order) => ["OPEN", "PARTIAL"].includes(order.status)).length} working</strong></div>
-          <table>
-            <thead>
-              <tr><th>Created</th><th>Event</th><th>Outcome</th><th>Limit</th><th>Stake</th><th>Filled</th><th>Left</th><th>Avail</th><th>Status</th><th>Reason</th></tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => (
-                <tr key={order.id} className={order.status === "CANCELLED" || order.status === "REJECTED" ? "closed" : ""}>
-                  <td className="mono">{fullTimestamp(order.createdAt)}</td>
-                  <td><strong>{order.eventName}</strong><small>{order.reason}</small></td>
-                  <td>{order.outcome}</td>
-                  <td className="mono">{priceLabel(order.limitCents)}</td>
-                  <td className="mono">{money(order.stake)}</td>
-                  <td className="mono">{money(order.filledStake)}</td>
-                  <td className="mono">{money(order.remainingStake)}</td>
-                  <td className="mono">{money(order.availableAtCreate)}</td>
-                  <td><span className={`ai-pill ${order.status === "OPEN" || order.status === "PARTIAL" ? "live" : order.status === "FILLED" ? "watch" : ""}`}>{order.status}</span></td>
-                  <td><small>{order.rejectReason || order.cancelReason || `${Math.round(Number(order.quoteAgeMs || 0) / 1000)}s quote`}</small></td>
-                </tr>
-              ))}
-              {!orders.length && <tr><td colSpan={10}>No backend paper orders yet. A score WSS goal signal will create the first order.</td></tr>}
-            </tbody>
-          </table>
-        </section>
-
-        <section className="ai-bot-panel ai-bot-trades">
-          <div className="ai-bot-head"><span>Filled positions</span><strong>{trades.filter((trade) => trade.status === "OPEN").length} open</strong></div>
-          <table>
-            <thead>
-              <tr><th>Opened</th><th>Event</th><th>Outcome</th><th>Stake</th><th>Entry</th><th>Now</th><th>P/L</th><th>Stop</th><th>Status</th><th>Action</th></tr>
-            </thead>
-            <tbody>
-              {trades.map((trade) => (
-                <tr key={trade.id} className={trade.status === "CLOSED" ? "closed" : ""}>
-                  <td className="mono">{fullTimestamp(trade.openedAt)}</td>
-                  <td><strong>{trade.eventName}</strong><small>{trade.reason}</small></td>
-                  <td>{trade.outcome}</td>
-                  <td className="mono">{money(trade.stake)}</td>
-                  <td className="mono">{odds(trade.entryOdds)}</td>
-                  <td className="mono">{odds(trade.currentOdds)}</td>
-                  <td className={`mono ${trade.pnl >= 0 ? "positive" : "negative"}`}>{money(trade.pnl)}</td>
-                  <td className="mono">{money(trade.stopPnl)}</td>
-                  <td><span className={`ai-pill ${trade.status === "OPEN" ? "live" : ""}`}>{trade.status}</span></td>
-                  <td>
-                    {trade.status === "OPEN"
-                      ? <button className="ai-close-button" type="button" disabled={busyAction === trade.id} onClick={() => closeTrade(trade.id)}>Close</button>
-                      : <span className="ai-closed-time">{trade.closedAt ? fullTimestamp(trade.closedAt) : "-"}</span>}
-                  </td>
-                </tr>
-              ))}
-              {!trades.length && <tr><td colSpan={10}>No filled positions yet. Orders fill only when fresh Polymarket price and size are available.</td></tr>}
-            </tbody>
-          </table>
         </section>
 
         <section className="ai-bot-panel ai-audio-feed">

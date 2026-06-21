@@ -107,6 +107,13 @@
   gap: 8px;
 }
 
+.ai-bot-risk-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
 .ai-bot-panel {
   overflow: hidden;
 }
@@ -245,9 +252,8 @@
   -webkit-box-orient: vertical;
 }
 
-.ai-bot-orders,
 .ai-bot-trades {
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 .ai-bot-orders th:nth-child(1) { width: 118px; }
@@ -335,6 +341,10 @@
   }
 
   .ai-bot-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-bot-risk-grid {
     grid-template-columns: 1fr;
   }
 }
