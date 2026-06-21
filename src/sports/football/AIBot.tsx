@@ -111,6 +111,17 @@ type BotSignal = {
   action: string;
 };
 
+type BotAudioAlert = {
+  id: string;
+  at: string | null;
+  observedAt: string;
+  eventName: string;
+  outcome: string;
+  score: { home: number; away: number };
+  text: string;
+  action: string;
+};
+
 type BotSegment = {
   id: string;
   text: string;
@@ -129,6 +140,7 @@ type BotStatus = {
   orders: BotOrder[];
   trades: BotTrade[];
   signals: BotSignal[];
+  audioAlerts?: BotAudioAlert[];
   segments: BotSegment[];
   liveScoreFeed?: {
     provider: string;
@@ -530,6 +542,7 @@ export default function AIBot() {
   const orders = status?.orders || [];
   const trades = status?.trades || [];
   const signals = status?.signals || [];
+  const audioAlerts = status?.audioAlerts || [];
   const selectedRow = rows.find((row) => row.id === selectedRowId) || null;
   const watchedWithMoney = rows.filter((row) => Number(row.book?.eventLiquidity || 0) > 0).length;
   const nextMatch = rows.find((row) => row.startAt && new Date(row.startAt).getTime() > Date.now());
@@ -792,7 +805,15 @@ export default function AIBot() {
           </div>
 
           <div className="ai-bot-panel ai-bot-signals">
-            <div className="ai-bot-head"><span>Backend audio signals</span><strong>{signals.length}</strong></div>
+            <div className="ai-bot-head"><span>Backend audio signals</span><strong>{audioAlerts.length || signals.length}</strong></div>
+            {audioAlerts.map((alert) => (
+              <div className="ai-signal audio-alert" key={alert.id}>
+                <span>{fullTimestamp(alert.at || alert.observedAt)}</span>
+                <strong>{alert.eventName}: {alert.outcome} audio goal flag</strong>
+                <small>{alert.score.home}-{alert.score.away} structured score</small>
+                <p>{alert.text}</p>
+              </div>
+            ))}
             {signals.map((signal) => (
               <div className="ai-signal" key={signal.id}>
                 <span>{fullTimestamp(signal.at)}</span>
@@ -800,7 +821,7 @@ export default function AIBot() {
                 <p>{signal.text}</p>
               </div>
             ))}
-            {!signals.length && <p className="ai-empty">No backend goal signals yet.</p>}
+            {!audioAlerts.length && !signals.length && <p className="ai-empty">No backend goal signals yet.</p>}
           </div>
         </section>
 

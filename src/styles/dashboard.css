@@ -608,6 +608,43 @@
   background: rgba(80, 129, 177, 0.08);
 }
 
+.ai-bot-signals .ai-signal {
+  border-bottom: 1px solid rgba(80, 129, 177, 0.2);
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+}
+
+.ai-bot-signals .ai-signal span,
+.ai-bot-signals .ai-signal small {
+  color: #7f8fa1;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 10px;
+}
+
+.ai-bot-signals .ai-signal strong {
+  color: #dde7f2;
+  font-family: var(--terminal-mono, monospace);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.ai-bot-signals .ai-signal p {
+  color: #aebccc;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.ai-bot-signals .ai-signal.audio-alert {
+  background: rgba(255, 212, 95, 0.08);
+  border-left: 3px solid #ffd45f;
+}
+
+.ai-bot-signals .ai-signal.audio-alert strong {
+  color: #ffd45f;
+}
+
 .ai-match-detail {
   background: #03080d;
   border: 1px solid rgba(80, 129, 177, 0.36);
