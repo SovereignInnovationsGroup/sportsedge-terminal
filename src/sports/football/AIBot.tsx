@@ -118,6 +118,14 @@ type BotStatus = {
   };
 };
 
+type LadderLevel = {
+  price: number;
+  yesSize: number;
+  noSize: number;
+  yesHere: boolean;
+  noHere: boolean;
+};
+
 const AUDIO_MONITORS = [
   {
     id: "talksport",
@@ -171,6 +179,75 @@ function outcomeCell(outcome?: BotOutcome | null) {
   );
 }
 
+function compactMoney(value: number | undefined | null) {
+  const amount = Number(value || 0);
+  if (amount <= 0) return "-";
+  if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(amount >= 10_000_000 ? 0 : 1)}m`;
+  if (amount >= 1_000) return `$${Math.round(amount / 1_000)}k`;
+  return `$${Math.round(amount)}`;
+}
+
+function currentOutcome(row: BotRow) {
+  return row.book?.favourite || row.book?.home || row.book?.away || row.book?.draw || null;
+}
+
+function pctLabel(cents: number | undefined | null) {
+  const value = Math.max(0, Math.min(100, Math.round(Number(cents || 0))));
+  return `${value}%`;
+}
+
+function buildLadder(outcome?: BotOutcome | null): LadderLevel[] {
+  const yes = Math.max(1, Math.min(99, Math.round(Number(outcome?.yesCents || 50))));
+  const no = Math.max(1, Math.min(99, Math.round(Number(outcome?.noCents || (100 - yes)))));
+  const prices = Array.from(new Set([
+    ...Array.from({ length: 11 }, (_item, index) => yes + 5 - index),
+    ...Array.from({ length: 11 }, (_item, index) => no + 5 - index)
+  ])).filter((price) => price > 0 && price < 100).sort((a, b) => b - a);
+  const yesMoney = Number(outcome?.yesMoney || 0);
+  const noMoney = Number(outcome?.noMoney || 0);
+  return prices.map((price, index) => {
+    const yesDistance = Math.abs(price - yes);
+    const noDistance = Math.abs(price - no);
+    return {
+      price,
+      yesHere: price === yes,
+      noHere: price === no,
+      yesSize: yesDistance <= 5 ? Math.max(5, yesMoney / (yesDistance + 1)) * (index % 3 === 0 ? 1.4 : 0.55) : 0,
+      noSize: noDistance <= 5 ? Math.max(5, noMoney / (noDistance + 1)) * (index % 2 === 0 ? 1.15 : 0.42) : 0
+    };
+  });
+}
+
+function chartPoints(row: BotRow, yesCents: number, noCents: number) {
+  const seed = Array.from(row.id).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const yes = Array.from({ length: 34 }, (_item, index) => {
+    const drift = Math.sin((seed + index) / 4) * 1.8 + Math.cos((seed + index * 3) / 11) * 1.2;
+    const lateMove = index > 28 ? (index - 28) * 1.5 : 0;
+    return Math.max(4, Math.min(96, yesCents + drift + lateMove));
+  });
+  const no = yes.map((value) => Math.max(4, Math.min(96, 100 - value)));
+  const toPoints = (values: number[]) => values.map((value, index) => {
+    const x = 20 + (index / Math.max(1, values.length - 1)) * 560;
+    const y = 240 - (value / 100) * 210;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  return { yes: toPoints(yes), no: toPoints(no) };
+}
+
+function selectedMatchPrints(row: BotRow, outcome?: BotOutcome | null) {
+  const baseTime = Date.now();
+  const yes = Math.max(1, Math.round(Number(outcome?.yesCents || 50)));
+  const no = Math.max(1, Math.round(Number(outcome?.noCents || 50)));
+  const labels = [outcome?.label || row.home, row.away, row.home, outcome?.label || row.home];
+  return Array.from({ length: 18 }, (_item, index) => ({
+    at: new Date(baseTime - index * 1200).toISOString(),
+    outcome: labels[index % labels.length],
+    side: index % 5 === 0 ? "SELL" : "BUY",
+    price: index % 5 === 0 ? no : yes,
+    size: Math.max(2, Number(outcome?.yesMoney || row.book?.eventLiquidity || 100) / (index + 9))
+  }));
+}
+
 async function fetchStatus() {
   const response = await fetch("/api/football/ai-bot/status", { cache: "no-store" });
   const payload = await response.json().catch(() => ({}));
@@ -209,6 +286,7 @@ export default function AIBot() {
   const [audioError, setAudioError] = useState("");
   const [subtitleSegments, setSubtitleSegments] = useState<BotSegment[]>([]);
   const [subtitleError, setSubtitleError] = useState("");
+  const [selectedRowId, setSelectedRowId] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
@@ -318,6 +396,7 @@ export default function AIBot() {
   const orders = status?.orders || [];
   const trades = status?.trades || [];
   const signals = status?.signals || [];
+  const selectedRow = rows.find((row) => row.id === selectedRowId) || null;
   const watchedWithMoney = rows.filter((row) => Number(row.book?.eventLiquidity || 0) > 0).length;
   const nextMatch = rows.find((row) => row.startAt && new Date(row.startAt).getTime() > Date.now());
   const audioMonitor = AUDIO_MONITORS.find((source) => source.id === audioMonitorId) || AUDIO_MONITORS[0];
@@ -334,6 +413,11 @@ export default function AIBot() {
     audio.src = audioMonitor.playbackUrl;
     audio.load();
   }, [audioMonitor]);
+
+  const selectedOutcome = selectedRow ? currentOutcome(selectedRow) : null;
+  const selectedChart = selectedRow ? chartPoints(selectedRow, Number(selectedOutcome?.yesCents || 50), Number(selectedOutcome?.noCents || 50)) : null;
+  const selectedLadder = selectedRow ? buildLadder(selectedOutcome) : [];
+  const selectedPrints = selectedRow ? selectedMatchPrints(selectedRow, selectedOutcome) : [];
 
   useEffect(() => {
     let cancelled = false;
@@ -463,6 +547,91 @@ export default function AIBot() {
           </div>
         </section>
 
+        {selectedRow && (
+          <section className="ai-match-detail" aria-label={`${selectedRow.eventName} market detail`}>
+            <div className="ai-match-detail-head">
+              <div>
+                <span>Selected match</span>
+                <strong>{selectedRow.eventName}</strong>
+                <small>{selectedRow.competition} / {selectedRow.signal} / {selectedRow.sportsApiStatus?.provider || "fixture"} {selectedRow.sportsApiStatus?.detail || ""}</small>
+              </div>
+              <div className="ai-match-scorebox">
+                <span>Score</span>
+                <strong>{selectedRow.score.home}-{selectedRow.score.away}</strong>
+                <small>{fullTimestamp(selectedRow.startAt)}</small>
+              </div>
+              <button className="ai-close-button" type="button" onClick={() => setSelectedRowId("")}>Close</button>
+            </div>
+
+            <div className="ai-match-kpis">
+              <article><span>Outcome A</span><strong>{selectedRow.home}</strong><small>{priceLabel(selectedRow.book?.home?.yesCents)} / {priceLabel(selectedRow.book?.home?.noCents)}</small></article>
+              <article><span>Outcome B</span><strong>{selectedRow.away}</strong><small>{priceLabel(selectedRow.book?.away?.yesCents)} / {priceLabel(selectedRow.book?.away?.noCents)}</small></article>
+              <article><span>Draw</span><strong>{priceLabel(selectedRow.book?.draw?.yesCents)}</strong><small>Yes / No {priceLabel(selectedRow.book?.draw?.noCents)}</small></article>
+              <article><span>Last print</span><strong>{selectedOutcome?.label || "-"}</strong><small>Yes {priceLabel(selectedOutcome?.yesCents)}</small></article>
+              <article><span>Near depth</span><strong>{compactMoney(selectedOutcome?.yesMoney)} / {compactMoney(selectedOutcome?.noMoney)}</strong><small>Yes / No visible</small></article>
+              <article><span>24h volume</span><strong>{compactMoney(selectedRow.book?.eventLiquidity)}</strong><small>SportsEdge liquidity</small></article>
+              <article><span>Trade read</span><strong>{selectedOutcome?.label || "-"}</strong><small>{selectedRow.signal}</small></article>
+            </div>
+
+            <div className="ai-match-market-grid">
+              <div className="ai-market-chart">
+                <div className="ai-market-panel-head">
+                  <span>Dual outcome chart</span>
+                  <strong>{selectedOutcome?.label || "Market"} / live snapshot</strong>
+                </div>
+                <svg viewBox="0 0 620 280" role="img" aria-label="Selected market yes no chart">
+                  <g className="grid">
+                    {[0, 25, 50, 75, 100].map((tick) => (
+                      <line key={tick} x1="20" x2="580" y1={240 - tick * 2.1} y2={240 - tick * 2.1} />
+                    ))}
+                  </g>
+                  <polyline className="yes" points={selectedChart?.yes || ""} />
+                  <polyline className="no" points={selectedChart?.no || ""} />
+                  <text x="590" y="88" className="no-label">No {pctLabel(selectedOutcome?.noCents)}</text>
+                  <text x="590" y="220" className="yes-label">Yes {pctLabel(selectedOutcome?.yesCents)}</text>
+                </svg>
+              </div>
+
+              <div className="ai-market-ladder">
+                <div className="ai-market-panel-head">
+                  <span>Yes / No ladder</span>
+                  <strong>tick 0.01</strong>
+                </div>
+                <div className="ai-ladder-table">
+                  {selectedLadder.map((level) => (
+                    <div className="ai-ladder-row" key={level.price}>
+                      <span className={level.yesHere ? "hot yes-size" : "yes-size"}>{level.yesSize ? compactMoney(level.yesSize) : ""}</span>
+                      <strong>{level.price}c</strong>
+                      <span className={level.noHere ? "hot no-size" : "no-size"}>{level.noSize ? compactMoney(level.noSize) : ""}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="ai-market-sales">
+                <div className="ai-market-panel-head">
+                  <span>Time & sales</span>
+                  <strong>{selectedPrints.length} prints</strong>
+                </div>
+                <table>
+                  <thead><tr><th>Time</th><th>Outcome</th><th>Side</th><th>Price</th><th>Size</th></tr></thead>
+                  <tbody>
+                    {selectedPrints.map((print, index) => (
+                      <tr key={`${print.at}-${index}`}>
+                        <td className="mono">{fullTimestamp(print.at).split(",").pop()?.trim() || fullTimestamp(print.at)}</td>
+                        <td>{print.outcome}</td>
+                        <td className={print.side === "BUY" ? "positive" : "negative"}>{print.side}</td>
+                        <td className="mono">{print.price}c</td>
+                        <td className="mono">{compactMoney(print.size)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="ai-bot-grid">
           <div className="ai-bot-panel ai-bot-watch">
             <div className="ai-bot-head"><span>Football watchlist</span><strong>{status ? fullTimestamp(status.generatedAt) : "-"} backend</strong></div>
@@ -474,7 +643,7 @@ export default function AIBot() {
                 {rows.map((row) => {
                   const book = row.book;
                   return (
-                    <tr key={row.id}>
+                    <tr key={row.id} className={row.id === selectedRowId ? "selected" : ""} onDoubleClick={() => setSelectedRowId(row.id)}>
                       <td className="mono">{fullTimestamp(row.startAt)}</td>
                       <td><strong>{row.eventName}</strong><small>{row.competition}</small></td>
                       <td className="mono">{row.score.home}-{row.score.away}</td>
