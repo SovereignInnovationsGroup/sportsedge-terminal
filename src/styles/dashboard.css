@@ -5534,6 +5534,500 @@ button {
   background: #05080d;
 }
 
+.desktop-app-shell {
+  min-height: 100vh;
+  background: #05080d;
+}
+
+.desktop-top-menu {
+  position: sticky;
+  top: 0;
+  z-index: 500;
+  display: grid;
+  grid-template-columns: auto minmax(360px, 1fr) auto auto auto auto auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 10px;
+  border-bottom: 1px solid rgba(70, 86, 108, 0.46);
+  background: rgba(8, 12, 18, 0.96);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px);
+}
+
+.desktop-menu-brand,
+.desktop-menu-nav button,
+.desktop-menu-search,
+.desktop-menu-icon,
+.desktop-menu-panel-select select {
+  height: 30px;
+  border: 1px solid rgba(71, 85, 105, 0.72);
+  border-radius: 6px;
+  background: rgba(15, 23, 34, 0.78);
+  color: #d9e3ef;
+}
+
+.desktop-menu-brand {
+  display: flex;
+  align-items: center;
+  width: 156px;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.desktop-menu-brand img {
+  width: 132px;
+  height: auto;
+  object-fit: contain;
+}
+
+.desktop-menu-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.desktop-menu-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.desktop-menu-nav button,
+.desktop-menu-search,
+.desktop-menu-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.desktop-menu-nav button:hover,
+.desktop-menu-nav button.active,
+.desktop-menu-search:hover,
+.desktop-menu-icon:hover,
+.desktop-menu-panel-select select:hover {
+  border-color: rgba(61, 220, 151, 0.54);
+  background: rgba(21, 35, 48, 0.96);
+  color: #f8fafc;
+}
+
+.desktop-menu-panel-select select {
+  width: 152px;
+  padding: 0 9px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 900;
+  outline: none;
+}
+
+.desktop-menu-search {
+  min-width: 128px;
+}
+
+.desktop-menu-search kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.36);
+  border-radius: 4px;
+  color: #93a4b8;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.desktop-menu-account {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  max-width: 240px;
+  height: 30px;
+  padding: 0 10px;
+  border-left: 1px solid rgba(71, 85, 105, 0.58);
+  color: #d9e3ef;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.desktop-menu-account svg {
+  flex: 0 0 auto;
+  color: #3ddc97;
+}
+
+.desktop-menu-account span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desktop-menu-account em {
+  color: #8fa1b8;
+  font-style: normal;
+}
+
+.desktop-menu-icon {
+  width: 32px;
+  padding: 0;
+}
+
+.desktop-login-shell {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 34px;
+  color: #e9f0f8;
+  background:
+    linear-gradient(135deg, rgba(5, 8, 13, 0.98), rgba(8, 12, 19, 0.92)),
+    #05070a;
+}
+
+.desktop-login-card {
+  width: min(100%, 520px);
+  border: 1px solid rgba(113, 130, 153, 0.26);
+  border-radius: 10px;
+  background: rgba(8, 13, 20, 0.94);
+  box-shadow: 0 36px 90px rgba(0, 0, 0, 0.44), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  padding: 28px;
+}
+
+.desktop-login-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.desktop-login-brand img {
+  width: 210px;
+  height: auto;
+}
+
+.desktop-login-brand span {
+  color: #8fa1b8;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.desktop-login-head {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 22px;
+}
+
+.desktop-login-mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(61, 220, 151, 0.34);
+  border-radius: 9px;
+  background: rgba(61, 220, 151, 0.11);
+  color: #3ddc97;
+}
+
+.desktop-login-head h1 {
+  margin: 0 0 7px;
+  font-size: 28px;
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.desktop-login-head p {
+  margin: 0;
+  color: #91a1b6;
+  font-size: 14px;
+}
+
+.desktop-login-status {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.desktop-login-status div {
+  border: 1px solid rgba(71, 85, 105, 0.58);
+  border-radius: 7px;
+  background: rgba(15, 23, 34, 0.78);
+  padding: 10px;
+}
+
+.desktop-login-status span,
+.desktop-login-status strong {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.desktop-login-status span {
+  color: #8192a8;
+  font-weight: 900;
+}
+
+.desktop-login-status strong {
+  margin-top: 4px;
+  color: #dbe6f3;
+}
+
+.desktop-social-row {
+  margin-bottom: 16px;
+}
+
+.desktop-login-form {
+  gap: 14px;
+}
+
+.desktop-login-submit {
+  margin-top: 2px;
+}
+
+.desktop-launcher {
+  min-height: calc(100vh - 46px);
+  padding: 32px;
+  color: #e8edf4;
+  background:
+    linear-gradient(180deg, rgba(12, 18, 28, 0.94), rgba(5, 7, 10, 1)),
+    #05070a;
+}
+
+.desktop-launcher-head,
+.desktop-auth-callout,
+.desktop-launcher-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.desktop-launcher-kicker,
+.desktop-account,
+.desktop-auth-callout,
+.desktop-panel-button,
+.desktop-launcher-alert,
+.desktop-launcher-foot button {
+  border: 1px solid rgba(151, 166, 188, 0.18);
+  background: rgba(9, 14, 22, 0.82);
+}
+
+.desktop-launcher-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  color: #9fb2cc;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.desktop-launcher h1 {
+  margin: 18px 0 6px;
+  font-size: clamp(38px, 6vw, 72px);
+  line-height: 0.94;
+  letter-spacing: 0;
+}
+
+.desktop-launcher p,
+.desktop-auth-callout span,
+.desktop-panel-button em,
+.desktop-account span {
+  color: #8f9fb5;
+}
+
+.desktop-account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 260px;
+  padding: 14px 16px;
+}
+
+.desktop-account.signed-in svg {
+  color: #3ddc97;
+}
+
+.desktop-account.signed-out svg {
+  color: #f2b84b;
+}
+
+.desktop-account strong,
+.desktop-account span {
+  display: block;
+}
+
+.desktop-auth-callout {
+  margin-top: 28px;
+  padding: 16px;
+}
+
+.desktop-auth-callout a,
+.desktop-launcher-foot button {
+  color: #f8fbff;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.desktop-auth-callout a {
+  padding: 10px 14px;
+  border: 1px solid rgba(61, 220, 151, 0.35);
+  background: rgba(61, 220, 151, 0.12);
+}
+
+.desktop-launcher-alert {
+  max-width: 1120px;
+  margin: 18px auto 0;
+  padding: 12px 14px;
+  color: #ffd37a;
+}
+
+.desktop-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  max-width: 1120px;
+  margin: 28px auto 0;
+}
+
+.desktop-panel-button {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  gap: 6px 12px;
+  align-items: center;
+  min-height: 112px;
+  padding: 16px;
+  color: #edf3fb;
+  text-align: left;
+  cursor: pointer;
+}
+
+.desktop-panel-button:hover {
+  border-color: rgba(61, 220, 151, 0.45);
+  background: rgba(14, 23, 36, 0.96);
+}
+
+.desktop-panel-button span {
+  display: grid;
+  place-items: center;
+  grid-row: 1 / span 2;
+  width: 42px;
+  height: 42px;
+  color: #3ddc97;
+  background: rgba(61, 220, 151, 0.11);
+}
+
+.desktop-panel-button strong {
+  font-size: 16px;
+}
+
+.desktop-panel-button em {
+  font-style: normal;
+  font-size: 12px;
+}
+
+.desktop-launcher-foot {
+  justify-content: flex-start;
+  margin-top: 22px;
+}
+
+.desktop-launcher-foot button {
+  padding: 11px 14px;
+  cursor: pointer;
+}
+
+.desktop-launcher-foot button:hover {
+  border-color: rgba(151, 166, 188, 0.42);
+}
+
+@media (max-width: 760px) {
+  .desktop-top-menu {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+  }
+
+  .desktop-menu-brand {
+    width: 132px;
+  }
+
+  .desktop-menu-brand img {
+    width: 112px;
+  }
+
+  .desktop-menu-panel-select,
+  .desktop-menu-search,
+  .desktop-menu-account {
+    display: none;
+  }
+
+  .desktop-menu-nav {
+    gap: 4px;
+  }
+
+  .desktop-menu-nav button {
+    width: 32px;
+    padding: 0;
+  }
+
+  .desktop-menu-nav button svg {
+    display: block;
+  }
+
+  .desktop-menu-nav button {
+    font-size: 0;
+  }
+
+  .desktop-login-shell {
+    padding: 18px;
+  }
+
+  .desktop-login-card {
+    padding: 20px;
+  }
+
+  .desktop-login-brand {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .desktop-login-status {
+    grid-template-columns: 1fr;
+  }
+
+  .desktop-launcher {
+    padding: 20px;
+  }
+
+  .desktop-launcher-head,
+  .desktop-auth-callout,
+  .desktop-launcher-foot {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .desktop-account {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
 .testboard-search kbd {
   display: inline-flex;
   align-items: center;

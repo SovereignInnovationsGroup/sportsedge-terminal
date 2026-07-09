@@ -1,11 +1,13 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Apple, ArrowRight, Eye, EyeOff, Lock, Mail, ShieldCheck, Zap } from "lucide-react";
 import { defaultRouteForUser, type StoredAuthUser } from "../core/auth";
+import { sportsEdgeDesktop } from "../core/desktop";
 
 const loginSportsImage = "/images/login-sports-montage.webp";
 const sportsEdgeMarketsLogo = "/images/sportsedge-markets-logo.png";
 
 export default function Login() {
+  const desktopMode = Boolean(sportsEdgeDesktop());
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,9 +15,19 @@ export default function Login() {
   const [authError, setAuthError] = useState("");
   const [authUser, setAuthUser] = useState<StoredAuthUser | null>(null);
 
+  function routeAfterLogin(user: StoredAuthUser) {
+    window.location.hash = desktopMode ? "#desktop" : defaultRouteForUser(user);
+  }
+
   useEffect(() => {
     const hash = window.location.hash || "";
     const queryIndex = hash.indexOf("?");
+
+    if (desktopMode && queryIndex === -1 && window.localStorage.getItem("sportsedge.auth.token")) {
+      window.location.hash = "#desktop";
+      return;
+    }
+
     if (queryIndex === -1) return;
 
     const params = new URLSearchParams(hash.slice(queryIndex + 1));
@@ -38,7 +50,7 @@ export default function Login() {
       window.localStorage.setItem("sportsedge.auth.user", JSON.stringify(user));
       setAuthUser(user);
       setAuthError("");
-      window.location.hash = defaultRouteForUser(user);
+      routeAfterLogin(user);
     } catch {
       setAuthError("OAuth sign in completed, but the session could not be read.");
       window.history.replaceState(null, "", "#login");
@@ -70,12 +82,89 @@ export default function Login() {
       window.localStorage.setItem("sportsedge.auth.user", JSON.stringify(payload.user));
       setAuthUser(payload.user);
       setPassword("");
-      window.location.hash = defaultRouteForUser(payload.user);
+      routeAfterLogin(payload.user);
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : "Sign in failed");
     } finally {
       setIsSigningIn(false);
     }
+  }
+
+  if (desktopMode) {
+    return (
+      <main className="desktop-login-shell">
+        <section className="desktop-login-card" aria-label="SportsEdge desktop login">
+          <div className="desktop-login-brand">
+            <img src={sportsEdgeMarketsLogo} alt="SportsEdge Markets" />
+            <span>Desktop terminal</span>
+          </div>
+          <div className="desktop-login-head">
+            <div className="desktop-login-mark"><ShieldCheck size={22} /></div>
+            <div>
+              <h1>Sign in to SportsEdge</h1>
+              <p>Verify your account, then open the terminal as movable panels.</p>
+            </div>
+          </div>
+
+          <div className="desktop-login-status">
+            <div><span>Session</span><strong>Encrypted</strong></div>
+            <div><span>Panels</span><strong>Ready</strong></div>
+            <div><span>Access</span><strong>Account gated</strong></div>
+          </div>
+
+          <div className="social-row desktop-social-row">
+            <button className="social-button" type="button" onClick={() => startOAuth("apple")}><Apple size={18} />Apple</button>
+            <button className="social-button" type="button" onClick={() => startOAuth("google")}><span className="google-mark">G</span>Google</button>
+          </div>
+
+          <form className="login-form desktop-login-form" onSubmit={handleLogin}>
+            <label className="auth-field">
+              <span>Email address</span>
+              <div>
+                <Mail size={17} />
+                <input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+              </div>
+            </label>
+
+            <label className="auth-field">
+              <span>Password</span>
+              <div>
+                <Lock size={17} />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                />
+                <button aria-label={showPassword ? "Hide password" : "Show password"} type="button" onClick={() => setShowPassword((value) => !value)}>
+                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
+              </div>
+            </label>
+
+            <div className="login-options">
+              <label><input type="checkbox" defaultChecked /><span>Remember this device</span></label>
+              <button type="button">Reset password</button>
+            </div>
+
+            {authError ? <p className="auth-message error">{authError}</p> : null}
+            {authUser ? (
+              <p className="auth-message success">
+                Signed in as {authUser.email} · {(authUser.roles || []).join(", ") || "user"} · {authUser.subscription?.plan_name || authUser.subscription?.level || "active"}
+              </p>
+            ) : null}
+
+            <button className="login-submit desktop-login-submit" type="submit" disabled={isSigningIn}>
+              <Zap size={17} />
+              {isSigningIn ? "Signing In" : "Open Desktop"}
+              <ArrowRight size={17} />
+            </button>
+          </form>
+        </section>
+      </main>
+    );
   }
 
   return (

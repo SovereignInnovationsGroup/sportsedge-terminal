@@ -13,11 +13,14 @@ import MotorsportDashboard from "../sports/motorsport/MotorsportDashboard";
 import RugbyDashboard from "../sports/rugby/RugbyDashboard";
 import CricketDashboard from "../sports/cricket/CricketDashboard";
 import { TerminalTopbar } from "./TerminalTopbar";
+import { DesktopTopMenu } from "./DesktopTopMenu";
+import { sportsEdgeDesktop } from "../core/desktop";
 import "../styles/dashboard.css";
 
 const Marketing = lazy(() => import("../screens/Marketing"));
 const Blog = lazy(() => import("../screens/Blog"));
 const Login = lazy(() => import("../screens/Login"));
+const DesktopLauncher = lazy(() => import("../screens/DesktopLauncher"));
 const Dashboard = lazy(() => import("../screens/Dashboard"));
 const SettingsScreen = lazy(() => import("../screens/Settings"));
 const TerminalAbout = lazy(() => import("../screens/TerminalAbout"));
@@ -86,6 +89,19 @@ function shouldShowTerminalFallback(hash: string) {
   ].includes(hash);
 }
 
+function shouldShowDesktopTopMenu(hash: string) {
+  if (!sportsEdgeDesktop()) return false;
+  return ![
+    "",
+    "#signup",
+    "#about",
+    "#terms",
+    "#privacy",
+    "#blog",
+    "#login"
+  ].includes(hash);
+}
+
 function RouteFallback({ hash }: { hash: string }) {
   if (!shouldShowTerminalFallback(hash)) return null;
   return (
@@ -104,6 +120,7 @@ function screenForHash(hash: string) {
   if (hash === "#privacy") return <Marketing section="privacy" />;
   if (hash === "#blog") return <Blog />;
   if (hash === "#login") return <Login />;
+  if (hash === "#desktop") return <DesktopLauncher />;
   if (hash === "#dashboard" || hash === "#today-dashboard-mockup") return requireSession(<Dashboard />);
   if (hash === "#settings") return requireSession(<SettingsScreen />);
   if (hash === "#terminal-about") return requireSession(<TerminalAbout />);
@@ -166,6 +183,7 @@ function screenForHash(hash: string) {
 export default function SportsEdgeApp() {
   const [hash, setHash] = useState(window.location.hash);
   const screen = screenForHash(hash);
+  const showDesktopTopMenu = shouldShowDesktopTopMenu(hash);
 
   useEffect(() => {
     const handleHash = () => setHash(window.location.hash);
@@ -179,7 +197,12 @@ export default function SportsEdgeApp() {
 
   return (
     <Suspense fallback={<RouteFallback hash={hash} />}>
-      {screen}
+      {showDesktopTopMenu ? (
+        <div className="desktop-app-shell">
+          <DesktopTopMenu activeHash={hash} />
+          {screen}
+        </div>
+      ) : screen}
     </Suspense>
   );
 }
