@@ -1,4 +1,4 @@
-import { Grid2X2, LayoutDashboard, LogOut, Newspaper, Search, Settings, ShieldCheck, SlidersHorizontal, Trophy } from "lucide-react";
+import { LayoutDashboard, LogOut, Newspaper, Search, Settings, ShieldCheck, SlidersHorizontal, Trophy } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { sportsEdgeDesktop, type DesktopPanel } from "../core/desktop";
 import { type StoredAuthUser } from "../core/auth";
@@ -42,12 +42,11 @@ export function DesktopTopMenu({ activeHash }: { activeHash: string }) {
 
   return (
     <header className="desktop-top-menu" aria-label="SportsEdge desktop menu">
-      <button className="desktop-menu-brand" type="button" onClick={() => openRoute("#desktop")}>
+      <button className="desktop-menu-brand" type="button" onClick={() => openRoute("#dashboard")}>
         <img src={sportsEdgeMarketsLogo} alt="SportsEdge Markets" />
       </button>
 
       <nav className="desktop-menu-nav" aria-label="Primary desktop panels">
-        <button type="button" className={activeHash === "#desktop" ? "active" : ""} onClick={() => openRoute("#desktop")}><Grid2X2 size={15} />Launcher</button>
         <button type="button" className={activeHash === "#dashboard" ? "active" : ""} onClick={() => openRoute("#dashboard")}><LayoutDashboard size={15} />Dashboard</button>
         <button type="button" className={activeHash === "#news" ? "active" : ""} onClick={() => openRoute("#news")}><Newspaper size={15} />News</button>
         <button type="button" className={activeHash === "#football" ? "active" : ""} onClick={() => openRoute("#football")}><Trophy size={15} />Football</button>
@@ -62,8 +61,10 @@ export function DesktopTopMenu({ activeHash }: { activeHash: string }) {
             if (event.target.value) void openRoute(event.target.value);
           }}
         >
-          <option value="">Open panel...</option>
-          {panels.map((panel) => <option key={panel.id} value={panel.route}>{panel.label}</option>)}
+          <option value="">More panels...</option>
+          {panels
+            .filter((panel) => !["dashboard", "news", "football", "bias-matrix"].includes(panel.id))
+            .map((panel) => <option key={panel.id} value={panel.route}>{panel.label}</option>)}
         </select>
       </div>
 

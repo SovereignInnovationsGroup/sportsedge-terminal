@@ -64,6 +64,8 @@ function createWindow(panel, options = {}) {
     minWidth: 720,
     minHeight: 520,
     backgroundColor: "#05070a",
+    frame: false,
+    titleBarStyle: "hidden",
     show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
@@ -95,44 +97,41 @@ function createWindow(panel, options = {}) {
   return win;
 }
 
-function launcherWindow() {
-  const existing = [...windows].find((win) => !win.isDestroyed() && win.webContents.getURL().includes("#desktop"));
-  if (existing) {
-    existing.focus();
-    return existing;
-  }
-  return createWindow({ id: "desktop", label: "Panels", route: "#desktop", width: 1120, height: 760 });
+function focusedOrPrimaryWindow() {
+  return BrowserWindow.getFocusedWindow() || [...windows].find((win) => !win.isDestroyed()) || null;
 }
 
 function loginWindow() {
-  return createWindow({ id: "login", label: "Login", route: "#login", width: 560, height: 720 }, {
-    frame: false,
+  const existing = focusedOrPrimaryWindow();
+  if (existing) {
+    existing.loadURL(appUrl("#login"));
+    existing.focus();
+    return existing;
+  }
+  return createWindow({ id: "login", label: "Login", route: "#login", width: 1220, height: 860 }, {
     resizable: true,
-    minWidth: 480,
-    minHeight: 620,
-    titleBarStyle: "hidden",
+    minWidth: 960,
+    minHeight: 680,
     trafficLightPosition: { x: 18, y: 18 }
   });
 }
 
 async function openPanel(route, senderWindow) {
-  const sourceWindow = senderWindow || BrowserWindow.getFocusedWindow();
+  const sourceWindow = senderWindow || focusedOrPrimaryWindow() || loginWindow();
   if (!(await hasSession(sourceWindow))) {
-    const launcher = launcherWindow();
-    launcher.webContents.once("did-finish-load", () => {
-      launcher.webContents.send("sportsedge-desktop-auth-required", route);
+    sourceWindow.loadURL(appUrl("#login"));
+    sourceWindow.webContents.once("did-finish-load", () => {
+      sourceWindow.webContents.send("sportsedge-desktop-auth-required", route);
     });
     return { ok: false, reason: "auth-required" };
   }
-  const panel = panelForRoute(route);
-  createWindow(panel);
+  sourceWindow.loadURL(appUrl(route));
+  sourceWindow.focus();
   return { ok: true };
 }
 
 async function openLayout(layout, senderWindow) {
-  for (const route of layout.routes) {
-    await openPanel(route, senderWindow);
-  }
+  await openPanel(layout.routes[0] || "#dashboard", senderWindow);
 }
 
 function buildMenu() {
@@ -153,7 +152,7 @@ function buildMenu() {
       label: "SportsEdge",
       submenu: [
         { label: "Login", accelerator: "CmdOrCtrl+Shift+L", click: loginWindow },
-        { label: "Panel Launcher", accelerator: "CmdOrCtrl+L", click: launcherWindow },
+        { label: "Dashboard", accelerator: "CmdOrCtrl+L", click: (_menuItem, browserWindow) => openPanel("#dashboard", browserWindow) },
         { type: "separator" },
         { label: "Settings", accelerator: "CmdOrCtrl+,", click: (_menuItem, browserWindow) => openPanel("#settings", browserWindow) },
         { type: "separator" },
@@ -215,7 +214,7 @@ app.whenReady().then(() => {
   loginWindow();
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) launcherWindow();
+    if (BrowserWindow.getAllWindows().length === 0) loginWindow();
   });
 });
 

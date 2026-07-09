@@ -5539,6 +5539,10 @@ button {
   background: #05080d;
 }
 
+.desktop-app-shell .testboard-topbar {
+  display: none;
+}
+
 .desktop-top-menu {
   position: sticky;
   top: 0;
@@ -5553,6 +5557,7 @@ button {
   background: rgba(8, 12, 18, 0.96);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(18px);
+  -webkit-app-region: drag;
 }
 
 .desktop-menu-brand,
@@ -5565,6 +5570,7 @@ button {
   border-radius: 6px;
   background: rgba(15, 23, 34, 0.78);
   color: #d9e3ef;
+  -webkit-app-region: no-drag;
 }
 
 .desktop-menu-brand {
@@ -5657,6 +5663,7 @@ button {
   font-family: var(--mono);
   font-size: 11px;
   font-weight: 900;
+  -webkit-app-region: no-drag;
 }
 
 .desktop-menu-account svg {
@@ -5685,7 +5692,9 @@ button {
   display: grid;
   place-items: center;
   min-height: 100vh;
-  padding: 34px;
+  max-height: 100vh;
+  padding: 0;
+  overflow: hidden;
   color: #e9f0f8;
   background:
     linear-gradient(135deg, rgba(5, 8, 13, 0.98), rgba(8, 12, 19, 0.92)),
@@ -5694,12 +5703,14 @@ button {
 }
 
 .desktop-login-card {
-  width: min(100%, 520px);
-  border: 1px solid rgba(113, 130, 153, 0.26);
-  border-radius: 10px;
-  background: rgba(8, 13, 20, 0.94);
-  box-shadow: 0 36px 90px rgba(0, 0, 0, 0.44), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  padding: 28px;
+  width: min(520px, calc(100vw - 56px));
+  max-height: calc(100vh - 34px);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  overflow: visible;
   -webkit-app-region: no-drag;
 }
 
@@ -5722,7 +5733,7 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 .desktop-login-brand img {
@@ -5742,7 +5753,7 @@ button {
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  margin-bottom: 22px;
+  margin-bottom: 18px;
 }
 
 .desktop-login-mark {
@@ -5774,14 +5785,14 @@ button {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .desktop-login-status div {
   border: 1px solid rgba(71, 85, 105, 0.58);
   border-radius: 7px;
   background: rgba(15, 23, 34, 0.78);
-  padding: 10px;
+  padding: 8px 10px;
 }
 
 .desktop-login-status span,
@@ -5803,11 +5814,11 @@ button {
 }
 
 .desktop-social-row {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .desktop-login-form {
-  gap: 14px;
+  gap: 11px;
 }
 
 .desktop-login-submit {
