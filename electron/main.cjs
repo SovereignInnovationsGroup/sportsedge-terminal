@@ -106,9 +106,12 @@ function launcherWindow() {
 
 function loginWindow() {
   return createWindow({ id: "login", label: "Login", route: "#login", width: 560, height: 720 }, {
+    frame: false,
     resizable: true,
     minWidth: 480,
-    minHeight: 620
+    minHeight: 620,
+    titleBarStyle: "hidden",
+    trafficLightPosition: { x: 18, y: 18 }
   });
 }
 
