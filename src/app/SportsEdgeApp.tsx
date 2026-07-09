@@ -14,6 +14,7 @@ import RugbyDashboard from "../sports/rugby/RugbyDashboard";
 import CricketDashboard from "../sports/cricket/CricketDashboard";
 import { TerminalTopbar } from "./TerminalTopbar";
 import { DesktopTopMenu } from "./DesktopTopMenu";
+import { DesktopPanelFrame } from "./DesktopPanelFrame";
 import { sportsEdgeDesktop } from "../core/desktop";
 import "../styles/dashboard.css";
 
@@ -185,7 +186,11 @@ export default function SportsEdgeApp() {
 
   return (
     <Suspense fallback={<RouteFallback hash={hash} />}>
-      {isDesktopPanel ? <div className="desktop-panel-shell">{screen}</div> : screen}
+      {isDesktopPanel ? (
+        <DesktopPanelFrame hash={hash}>
+          <div className="desktop-panel-shell">{screen}</div>
+        </DesktopPanelFrame>
+      ) : screen}
     </Suspense>
   );
 }

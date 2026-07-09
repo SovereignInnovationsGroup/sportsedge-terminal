@@ -5544,6 +5544,80 @@ button {
   display: none;
 }
 
+.desktop-panel-window {
+  display: grid;
+  grid-template-rows: 40px minmax(0, 1fr);
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #05080d;
+  color: var(--text);
+}
+
+.desktop-panel-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 40px;
+  padding: 0 8px 0 12px;
+  border-bottom: 1px solid rgba(70, 86, 108, 0.48);
+  background: rgba(8, 12, 18, 0.97);
+  -webkit-app-region: drag;
+}
+
+.desktop-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #91a3b8;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.desktop-panel-title img {
+  width: 21px;
+  height: 21px;
+  object-fit: contain;
+}
+
+.desktop-panel-title strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #e7eef8;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desktop-panel-titlebar button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(71, 85, 105, 0.72);
+  border-radius: 6px;
+  background: rgba(15, 23, 34, 0.78);
+  color: #d9e3ef;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.desktop-panel-titlebar button:hover {
+  border-color: rgba(248, 113, 113, 0.72);
+  background: rgba(127, 29, 29, 0.32);
+  color: #fecaca;
+}
+
+.desktop-panel-content,
+.desktop-panel-shell {
+  min-height: 0;
+  overflow: auto;
+  -webkit-app-region: no-drag;
+}
+
 .desktop-top-menu {
   position: fixed;
   top: 0;
