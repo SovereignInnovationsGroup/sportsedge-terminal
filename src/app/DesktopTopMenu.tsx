@@ -17,12 +17,13 @@ function readUser() {
 function logout() {
   window.localStorage.removeItem("sportsedge.auth.token");
   window.localStorage.removeItem("sportsedge.auth.user");
-  window.location.hash = "#login";
+  window.location.hash = sportsEdgeDesktop() ? "#desktop-menu" : "#login";
 }
 
 export function DesktopTopMenu({ activeHash }: { activeHash: string }) {
   const desktop = sportsEdgeDesktop();
   const [panels, setPanels] = useState<DesktopPanel[]>([]);
+  const [activeRoute, setActiveRoute] = useState(activeHash);
   const user = useMemo(readUser, [activeHash]);
   const account = user?.login_id || user?.email || "SportsEdge";
   const plan = user?.subscription?.plan_name || user?.subscription?.level || user?.subscription?.status || "terminal";
@@ -33,6 +34,7 @@ export function DesktopTopMenu({ activeHash }: { activeHash: string }) {
   }, [desktop]);
 
   async function openRoute(route: string) {
+    setActiveRoute(route);
     if (desktop) {
       await desktop.openPanel(route);
       return;
@@ -47,10 +49,10 @@ export function DesktopTopMenu({ activeHash }: { activeHash: string }) {
       </button>
 
       <nav className="desktop-menu-nav" aria-label="Primary desktop panels">
-        <button type="button" className={activeHash === "#dashboard" ? "active" : ""} onClick={() => openRoute("#dashboard")}><LayoutDashboard size={15} />Dashboard</button>
-        <button type="button" className={activeHash === "#news" ? "active" : ""} onClick={() => openRoute("#news")}><Newspaper size={15} />News</button>
-        <button type="button" className={activeHash === "#football" ? "active" : ""} onClick={() => openRoute("#football")}><Trophy size={15} />Football</button>
-        <button type="button" className={activeHash === "#bias-matrix" ? "active" : ""} onClick={() => openRoute("#bias-matrix")}><SlidersHorizontal size={15} />Matrix</button>
+        <button type="button" className={activeRoute === "#dashboard" ? "active" : ""} onClick={() => openRoute("#dashboard")}><LayoutDashboard size={15} />Dashboard</button>
+        <button type="button" className={activeRoute === "#news" ? "active" : ""} onClick={() => openRoute("#news")}><Newspaper size={15} />News</button>
+        <button type="button" className={activeRoute === "#football" ? "active" : ""} onClick={() => openRoute("#football")}><Trophy size={15} />Football</button>
+        <button type="button" className={activeRoute === "#bias-matrix" ? "active" : ""} onClick={() => openRoute("#bias-matrix")}><SlidersHorizontal size={15} />Matrix</button>
       </nav>
 
       <div className="desktop-menu-panel-select">

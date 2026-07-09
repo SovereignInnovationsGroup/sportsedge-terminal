@@ -1,11 +1,13 @@
-const { app, BrowserWindow, Menu, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain, shell, screen } = require("electron");
 const path = require("node:path");
 
 const isDev = Boolean(process.env.SPORTSEDGE_DESKTOP_DEV_SERVER);
 const devServerUrl = process.env.SPORTSEDGE_DESKTOP_DEV_SERVER || "";
 const remoteTerminalUrl = process.env.SPORTSEDGE_DESKTOP_URL || "https://terminal.sportsedge.markets/";
 const windows = new Set();
+const panelWindows = new Map();
 const panelBounds = new Map();
+let menuBarWindow = null;
 
 const panels = [
   { id: "dashboard", label: "Dashboard", route: "#dashboard", width: 1440, height: 920 },
@@ -78,8 +80,14 @@ function createWindow(panel, options = {}) {
 
   windows.add(win);
   win.once("ready-to-show", () => win.show());
-  win.on("close", () => rememberBounds(panel.id, win));
-  win.on("closed", () => windows.delete(win));
+  win.on("close", () => {
+    if (!options.skipBoundsMemory) rememberBounds(panel.id, win);
+  });
+  win.on("closed", () => {
+    windows.delete(win);
+    if (panelWindows.get(panel.id) === win) panelWindows.delete(panel.id);
+    if (menuBarWindow === win) menuBarWindow = null;
+  });
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: "deny" };
@@ -97,36 +105,71 @@ function createWindow(panel, options = {}) {
   return win;
 }
 
-function focusedOrPrimaryWindow() {
-  return BrowserWindow.getFocusedWindow() || [...windows].find((win) => !win.isDestroyed()) || null;
+function createMenuBarWindow() {
+  if (menuBarWindow && !menuBarWindow.isDestroyed()) {
+    menuBarWindow.focus();
+    return menuBarWindow;
+  }
+  const display = screen.getPrimaryDisplay();
+  const { x, y, width } = display.workArea;
+  menuBarWindow = createWindow({ id: "desktop-menu", label: "Menu", route: "#desktop-menu", width, height: 54 }, {
+    x,
+    y,
+    width,
+    height: 54,
+    minWidth: 900,
+    minHeight: 54,
+    maxHeight: 54,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    skipBoundsMemory: true,
+    trafficLightPosition: { x: -100, y: -100 }
+  });
+  menuBarWindow.setAlwaysOnTop(true, "screen-saver");
+  menuBarWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  return menuBarWindow;
 }
 
 function loginWindow() {
-  const existing = focusedOrPrimaryWindow();
-  if (existing) {
-    existing.loadURL(appUrl("#login"));
+  const existing = panelWindows.get("login");
+  if (existing && !existing.isDestroyed()) {
     existing.focus();
     return existing;
   }
-  return createWindow({ id: "login", label: "Login", route: "#login", width: 1220, height: 860 }, {
+  const win = createWindow({ id: "login", label: "Login", route: "#login", width: 620, height: 760 }, {
     resizable: true,
-    minWidth: 960,
+    minWidth: 540,
     minHeight: 680,
     trafficLightPosition: { x: 18, y: 18 }
   });
+  panelWindows.set("login", win);
+  return win;
 }
 
 async function openPanel(route, senderWindow) {
-  const sourceWindow = senderWindow || focusedOrPrimaryWindow() || loginWindow();
+  const sourceWindow = senderWindow || menuBarWindow || createMenuBarWindow();
   if (!(await hasSession(sourceWindow))) {
-    sourceWindow.loadURL(appUrl("#login"));
-    sourceWindow.webContents.once("did-finish-load", () => {
-      sourceWindow.webContents.send("sportsedge-desktop-auth-required", route);
+    const login = loginWindow();
+    login.webContents.once("did-finish-load", () => {
+      login.webContents.send("sportsedge-desktop-auth-required", route);
     });
     return { ok: false, reason: "auth-required" };
   }
-  sourceWindow.loadURL(appUrl(route));
-  sourceWindow.focus();
+  const panel = panelForRoute(route);
+  const existing = panelWindows.get(panel.id);
+  if (existing && !existing.isDestroyed()) {
+    existing.focus();
+    return { ok: true };
+  }
+  const win = createWindow(panel, {
+    trafficLightPosition: { x: -100, y: -100 }
+  });
+  panelWindows.set(panel.id, win);
   return { ok: true };
 }
 
@@ -151,6 +194,7 @@ function buildMenu() {
     {
       label: "SportsEdge",
       submenu: [
+        { label: "Menu Bar", accelerator: "CmdOrCtrl+Shift+M", click: createMenuBarWindow },
         { label: "Login", accelerator: "CmdOrCtrl+Shift+L", click: loginWindow },
         { label: "Dashboard", accelerator: "CmdOrCtrl+L", click: (_menuItem, browserWindow) => openPanel("#dashboard", browserWindow) },
         { type: "separator" },
@@ -208,13 +252,18 @@ ipcMain.handle("sportsedge-desktop:is-authenticated", async (event) => {
   return hasSession(BrowserWindow.fromWebContents(event.sender));
 });
 
+ipcMain.handle("sportsedge-desktop:close-window", (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win && !win.isDestroyed() && win !== menuBarWindow) win.close();
+});
+
 app.whenReady().then(() => {
   app.setName("SportsEdge");
   Menu.setApplicationMenu(buildMenu());
-  loginWindow();
+  createMenuBarWindow();
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) loginWindow();
+    if (!menuBarWindow || menuBarWindow.isDestroyed()) createMenuBarWindow();
   });
 });
 

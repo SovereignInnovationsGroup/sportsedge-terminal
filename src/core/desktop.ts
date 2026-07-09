@@ -11,6 +11,7 @@ export type SportsEdgeDesktopBridge = {
   listPanels: () => Promise<DesktopPanel[]>;
   isAuthenticated: () => Promise<boolean>;
   openPanel: (route: string) => Promise<{ ok: boolean; reason?: string }>;
+  closeWindow: () => Promise<void>;
   onAuthRequired: (callback: (route: string) => void) => () => void;
 };
 

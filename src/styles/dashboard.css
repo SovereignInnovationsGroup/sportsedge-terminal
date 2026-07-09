@@ -5539,23 +5539,27 @@ button {
   background: #05080d;
 }
 
+.desktop-panel-shell .testboard-topbar,
 .desktop-app-shell .testboard-topbar {
   display: none;
 }
 
 .desktop-top-menu {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 500;
   display: grid;
   grid-template-columns: auto minmax(360px, 1fr) auto auto auto auto auto;
   align-items: center;
-  gap: 8px;
-  min-height: 46px;
-  padding: 0 10px;
+  gap: 7px;
+  height: 54px;
+  min-height: 54px;
+  padding: 0 8px;
   border-bottom: 1px solid rgba(70, 86, 108, 0.46);
   background: rgba(8, 12, 18, 0.96);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+  box-shadow: none;
   backdrop-filter: blur(18px);
   -webkit-app-region: drag;
 }
@@ -5565,7 +5569,7 @@ button {
 .desktop-menu-search,
 .desktop-menu-icon,
 .desktop-menu-panel-select select {
-  height: 30px;
+  height: 34px;
   border: 1px solid rgba(71, 85, 105, 0.72);
   border-radius: 6px;
   background: rgba(15, 23, 34, 0.78);
@@ -5576,7 +5580,7 @@ button {
 .desktop-menu-brand {
   display: flex;
   align-items: center;
-  width: 156px;
+  width: 160px;
   padding: 0 10px;
   cursor: pointer;
 }
@@ -5656,7 +5660,7 @@ button {
   gap: 7px;
   min-width: 0;
   max-width: 240px;
-  height: 30px;
+  height: 34px;
   padding: 0 10px;
   border-left: 1px solid rgba(71, 85, 105, 0.58);
   color: #d9e3ef;

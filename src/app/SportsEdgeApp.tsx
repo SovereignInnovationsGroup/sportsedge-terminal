@@ -89,19 +89,6 @@ function shouldShowTerminalFallback(hash: string) {
   ].includes(hash);
 }
 
-function shouldShowDesktopTopMenu(hash: string) {
-  if (!sportsEdgeDesktop()) return false;
-  return ![
-    "",
-    "#signup",
-    "#about",
-    "#terms",
-    "#privacy",
-    "#blog",
-    "#login"
-  ].includes(hash);
-}
-
 function RouteFallback({ hash }: { hash: string }) {
   if (!shouldShowTerminalFallback(hash)) return null;
   return (
@@ -114,6 +101,7 @@ function RouteFallback({ hash }: { hash: string }) {
 
 function screenForHash(hash: string) {
   if (!hash) return <Marketing />;
+  if (hash === "#desktop-menu") return <DesktopTopMenu activeHash={hash} />;
   if (hash === "#signup") return <Marketing section="signup" />;
   if (hash === "#about") return <Marketing section="about" />;
   if (hash === "#terms") return <Marketing section="terms" />;
@@ -183,7 +171,7 @@ function screenForHash(hash: string) {
 export default function SportsEdgeApp() {
   const [hash, setHash] = useState(window.location.hash);
   const screen = screenForHash(hash);
-  const showDesktopTopMenu = shouldShowDesktopTopMenu(hash);
+  const isDesktopPanel = Boolean(sportsEdgeDesktop()) && !["#desktop-menu", "#login"].includes(hash);
 
   useEffect(() => {
     const handleHash = () => setHash(window.location.hash);
@@ -197,12 +185,7 @@ export default function SportsEdgeApp() {
 
   return (
     <Suspense fallback={<RouteFallback hash={hash} />}>
-      {showDesktopTopMenu ? (
-        <div className="desktop-app-shell">
-          <DesktopTopMenu activeHash={hash} />
-          {screen}
-        </div>
-      ) : screen}
+      {isDesktopPanel ? <div className="desktop-panel-shell">{screen}</div> : screen}
     </Suspense>
   );
 }

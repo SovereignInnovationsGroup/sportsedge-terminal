@@ -16,7 +16,12 @@ export default function Login() {
   const [authUser, setAuthUser] = useState<StoredAuthUser | null>(null);
 
   function routeAfterLogin(user: StoredAuthUser) {
-    window.location.hash = desktopMode ? "#dashboard" : defaultRouteForUser(user);
+    const desktop = sportsEdgeDesktop();
+    if (desktopMode && desktop) {
+      void desktop.openPanel("#dashboard").finally(() => desktop.closeWindow());
+      return;
+    }
+    window.location.hash = defaultRouteForUser(user);
   }
 
   useEffect(() => {
@@ -24,7 +29,11 @@ export default function Login() {
     const queryIndex = hash.indexOf("?");
 
     if (desktopMode && queryIndex === -1 && window.localStorage.getItem("sportsedge.auth.token")) {
-      window.location.hash = "#dashboard";
+      try {
+        routeAfterLogin(JSON.parse(window.localStorage.getItem("sportsedge.auth.user") || "{}") as StoredAuthUser);
+      } catch {
+        routeAfterLogin({});
+      }
       return;
     }
 
