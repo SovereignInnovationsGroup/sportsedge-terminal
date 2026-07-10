@@ -5693,6 +5693,37 @@ button {
   cursor: pointer;
 }
 
+.desktop-menu-search {
+  justify-content: flex-start;
+  width: 128px;
+  min-width: 128px;
+  transition: width 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.desktop-menu-search.expanded,
+.desktop-menu-search:focus-within {
+  width: min(420px, 32vw);
+  border-color: rgba(96, 165, 250, 0.72);
+  background: rgba(6, 12, 22, 0.98);
+}
+
+.desktop-menu-search input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #f8fafc;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.desktop-menu-search input::placeholder {
+  color: #8fa1b8;
+}
+
 .desktop-menu-nav button:hover,
 .desktop-menu-nav button.active,
 .desktop-menu-search:hover,
@@ -5710,10 +5741,6 @@ button {
   font-size: 11px;
   font-weight: 900;
   outline: none;
-}
-
-.desktop-menu-search {
-  min-width: 128px;
 }
 
 .desktop-menu-search kbd {

@@ -12,6 +12,7 @@ export type SportsEdgeDesktopBridge = {
   isAuthenticated: () => Promise<boolean>;
   openPanel: (route: string) => Promise<{ ok: boolean; reason?: string }>;
   closeWindow: () => Promise<void>;
+  logout: () => Promise<{ ok: boolean }>;
   onAuthRequired: (callback: (route: string) => void) => () => void;
 };
 

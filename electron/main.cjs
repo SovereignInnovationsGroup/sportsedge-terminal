@@ -151,6 +151,24 @@ function loginWindow() {
   return win;
 }
 
+function clearDesktopSessionAndShowLogin() {
+  for (const win of [...windows]) {
+    if (win.isDestroyed()) continue;
+    win.webContents.executeJavaScript([
+      "window.localStorage.removeItem('sportsedge.auth.token')",
+      "window.localStorage.removeItem('sportsedge.auth.user')"
+    ].join(";"), true).catch(() => {});
+  }
+
+  for (const [id, win] of [...panelWindows.entries()]) {
+    if (id !== "login" && !win.isDestroyed()) win.close();
+  }
+
+  createMenuBarWindow();
+  loginWindow();
+  return { ok: true };
+}
+
 async function openPanel(route, senderWindow) {
   const sourceWindow = senderWindow || menuBarWindow || createMenuBarWindow();
   if (!(await hasSession(sourceWindow))) {
@@ -225,14 +243,7 @@ function buildMenu() {
         { type: "separator" },
         {
           label: "Sign Out",
-          click: (_menuItem, browserWindow) => {
-            if (!browserWindow || browserWindow.isDestroyed()) return loginWindow();
-            browserWindow.webContents.executeJavaScript([
-              "window.localStorage.removeItem('sportsedge.auth.token')",
-              "window.localStorage.removeItem('sportsedge.auth.user')",
-              "window.location.hash = '#login'"
-            ].join(";"), true);
-          }
+          click: clearDesktopSessionAndShowLogin
         }
       ]
     },
@@ -256,6 +267,8 @@ ipcMain.handle("sportsedge-desktop:close-window", (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win && !win.isDestroyed() && win !== menuBarWindow) win.close();
 });
+
+ipcMain.handle("sportsedge-desktop:logout", () => clearDesktopSessionAndShowLogin());
 
 app.whenReady().then(() => {
   app.setName("SportsEdge");

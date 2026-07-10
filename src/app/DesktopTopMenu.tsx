@@ -1,5 +1,5 @@
 import { LayoutDashboard, LogOut, Newspaper, Search, Settings, ShieldCheck, SlidersHorizontal, Trophy } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { sportsEdgeDesktop, type DesktopPanel } from "../core/desktop";
 import { type StoredAuthUser } from "../core/auth";
 
@@ -14,16 +14,13 @@ function readUser() {
   }
 }
 
-function logout() {
-  window.localStorage.removeItem("sportsedge.auth.token");
-  window.localStorage.removeItem("sportsedge.auth.user");
-  window.location.hash = sportsEdgeDesktop() ? "#desktop-menu" : "#login";
-}
-
 export function DesktopTopMenu({ activeHash }: { activeHash: string }) {
   const desktop = sportsEdgeDesktop();
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [panels, setPanels] = useState<DesktopPanel[]>([]);
   const [activeRoute, setActiveRoute] = useState(activeHash);
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const user = useMemo(readUser, [activeHash]);
   const account = user?.login_id || user?.email || "SportsEdge";
   const plan = user?.subscription?.plan_name || user?.subscription?.level || user?.subscription?.status || "terminal";
@@ -33,6 +30,18 @@ export function DesktopTopMenu({ activeHash }: { activeHash: string }) {
     desktop.listPanels().then(setPanels).catch(() => setPanels([]));
   }, [desktop]);
 
+  useEffect(() => {
+    function handleShortcut(event: KeyboardEvent) {
+      if (event.key.toLowerCase() !== "k" || (!event.metaKey && !event.ctrlKey)) return;
+      event.preventDefault();
+      setSearchExpanded(true);
+      window.setTimeout(() => searchInputRef.current?.focus(), 0);
+    }
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
+
   async function openRoute(route: string) {
     setActiveRoute(route);
     if (desktop) {
@@ -40,6 +49,27 @@ export function DesktopTopMenu({ activeHash }: { activeHash: string }) {
       return;
     }
     window.location.hash = route;
+  }
+
+  async function logout() {
+    if (desktop) {
+      await desktop.logout();
+      return;
+    }
+    window.localStorage.removeItem("sportsedge.auth.token");
+    window.localStorage.removeItem("sportsedge.auth.user");
+    window.location.hash = "#login";
+  }
+
+  function submitSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const query = searchQuery.trim();
+    if (!query) {
+      setSearchExpanded(true);
+      searchInputRef.current?.focus();
+      return;
+    }
+    void openRoute("#dashboard");
   }
 
   return (
@@ -70,11 +100,25 @@ export function DesktopTopMenu({ activeHash }: { activeHash: string }) {
         </select>
       </div>
 
-      <button className="desktop-menu-search" type="button" onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}>
+      <form className={`desktop-menu-search ${searchExpanded ? "expanded" : ""}`} onSubmit={submitSearch}>
         <Search size={15} />
-        <span>Search</span>
+        <input
+          ref={searchInputRef}
+          aria-label="Search SportsEdge"
+          value={searchQuery}
+          onFocus={() => setSearchExpanded(true)}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setSearchQuery("");
+              setSearchExpanded(false);
+              searchInputRef.current?.blur();
+            }
+          }}
+          placeholder={searchExpanded ? "Search sport, market, team, news..." : "Search"}
+        />
         <kbd>⌘K</kbd>
-      </button>
+      </form>
 
       <div className="desktop-menu-account">
         <ShieldCheck size={15} />
@@ -83,7 +127,7 @@ export function DesktopTopMenu({ activeHash }: { activeHash: string }) {
       </div>
 
       <button className="desktop-menu-icon" type="button" aria-label="Settings" onClick={() => openRoute("#settings")}><Settings size={16} /></button>
-      <button className="desktop-menu-icon" type="button" aria-label="Sign out" onClick={logout}><LogOut size={16} /></button>
+      <button className="desktop-menu-icon" type="button" aria-label="Sign out" onClick={() => void logout()}><LogOut size={16} /></button>
     </header>
   );
 }

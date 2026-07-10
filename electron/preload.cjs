@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld("sportsEdgeDesktop", {
   isAuthenticated: () => ipcRenderer.invoke("sportsedge-desktop:is-authenticated"),
   openPanel: (route) => ipcRenderer.invoke("sportsedge-desktop:open-panel", route),
   closeWindow: () => ipcRenderer.invoke("sportsedge-desktop:close-window"),
+  logout: () => ipcRenderer.invoke("sportsedge-desktop:logout"),
   onAuthRequired: (callback) => {
     const listener = (_event, route) => callback(route);
     ipcRenderer.on("sportsedge-desktop-auth-required", listener);
