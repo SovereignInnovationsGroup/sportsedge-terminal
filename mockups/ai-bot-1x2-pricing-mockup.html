@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SportsEdge AI Bot 1X2 Pricing Mockup</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #03070b;
+      --panel: #071018;
+      --panel2: #091520;
+      --line: #243241;
+      --muted: #8ea0af;
+      --text: #edf3f8;
+      --home: #2f8cff;
+      --draw: #ffd45f;
+      --away: #ff376d;
+      --yes: #0fd6a3;
+      --no: #72a7ff;
+      --mono: "Roboto Mono", ui-monospace, SFMono-Regular, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, system-ui, sans-serif;
+      margin: 0;
+      padding: 14px;
+    }
+
+    .shell {
+      border: 1px solid rgba(80, 129, 177, 0.36);
+      background: #040a10;
+      min-height: calc(100vh - 28px);
+    }
+
+    .top {
+      align-items: center;
+      border-bottom: 1px solid rgba(80, 129, 177, 0.3);
+      display: grid;
+      gap: 14px;
+      grid-template-columns: minmax(0, 1fr) auto;
+      padding: 10px 12px;
+    }
+
+    .top span,
+    .kpis span,
+    .panel-head span,
+    th {
+      color: var(--muted);
+      display: block;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .top strong {
+      display: block;
+      font-size: 20px;
+      line-height: 1.1;
+      margin-top: 3px;
+    }
+
+    .badge {
+      border: 1px solid rgba(15, 214, 163, 0.5);
+      color: var(--yes);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 900;
+      padding: 7px 10px;
+      text-transform: uppercase;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(130px, 1fr));
+      border-bottom: 1px solid rgba(80, 129, 177, 0.25);
+    }
+
+    .kpis article {
+      border-right: 1px solid rgba(80, 129, 177, 0.22);
+      min-height: 72px;
+      padding: 10px;
+    }
+
+    .kpis article:last-child { border-right: 0; }
+
+    .kpis strong {
+      display: block;
+      font-family: var(--mono);
+      font-size: 20px;
+      line-height: 1.1;
+      margin-top: 6px;
+    }
+
+    .kpis small {
+      color: var(--muted);
+      display: block;
+      font-family: var(--mono);
+      font-size: 10px;
+      margin-top: 4px;
+    }
+
+    .home { color: var(--home); }
+    .draw { color: var(--draw); }
+    .away { color: var(--away); }
+    .yes { color: var(--yes); }
+    .no { color: var(--no); }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(480px, 1fr) 520px;
+      min-height: 620px;
+    }
+
+    .chart,
+    .contracts {
+      border-right: 1px solid rgba(80, 129, 177, 0.28);
+      min-width: 0;
+    }
+
+    .contracts { border-right: 0; }
+
+    .panel-head {
+      align-items: center;
+      border-bottom: 1px solid rgba(80, 129, 177, 0.22);
+      display: flex;
+      justify-content: space-between;
+      min-height: 36px;
+      padding: 8px 10px;
+    }
+
+    .panel-head strong {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    svg {
+      display: block;
+      height: 585px;
+      width: 100%;
+    }
+
+    .grid line {
+      stroke: rgba(80, 129, 177, 0.16);
+      stroke-width: 1;
+    }
+
+    polyline {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 3;
+    }
+
+    polyline.home-line { stroke: var(--home); }
+    polyline.draw-line { stroke: var(--draw); }
+    polyline.away-line { stroke: var(--away); }
+
+    text {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .contracts-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .contract {
+      border-right: 1px solid rgba(80, 129, 177, 0.22);
+      min-width: 0;
+    }
+
+    .contract:last-child { border-right: 0; }
+
+    .contract-title {
+      border-bottom: 1px solid rgba(80, 129, 177, 0.2);
+      padding: 10px;
+    }
+
+    .contract-title strong {
+      display: block;
+      font-family: var(--mono);
+      font-size: 15px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .contract-title small {
+      color: var(--muted);
+      display: block;
+      font-family: var(--mono);
+      font-size: 10px;
+      margin-top: 4px;
+    }
+
+    .quote {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 1px solid rgba(80, 129, 177, 0.2);
+    }
+
+    .quote div {
+      min-height: 70px;
+      padding: 10px;
+    }
+
+    .quote div:first-child {
+      border-right: 1px solid rgba(80, 129, 177, 0.2);
+    }
+
+    .quote b {
+      display: block;
+      font-family: var(--mono);
+      font-size: 22px;
+      line-height: 1.1;
+      margin-top: 5px;
+    }
+
+    .ladder {
+      display: grid;
+    }
+
+    .ladder-row {
+      align-items: center;
+      border-bottom: 1px solid rgba(80, 129, 177, 0.16);
+      display: grid;
+      font-family: var(--mono);
+      font-size: 11px;
+      grid-template-columns: 1fr 42px 1fr;
+      min-height: 25px;
+    }
+
+    .ladder-row span {
+      padding: 5px 6px;
+    }
+
+    .ladder-row strong {
+      color: var(--text);
+      text-align: center;
+    }
+
+    .bid {
+      color: var(--yes);
+      text-align: right;
+    }
+
+    .ask {
+      color: var(--no);
+      text-align: left;
+    }
+
+    .hot-bid {
+      background: rgba(15, 214, 163, 0.25);
+    }
+
+    .hot-ask {
+      background: rgba(114, 167, 255, 0.26);
+    }
+
+    .note {
+      border-top: 1px solid rgba(80, 129, 177, 0.28);
+      color: #b9c7d6;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.45;
+      padding: 10px 12px;
+    }
+
+    @media (max-width: 1200px) {
+      .layout,
+      .top {
+        grid-template-columns: 1fr;
+      }
+
+      .kpis,
+      .contracts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="top">
+      <div>
+        <span>Selected match / 1X2 market picture</span>
+        <strong>Spain vs Saudi Arabia</strong>
+      </div>
+      <div class="badge">Paper bot armed / live edge audio</div>
+    </section>
+
+    <section class="kpis">
+      <article><span>Home Yes</span><strong class="home">64c</strong><small>Spain wins</small></article>
+      <article><span>Draw Yes</span><strong class="draw">18c</strong><small>Match drawn</small></article>
+      <article><span>Away Yes</span><strong class="away">20c</strong><small>Saudi Arabia wins</small></article>
+      <article><span>Score trigger</span><strong>1-1</strong><small>Draw becomes active trade target</small></article>
+      <article><span>Near depth</span><strong>$144k / $272k</strong><small>Visible SportsEdge liquidity</small></article>
+      <article><span>Trade read</span><strong class="draw">Draw 18c</strong><small>If score levels</small></article>
+    </section>
+
+    <section class="layout">
+      <div class="chart">
+        <div class="panel-head">
+          <span>1X2 outcome chart</span>
+          <strong>Home / Draw / Away, not one Yes-No pair</strong>
+        </div>
+        <svg viewBox="0 0 720 430" role="img" aria-label="Home Draw Away mock price chart">
+          <g class="grid">
+            <line x1="35" x2="650" y1="360" y2="360"></line>
+            <line x1="35" x2="650" y1="275" y2="275"></line>
+            <line x1="35" x2="650" y1="190" y2="190"></line>
+            <line x1="35" x2="650" y1="105" y2="105"></line>
+            <line x1="35" x2="650" y1="20" y2="20"></line>
+          </g>
+          <polyline class="home-line" points="40,152 90,150 140,146 190,148 240,145 290,141 340,139 390,136 440,130 490,126 540,135 590,144 640,146"></polyline>
+          <polyline class="draw-line" points="40,303 90,305 140,302 190,300 240,298 290,292 340,284 390,274 440,260 490,238 540,222 590,205 640,198"></polyline>
+          <polyline class="away-line" points="40,292 90,294 140,298 190,301 240,307 290,313 340,319 390,325 440,330 490,338 540,340 590,344 640,347"></polyline>
+          <text x="520" y="122" fill="#2f8cff">Home 64%</text>
+          <text x="520" y="190" fill="#ffd45f">Draw 18%</text>
+          <text x="520" y="340" fill="#ff376d">Away 20%</text>
+        </svg>
+      </div>
+
+      <div class="contracts">
+        <div class="panel-head">
+          <span>Three contracts, each with Yes / No</span>
+          <strong>Recommended ladder layout</strong>
+        </div>
+        <div class="contracts-grid">
+          <article class="contract">
+            <div class="contract-title"><strong class="home">Home</strong><small>Spain wins?</small></div>
+            <div class="quote">
+              <div><span>Yes</span><b class="yes">64c</b></div>
+              <div><span>No</span><b class="no">36c</b></div>
+            </div>
+            <div class="ladder">
+              <div class="ladder-row"><span class="bid">$44k</span><strong>65c</strong><span></span></div>
+              <div class="ladder-row"><span class="bid hot-bid">$109k</span><strong>64c</strong><span class="ask">$24k</span></div>
+              <div class="ladder-row"><span class="bid">$17k</span><strong>63c</strong><span class="ask">$7k</span></div>
+              <div class="ladder-row"><span></span><strong>62c</strong><span class="ask">$3k</span></div>
+              <div class="ladder-row"><span></span><strong>61c</strong><span></span></div>
+            </div>
+          </article>
+
+          <article class="contract">
+            <div class="contract-title"><strong class="draw">Draw</strong><small>Match ends level?</small></div>
+            <div class="quote">
+              <div><span>Yes</span><b class="yes">18c</b></div>
+              <div><span>No</span><b class="no">82c</b></div>
+            </div>
+            <div class="ladder">
+              <div class="ladder-row"><span class="bid">$8k</span><strong>20c</strong><span></span></div>
+              <div class="ladder-row"><span class="bid">$12k</span><strong>19c</strong><span class="ask">$15k</span></div>
+              <div class="ladder-row"><span class="bid hot-bid">$31k</span><strong>18c</strong><span class="ask hot-ask">$44k</span></div>
+              <div class="ladder-row"><span class="bid">$9k</span><strong>17c</strong><span class="ask">$20k</span></div>
+              <div class="ladder-row"><span></span><strong>16c</strong><span class="ask">$6k</span></div>
+            </div>
+          </article>
+
+          <article class="contract">
+            <div class="contract-title"><strong class="away">Away</strong><small>Saudi Arabia wins?</small></div>
+            <div class="quote">
+              <div><span>Yes</span><b class="yes">20c</b></div>
+              <div><span>No</span><b class="no">80c</b></div>
+            </div>
+            <div class="ladder">
+              <div class="ladder-row"><span class="bid">$3k</span><strong>22c</strong><span></span></div>
+              <div class="ladder-row"><span class="bid">$9k</span><strong>21c</strong><span class="ask">$5k</span></div>
+              <div class="ladder-row"><span class="bid hot-bid">$18k</span><strong>20c</strong><span class="ask hot-ask">$29k</span></div>
+              <div class="ladder-row"><span class="bid">$5k</span><strong>19c</strong><span class="ask">$11k</span></div>
+              <div class="ladder-row"><span></span><strong>18c</strong><span class="ask">$4k</span></div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="note">
+      Logical model: a football 1X2 market is three separate binary contracts. The bot should display three outcome prices on the graph, and three compact ladders underneath or beside it. If the structured score moves to level, for example 1-0 to 1-1, the bot targets the Draw Yes contract, not a generic "draw side" inside the Home ladder.
+    </section>
+  </main>
+</body>
+</html>

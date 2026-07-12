@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <style>
+      .bg{fill:#03070b}.panel{fill:#071018;stroke:#243241;stroke-width:1}.line{stroke:#243241;stroke-width:1;opacity:.65}.muted{fill:#8ea0af;font:700 14px monospace;text-transform:uppercase}.tiny{fill:#8ea0af;font:700 13px monospace}.txt{fill:#edf3f8;font:800 20px Inter,Arial}.mono{fill:#edf3f8;font:800 16px monospace}.home{fill:#2f8cff}.draw{fill:#ffd45f}.away{fill:#ff376d}.yes{fill:#0fd6a3}.no{fill:#72a7ff}.homeLine{fill:none;stroke:#2f8cff;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.drawLine{fill:none;stroke:#ffd45f;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.awayLine{fill:none;stroke:#ff376d;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.hotYes{fill:#0fd6a3;opacity:.26}.hotNo{fill:#72a7ff;opacity:.26}
+    </style>
+  </defs>
+  <rect class="bg" width="1600" height="900"/>
+  <rect class="panel" x="18" y="18" width="1564" height="864"/>
+
+  <rect class="panel" x="18" y="18" width="1564" height="72"/>
+  <text class="muted" x="38" y="45">Selected match / 1X2 market picture</text>
+  <text class="txt" x="38" y="72">Spain vs Saudi Arabia</text>
+  <rect x="1328" y="35" width="220" height="34" fill="#071018" stroke="#0fd6a3"/>
+  <text class="yes" x="1345" y="57" style="font:800 14px monospace">PAPER BOT ARMED</text>
+
+  <g transform="translate(18 90)">
+    <rect class="panel" x="0" y="0" width="1564" height="88"/>
+    <g transform="translate(0 0)">
+      <line class="line" x1="260" y1="0" x2="260" y2="88"/><line class="line" x1="520" y1="0" x2="520" y2="88"/><line class="line" x1="780" y1="0" x2="780" y2="88"/><line class="line" x1="1040" y1="0" x2="1040" y2="88"/><line class="line" x1="1300" y1="0" x2="1300" y2="88"/>
+      <text class="muted" x="18" y="26">Home Yes</text><text class="home" x="18" y="58" style="font:900 28px monospace">64c</text><text class="tiny" x="18" y="78">Spain wins</text>
+      <text class="muted" x="278" y="26">Draw Yes</text><text class="draw" x="278" y="58" style="font:900 28px monospace">18c</text><text class="tiny" x="278" y="78">Match drawn</text>
+      <text class="muted" x="538" y="26">Away Yes</text><text class="away" x="538" y="58" style="font:900 28px monospace">20c</text><text class="tiny" x="538" y="78">Saudi Arabia wins</text>
+      <text class="muted" x="798" y="26">Score trigger</text><text class="txt" x="798" y="58">1-1</text><text class="tiny" x="798" y="78">Draw becomes target</text>
+      <text class="muted" x="1058" y="26">Near depth</text><text class="txt" x="1058" y="58">$144k / $272k</text><text class="tiny" x="1058" y="78">visible liquidity</text>
+      <text class="muted" x="1318" y="26">Trade read</text><text class="draw" x="1318" y="58" style="font:900 24px monospace">Draw 18c</text>
+    </g>
+  </g>
+
+  <g transform="translate(18 178)">
+    <rect class="panel" x="0" y="0" width="910" height="640"/>
+    <rect class="panel" x="0" y="0" width="910" height="42"/>
+    <text class="muted" x="14" y="27">1X2 outcome chart</text>
+    <text class="tiny" x="600" y="27">Home / Draw / Away, not one Yes-No pair</text>
+    <g transform="translate(34 72)">
+      <line class="line" x1="0" y1="500" x2="820" y2="500"/><line class="line" x1="0" y1="375" x2="820" y2="375"/><line class="line" x1="0" y1="250" x2="820" y2="250"/><line class="line" x1="0" y1="125" x2="820" y2="125"/><line class="line" x1="0" y1="0" x2="820" y2="0"/>
+      <polyline class="homeLine" points="0,194 70,190 140,184 210,188 280,182 350,176 420,172 490,166 560,154 630,148 700,160 770,174 820,178"/>
+      <polyline class="drawLine" points="0,420 70,424 140,418 210,414 280,408 350,396 420,382 490,360 560,330 630,292 700,268 770,238 820,226"/>
+      <polyline class="awayLine" points="0,402 70,406 140,414 210,420 280,430 350,442 420,452 490,462 560,470 630,482 700,486 770,492 820,496"/>
+      <text class="home" x="610" y="130" style="font:900 18px monospace">Home 64%</text>
+      <text class="draw" x="610" y="220" style="font:900 18px monospace">Draw 18%</text>
+      <text class="away" x="610" y="480" style="font:900 18px monospace">Away 20%</text>
+    </g>
+  </g>
+
+  <g transform="translate(928 178)">
+    <rect class="panel" x="0" y="0" width="654" height="640"/>
+    <rect class="panel" x="0" y="0" width="654" height="42"/>
+    <text class="muted" x="14" y="27">Three contracts, each with Yes / No</text>
+    <text class="tiny" x="426" y="27">Recommended ladder layout</text>
+
+    <g transform="translate(0 42)">
+      <g>
+        <rect class="panel" x="0" y="0" width="218" height="598"/>
+        <text class="home" x="14" y="30" style="font:900 20px monospace">Home</text><text class="tiny" x="14" y="52">Spain wins?</text>
+        <line class="line" x1="0" y1="70" x2="218" y2="70"/>
+        <text class="muted" x="14" y="96">Yes</text><text class="yes" x="14" y="130" style="font:900 30px monospace">64c</text>
+        <text class="muted" x="118" y="96">No</text><text class="no" x="118" y="130" style="font:900 30px monospace">36c</text>
+        <line class="line" x1="109" y1="70" x2="109" y2="150"/><line class="line" x1="0" y1="150" x2="218" y2="150"/>
+        <rect class="hotYes" x="0" y="203" width="90" height="28"/><rect class="hotNo" x="130" y="203" width="88" height="28"/>
+        <text class="mono yes" x="18" y="182">$44k</text><text class="mono" x="96" y="182">65c</text>
+        <text class="mono yes" x="14" y="222">$109k</text><text class="mono" x="96" y="222">64c</text><text class="mono no" x="142" y="222">$24k</text>
+        <text class="mono yes" x="18" y="262">$17k</text><text class="mono" x="96" y="262">63c</text><text class="mono no" x="146" y="262">$7k</text>
+      </g>
+      <g transform="translate(218 0)">
+        <rect class="panel" x="0" y="0" width="218" height="598"/>
+        <text class="draw" x="14" y="30" style="font:900 20px monospace">Draw</text><text class="tiny" x="14" y="52">Match ends level?</text>
+        <line class="line" x1="0" y1="70" x2="218" y2="70"/>
+        <text class="muted" x="14" y="96">Yes</text><text class="yes" x="14" y="130" style="font:900 30px monospace">18c</text>
+        <text class="muted" x="118" y="96">No</text><text class="no" x="118" y="130" style="font:900 30px monospace">82c</text>
+        <line class="line" x1="109" y1="70" x2="109" y2="150"/><line class="line" x1="0" y1="150" x2="218" y2="150"/>
+        <rect class="hotYes" x="0" y="203" width="90" height="28"/><rect class="hotNo" x="128" y="203" width="90" height="28"/>
+        <text class="mono yes" x="22" y="182">$8k</text><text class="mono" x="96" y="182">20c</text>
+        <text class="mono yes" x="18" y="222">$31k</text><text class="mono" x="96" y="222">18c</text><text class="mono no" x="142" y="222">$44k</text>
+        <text class="mono yes" x="22" y="262">$9k</text><text class="mono" x="96" y="262">17c</text><text class="mono no" x="142" y="262">$20k</text>
+      </g>
+      <g transform="translate(436 0)">
+        <rect class="panel" x="0" y="0" width="218" height="598"/>
+        <text class="away" x="14" y="30" style="font:900 20px monospace">Away</text><text class="tiny" x="14" y="52">Saudi Arabia wins?</text>
+        <line class="line" x1="0" y1="70" x2="218" y2="70"/>
+        <text class="muted" x="14" y="96">Yes</text><text class="yes" x="14" y="130" style="font:900 30px monospace">20c</text>
+        <text class="muted" x="118" y="96">No</text><text class="no" x="118" y="130" style="font:900 30px monospace">80c</text>
+        <line class="line" x1="109" y1="70" x2="109" y2="150"/><line class="line" x1="0" y1="150" x2="218" y2="150"/>
+        <rect class="hotYes" x="0" y="203" width="90" height="28"/><rect class="hotNo" x="128" y="203" width="90" height="28"/>
+        <text class="mono yes" x="22" y="182">$3k</text><text class="mono" x="96" y="182">22c</text>
+        <text class="mono yes" x="18" y="222">$18k</text><text class="mono" x="96" y="222">20c</text><text class="mono no" x="142" y="222">$29k</text>
+        <text class="mono yes" x="22" y="262">$5k</text><text class="mono" x="96" y="262">19c</text><text class="mono no" x="142" y="262">$11k</text>
+      </g>
+    </g>
+  </g>
+
+  <rect class="panel" x="18" y="818" width="1564" height="64"/>
+  <text class="tiny" x="38" y="844">Logical model: Home, Draw and Away are three separate binary contracts. If the structured score moves 1-0 to 1-1, the bot targets Draw Yes.</text>
+  <text class="tiny" x="38" y="868">The graph shows all three outcomes; the pricing area shows each contract's Yes/No ladder side by side.</text>
+</svg>
