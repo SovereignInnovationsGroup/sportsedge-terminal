@@ -86,6 +86,7 @@ export type AgTestRow = {
   outcomes: string[];
   betfair: string[];
   matchbook: string[];
+  polymarket: string[];
   smarkets: string[];
   betdaq: string[];
   sx: string[];
@@ -93,6 +94,7 @@ export type AgTestRow = {
   liquidity: string;
   bfLiquidity: string;
   mbLiquidity: string;
+  pyLiquidity: string;
   smLiquidity: string;
   bdLiquidity: string;
   sxLiquidity: string;
@@ -103,6 +105,7 @@ export type AgTestRow = {
 export const BETTING_EXCHANGE_COLUMNS = [
   { key: "bf", label: "BF", name: "Betfair", backendKey: "betfair", currency: "GBP" },
   { key: "mb", label: "MB", name: "Matchbook", backendKey: "matchbook", currency: "GBP" },
+  { key: "py", label: "PY", name: "Polymarket", backendKey: "polymarket", currency: "USD" },
   { key: "sm", label: "SM", name: "Smarkets", backendKey: "smarkets", currency: "GBP" },
   { key: "bd", label: "BD", name: "Betdaq", backendKey: "betdaq", currency: "GBP" },
   { key: "sx", label: "SX", name: "SX", backendKey: "sx", currency: "USD" }
@@ -110,7 +113,7 @@ export const BETTING_EXCHANGE_COLUMNS = [
 
 type BettingExchangeColumn = typeof BETTING_EXCHANGE_COLUMNS[number];
 
-const FOOTBALL_EXCHANGE_QUERY = "betfair,matchbook,smarkets,betdaq,sx";
+const FOOTBALL_EXCHANGE_QUERY = "betfair,matchbook,polymarket,smarkets,betdaq,sx";
 const FOOTBALL_LIQUIDITY_FAST_URL = `/api/markets/snapshot?sport=football&exchanges=${FOOTBALL_EXCHANGE_QUERY}&segment=upcoming4&limit=80`;
 const FOOTBALL_LIQUIDITY_FALLBACK_URL = `/api/exchange-odds?sport=football&exchanges=${FOOTBALL_EXCHANGE_QUERY}&segment=upcoming4&limit=80`;
 const FOOTBALL_LIQUIDITY_STORAGE_KEY = "sportsedge.footballLiquiditySnapshot.v1";
@@ -234,6 +237,15 @@ function marketSortRank(row: BackendPriceRow) {
   return 5;
 }
 
+function isDisplayableFootballMarket(row: BackendPriceRow) {
+  const text = normalizeFixtureText(`${row.name || ""} ${row.marketType || ""} ${row.marketName || ""}`);
+  if (["announcer", "announcers", "corner", "card", "booking", "goalscorer", "correct score", "exact score", "player", "cross"].some((value) => text.includes(value))) return false;
+  if (text.includes("match odds") || text.includes("match result") || text.includes("one x two") || text.includes("one_x_two")) return true;
+  if (text.includes("moneyline") || text.includes("winner")) return true;
+  if (/\bwill\b.+\bwin\b/.test(text)) return true;
+  return !row.matches?.polymarket;
+}
+
 function clonePriceRow(row: BackendPriceRow): BackendPriceRow {
   const aggregateLiquidityByExchange = Object.fromEntries(BETTING_EXCHANGE_COLUMNS.map((exchange) => [
     exchange.backendKey,
@@ -251,6 +263,7 @@ function clonePriceRow(row: BackendPriceRow): BackendPriceRow {
 export function mergeDisplayPriceRows(rows: BackendPriceRow[]) {
   const merged = new Map<string, BackendPriceRow>();
   for (const row of rows) {
+    if (!isDisplayableFootballMarket(row)) continue;
     const key = stableDisplayRowKey(row) || row.id;
     const existing = merged.get(key);
     if (!existing) {
@@ -306,6 +319,7 @@ function normalizeExchangeCode(value: unknown) {
   const normalized = String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   if (["bf", "betfair"].includes(normalized)) return "betfair";
   if (["mb", "matchbook"].includes(normalized)) return "matchbook";
+  if (["py", "poly", "polymarket"].includes(normalized)) return "polymarket";
   if (["sm", "smarkets"].includes(normalized)) return "smarkets";
   if (["bd", "betdaq"].includes(normalized)) return "betdaq";
   if (["sx", "sxbet", "sxmarkets", "sportx"].includes(normalized)) return "sx";
@@ -331,7 +345,7 @@ export function isPrimaryTradingMarket(payload: unknown, selectedSport: string) 
 export function mergeLivePriceRows(rows: BackendPriceRow[], channel: string, payload: unknown, selectedSport: string, primaryOnly = true, maxRows = 80) {
   if (primaryOnly && !isPrimaryTradingMarket(payload, selectedSport)) return rows;
   const exchange = normalizeExchangeCode(textFromPayload(payload, ["exchange", "exchange_code", "exchangeCode", "venue", "source", "source_name"]) || channel.split(".")[0]);
-  if (!["betfair", "matchbook", "smarkets", "betdaq", "sx"].includes(exchange)) return rows;
+  if (!["betfair", "matchbook", "polymarket", "smarkets", "betdaq", "sx"].includes(exchange)) return rows;
   const eventName = textFromPayload(payload, ["event_name", "eventName", "fixture", "fixture_name", "event", "name", "title"]);
   const runnerName = textFromPayload(payload, ["runner_name", "runnerName", "selection", "outcome"]);
   const side = textFromPayload(payload, ["side"]).toLowerCase();
@@ -447,10 +461,14 @@ function rowMatchedValue(row?: BackendPriceRow) {
   return Object.values(row.matches || {}).reduce((sum, match) => sum + matchLiquidity(match), 0);
 }
 
+function exchangeCurrency(exchange: string) {
+  return BETTING_EXCHANGE_COLUMNS.find((item) => item.backendKey === exchange)?.currency || "GBP";
+}
+
 function formatBackendExchangeLiquidity(row: BackendPriceRow | undefined, exchange: string) {
   const aggregateValue = Number(row?.aggregateLiquidityByExchange?.[exchange] || 0);
   const value = aggregateValue > 0 ? aggregateValue : matchLiquidity(row?.matches?.[exchange]);
-  return value > 0 ? formatExchangeMoney(value, "GBP") : "-";
+  return value > 0 ? formatExchangeMoney(value, exchangeCurrency(exchange)) : "-";
 }
 
 function formatFresh(row?: BackendPriceRow) {
@@ -485,8 +503,9 @@ function tradeableOutcomeRows(row?: BackendPriceRow) {
 function formatOutcomeCell(outcome: OutcomeRow, exchange: string) {
   const runner = outcome.runners[exchange];
   if (!runner) return "-";
-  const back = runner.back ? `B ${runner.back.odds.toFixed(2)} ${formatExchangeMoney(runner.back.amount, "GBP")}` : "B -";
-  const lay = runner.lay ? `L ${runner.lay.odds.toFixed(2)} ${formatExchangeMoney(runner.lay.amount, "GBP")}` : "L -";
+  const currency = exchangeCurrency(exchange);
+  const back = runner.back ? `B ${runner.back.odds.toFixed(2)} ${formatExchangeMoney(runner.back.amount, currency)}` : "B -";
+  const lay = runner.lay ? `L ${runner.lay.odds.toFixed(2)} ${formatExchangeMoney(runner.lay.amount, currency)}` : "L -";
   return `${back} / ${lay}`;
 }
 
@@ -540,6 +559,7 @@ function agRowFromBackend(row: BackendPriceRow): AgTestRow {
     outcomes: marketCount > 1 ? [`${marketCount} markets`] : outcomes.length ? outcomes.map((outcome) => outcome.label) : ["Exchange market"],
     betfair: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "betfair")) : ["-"],
     matchbook: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "matchbook")) : ["-"],
+    polymarket: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "polymarket")) : ["-"],
     smarkets: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "smarkets")) : ["-"],
     betdaq: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "betdaq")) : ["-"],
     sx: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "sx")) : ["-"],
@@ -547,6 +567,7 @@ function agRowFromBackend(row: BackendPriceRow): AgTestRow {
     liquidity: liquidityValue ? formatExchangeMoney(liquidityValue, "GBP") : "-",
     bfLiquidity: formatBackendExchangeLiquidity(row, "betfair"),
     mbLiquidity: formatBackendExchangeLiquidity(row, "matchbook"),
+    pyLiquidity: formatBackendExchangeLiquidity(row, "polymarket"),
     smLiquidity: formatBackendExchangeLiquidity(row, "smarkets"),
     bdLiquidity: formatBackendExchangeLiquidity(row, "betdaq"),
     sxLiquidity: formatBackendExchangeLiquidity(row, "sx"),
@@ -572,6 +593,7 @@ export function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendP
       outcomes: ["Fixture"],
       betfair: ["-"],
       matchbook: ["-"],
+      polymarket: ["-"],
       smarkets: ["-"],
       betdaq: ["-"],
       sx: ["-"],
@@ -579,6 +601,7 @@ export function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendP
       liquidity: "-",
       bfLiquidity: "-",
       mbLiquidity: "-",
+      pyLiquidity: "-",
       smLiquidity: "-",
       bdLiquidity: "-",
       sxLiquidity: "-",
@@ -607,6 +630,7 @@ export function filterAgTestRows(rows: AgTestRow[], query: string) {
       row.outcomes.join(" "),
       row.betfair.join(" "),
       row.matchbook.join(" "),
+      row.polymarket.join(" "),
       row.smarkets.join(" "),
       row.betdaq.join(" "),
       row.sx.join(" "),
@@ -614,6 +638,7 @@ export function filterAgTestRows(rows: AgTestRow[], query: string) {
       row.liquidity,
       row.bfLiquidity,
       row.mbLiquidity,
+      row.pyLiquidity,
       row.smLiquidity,
       row.bdLiquidity,
       row.sxLiquidity,

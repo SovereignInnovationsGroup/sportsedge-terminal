@@ -26,6 +26,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 const COMPACT_EXCHANGES = [
   { key: "betfair", label: "BF", name: "Betfair", currency: "GBP" },
   { key: "matchbook", label: "MB", name: "Matchbook", currency: "GBP" },
+  { key: "polymarket", label: "PY", name: "Polymarket", currency: "USD" },
   { key: "monaco", label: "BX", name: "BetDEX", currency: "USD" },
   { key: "smarkets", label: "SM", name: "Smarkets", currency: "GBP" },
   { key: "betdaq", label: "BD", name: "Betdaq", currency: "GBP" },
@@ -208,8 +209,8 @@ export default function LiquidityCompactDemo() {
       setLoading(true);
       try {
         const rows = await fetchMarketSnapshotRows(
-          "/api/markets/snapshot?sport=football&exchanges=betfair,matchbook,monaco,smarkets,betdaq,sx&segment=upcoming4&limit=260",
-          "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,monaco,smarkets,betdaq,sx&segment=upcoming4&limit=260"
+          "/api/markets/snapshot?sport=football&exchanges=betfair,matchbook,polymarket,monaco,smarkets,betdaq,sx&segment=upcoming4&limit=260",
+          "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,polymarket,monaco,smarkets,betdaq,sx&segment=upcoming4&limit=260"
         );
         if (!cancelled) {
           storeFootballLiquidity(rows);
@@ -382,7 +383,7 @@ export default function LiquidityCompactDemo() {
           ariaLabel="Compact football liquidity filters"
         />
         <section className="agtest-source-strip" aria-label="Liquidity demo source status">
-          <span>Compact demo only: BF / MB / BX / SM / BD / SX</span>
+          <span>Compact demo only: BF / MB / PY / BX / SM / BD / SX</span>
         </section>
         <section className="agtest-grid-wrap ag-theme-quartz-dark">
           <AgGridReact
@@ -403,7 +404,7 @@ export default function LiquidityCompactDemo() {
           {!initialSnapshotLoaded && rows.length === 0 && (
             <div className="agtest-empty-state">
               <strong>Loading compact liquidity demo</strong>
-              <span>Fetching BF / MB / BX / SM / BD / SX exchange snapshot</span>
+              <span>Fetching BF / MB / PY / BX / SM / BD / SX exchange snapshot</span>
             </div>
           )}
           {initialSnapshotLoaded && !loading && rows.length === 0 && (
