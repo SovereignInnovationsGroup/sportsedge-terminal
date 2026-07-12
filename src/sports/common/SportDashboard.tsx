@@ -30,7 +30,8 @@ export function SportDashboard({
   espnScopes = [],
   dataStatus = "ESPN metadata enabled; exchange liquidity appears when normalized venue rows are available.",
   scopeLabel,
-  locationFilters = []
+  locationFilters = [],
+  showDefaultStandings = true
 }: {
   sport: string;
   label: string;
@@ -39,6 +40,7 @@ export function SportDashboard({
   dataStatus?: string;
   scopeLabel?: string;
   locationFilters?: SportLocationFilter[];
+  showDefaultStandings?: boolean;
 }) {
   const normalizedSport = apiSportValue(sport);
   const isFootball = normalizedSport === "football";
@@ -225,15 +227,19 @@ export function SportDashboard({
                     </div>
                   </div>
                 </section>
-                  <StandingsPanel
-                    label={label}
-                    rows={standings}
-                    loading={loading}
-                  />
                 {showDemoHolding ? (
                   <SportStandingByBoard label={label} espnScopes={espnScopes} dataStatus={dataStatus} />
+                ) : isFootball ? (
+                  <FixtureTable title="Fixtures" rows={filteredEvents} loading={loading} />
                 ) : (
                   <>
+                    {showDefaultStandings && (
+                      <StandingsPanel
+                        label={label}
+                        rows={standings}
+                        loading={loading}
+                      />
+                    )}
                     <FixtureTable title="Today" rows={todayRows} loading={loading} />
                     <FixtureTable title="Tomorrow" rows={tomorrowRows} loading={loading} />
                   </>

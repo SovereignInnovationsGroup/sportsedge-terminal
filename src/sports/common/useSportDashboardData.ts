@@ -74,7 +74,7 @@ export function useSportDashboardData({
           limit: "30"
         });
         const fixturesPromise = isFootball
-          ? fetch("/api/football/fixtures?days=2&limit=2000&timezone=Europe/London", { cache: "no-store" })
+          ? fetch(`/api/football/fixtures?days=31&limit=5000&timezone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London")}`, { cache: "no-store" })
           : Promise.resolve(null);
         const capturedEventsPromise = !isFootball
           ? fetch(`/api/sports/events?timezone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London")}&limit=1200`, { cache: "no-store" })
