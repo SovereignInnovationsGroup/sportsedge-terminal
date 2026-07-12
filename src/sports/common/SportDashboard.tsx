@@ -188,45 +188,47 @@ export function SportDashboard({
               <SportStandingByBoard label={label} espnScopes={espnScopes} dataStatus={`${label} injury feed configured when provider rows are available.`} />
             ) : (
               <>
-                <section className="sport-command-grid" aria-label={`${label} market overview`}>
-                  <div className="sport-command-panel">
-                    <header><span>Market Board</span><strong>{nearTermRows.length}</strong></header>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Time</th>
-                          <th>Event</th>
-                          <th>Competition</th>
-                          <th>Coverage</th>
-                          <th>Total Now</th>
-                          <th>Latest</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {nearTermRows.map((event) => (
-                          <tr key={`command-${event.id}-${event.startAt}`}>
-                            <td className="mono positive">{localEventTime(event.startAt)}</td>
-                            <td><strong>{event.name}</strong></td>
-                            <td>{event.competition || "-"}</td>
-                            <td><ExchangeCoverageCell event={event} /></td>
-                            <td className="mono liquidity-money total">{formatExchangeMoney(event.liquidity, "GBP")}</td>
-                            <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "-"}</td>
+                {!isFootball && (
+                  <section className="sport-command-grid" aria-label={`${label} market overview`}>
+                    <div className="sport-command-panel">
+                      <header><span>Market Board</span><strong>{nearTermRows.length}</strong></header>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Time</th>
+                            <th>Event</th>
+                            <th>Competition</th>
+                            <th>Coverage</th>
+                            <th>Total Now</th>
+                            <th>Latest</th>
                           </tr>
-                        ))}
-                        {!loading && nearTermRows.length === 0 && <tr><td className="empty" colSpan={6}>No near-term events returned for the current filter.</td></tr>}
-                        {loading && nearTermRows.length === 0 && <tr><td className="empty" colSpan={6}>Loading market board.</td></tr>}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="sport-command-panel sport-command-intel">
-                    <header><span>Sport Intel</span><strong>{news.length}</strong></header>
-                    <div>
-                      <article><span>Covered events</span><strong>{coveredRows.length}</strong><em>{filteredEvents.length} total in view</em></article>
-                      <article><span>Exchange venues</span><strong>{exchangeCount || "-"}</strong><em>{exchangeLiquidityRows.length ? "liquidity visible" : "waiting for venue rows"}</em></article>
-                      <article><span>News tape</span><strong>{news.length ? "Live" : loading ? "Loading" : "Quiet"}</strong><em>{news[0] ? newsHeadline(news[0]) : `${label} news rail remains filtered.`}</em></article>
+                        </thead>
+                        <tbody>
+                          {nearTermRows.map((event) => (
+                            <tr key={`command-${event.id}-${event.startAt}`}>
+                              <td className="mono positive">{localEventTime(event.startAt)}</td>
+                              <td><strong>{event.name}</strong></td>
+                              <td>{event.competition || "-"}</td>
+                              <td><ExchangeCoverageCell event={event} /></td>
+                              <td className="mono liquidity-money total">{formatExchangeMoney(event.liquidity, "GBP")}</td>
+                              <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "-"}</td>
+                            </tr>
+                          ))}
+                          {!loading && nearTermRows.length === 0 && <tr><td className="empty" colSpan={6}>No near-term events returned for the current filter.</td></tr>}
+                          {loading && nearTermRows.length === 0 && <tr><td className="empty" colSpan={6}>Loading market board.</td></tr>}
+                        </tbody>
+                      </table>
                     </div>
-                  </div>
-                </section>
+                    <div className="sport-command-panel sport-command-intel">
+                      <header><span>Sport Intel</span><strong>{news.length}</strong></header>
+                      <div>
+                        <article><span>Covered events</span><strong>{coveredRows.length}</strong><em>{filteredEvents.length} total in view</em></article>
+                        <article><span>Exchange venues</span><strong>{exchangeCount || "-"}</strong><em>{exchangeLiquidityRows.length ? "liquidity visible" : "waiting for venue rows"}</em></article>
+                        <article><span>News tape</span><strong>{news.length ? "Live" : loading ? "Loading" : "Quiet"}</strong><em>{news[0] ? newsHeadline(news[0]) : `${label} news rail remains filtered.`}</em></article>
+                      </div>
+                    </div>
+                  </section>
+                )}
                 {showDemoHolding ? (
                   <SportStandingByBoard label={label} espnScopes={espnScopes} dataStatus={dataStatus} />
                 ) : isFootball ? (

@@ -16,6 +16,7 @@ import { TerminalTopbar } from "./TerminalTopbar";
 import { DesktopTopMenu } from "./DesktopTopMenu";
 import { DesktopPanelFrame } from "./DesktopPanelFrame";
 import { sportsEdgeDesktop } from "../core/desktop";
+import { useIsMobile } from "../core/useIsMobile";
 import "../styles/dashboard.css";
 
 const Marketing = lazy(() => import("../screens/Marketing"));
@@ -23,6 +24,9 @@ const Blog = lazy(() => import("../screens/Blog"));
 const Login = lazy(() => import("../screens/Login"));
 const DesktopLauncher = lazy(() => import("../screens/DesktopLauncher"));
 const Dashboard = lazy(() => import("../screens/Dashboard"));
+const MobileDashboard = lazy(() => import("../screens/mobile/MobileDashboard"));
+const MobileFootball = lazy(() => import("../screens/mobile/MobileFootball"));
+const MobileNews = lazy(() => import("../screens/mobile/MobileNews"));
 const SettingsScreen = lazy(() => import("../screens/Settings"));
 const TerminalAbout = lazy(() => import("../screens/TerminalAbout"));
 const News = lazy(() => import("../screens/news/News"));
@@ -100,7 +104,7 @@ function RouteFallback({ hash }: { hash: string }) {
   );
 }
 
-function screenForHash(hash: string) {
+function screenForHash(hash: string, isMobile = false) {
   if (!hash) return <Marketing />;
   if (hash === "#desktop-menu") return <DesktopTopMenu activeHash={hash} />;
   if (hash === "#signup") return <Marketing section="signup" />;
@@ -110,18 +114,20 @@ function screenForHash(hash: string) {
   if (hash === "#blog") return <Blog />;
   if (hash === "#login") return <Login />;
   if (hash === "#desktop") return <DesktopLauncher />;
-  if (hash === "#dashboard" || hash === "#today-dashboard-mockup") return requireSession(<Dashboard />);
+  if (hash === "#dashboard" || hash === "#today-dashboard-mockup") return requireSession(isMobile ? <MobileDashboard /> : <Dashboard />);
   if (hash === "#settings") return requireSession(<SettingsScreen />);
   if (hash === "#terminal-about") return requireSession(<TerminalAbout />);
-  if (hash === "#news" || hash === "#news-feed-mockup") return requireSession(<News />);
-  if (SPORT_NEWS_ROUTES[hash]) return requireSession(<News initialSport={SPORT_NEWS_ROUTES[hash]} active={hash.replace("#", "")} />);
+  if (hash === "#news" || hash === "#news-feed-mockup") return requireSession(isMobile ? <MobileNews initialSport="all" /> : <News />);
+  if (SPORT_NEWS_ROUTES[hash]) {
+    return requireSession(isMobile ? <MobileNews initialSport={SPORT_NEWS_ROUTES[hash]} /> : <News initialSport={SPORT_NEWS_ROUTES[hash]} active={hash.replace("#", "")} />);
+  }
   if (hash === "#news-console") return requireSession(<NewsConsole />);
   if (hash === "#simple-news") return <SimpleNews />;
   if (hash === "#social-news") return requireSession(<StandaloneNews />);
   if (hash === "#admin") return requireSession(<AdminConsole />);
   if (hash === "#admin-news-sources") return requireSession(<AdminNewsSources />);
   if (hash === "#oddsapi") return requireSession(<OddsApiDiagnostics />);
-  if (hash === "#football") return <FootballDashboard />;
+  if (hash === "#football") return isMobile ? <MobileFootball /> : <FootballDashboard />;
   if (hash === "#tennis") return <TennisDashboard />;
   if (hash === "#tennis-dashboard") return requireSession(<TennisDashboard active="tennis-dashboard" />);
   if (hash.startsWith("#tennis-")) return requireSession(<TennisDashboard active={hash.replace("#", "")} />);
@@ -171,7 +177,8 @@ function screenForHash(hash: string) {
 
 export default function SportsEdgeApp() {
   const [hash, setHash] = useState(window.location.hash);
-  const screen = screenForHash(hash);
+  const isMobile = useIsMobile();
+  const screen = screenForHash(hash, isMobile);
   const isDesktopPanel = Boolean(sportsEdgeDesktop()) && !["#desktop-menu", "#login"].includes(hash);
 
   useEffect(() => {
