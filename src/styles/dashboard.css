@@ -11033,7 +11033,7 @@ button {
 .sport-summary-fixtures td:nth-child(3) { width: 210px; }
 
 .sport-summary-fixtures th:nth-child(4),
-.sport-summary-fixtures td:nth-child(4) { width: 188px; }
+.sport-summary-fixtures td:nth-child(4) { width: 226px; }
 
 .sport-summary-fixtures th:nth-child(5),
 .sport-summary-fixtures td:nth-child(5),
@@ -11046,11 +11046,17 @@ button {
 .sport-summary-fixtures th:nth-child(9),
 .sport-summary-fixtures td:nth-child(9),
 .sport-summary-fixtures th:nth-child(10),
-.sport-summary-fixtures td:nth-child(10) { width: 104px; }
+.sport-summary-fixtures td:nth-child(10),
+.sport-summary-fixtures th:nth-child(11),
+.sport-summary-fixtures td:nth-child(11),
+.sport-summary-fixtures th:nth-child(12),
+.sport-summary-fixtures td:nth-child(12),
+.sport-summary-fixtures th:nth-child(13),
+.sport-summary-fixtures td:nth-child(13) { width: 104px; }
 
 .sport-summary-coverage span {
-  min-width: 26px;
-  padding: 3px 5px;
+  min-width: 28px;
+  padding: 3px 6px;
 }
 
 .sport-standings-panel {
