@@ -3,6 +3,13 @@ import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { MobileBottomNav } from "../../app/MobileBottomNav";
 import { localDateKey, localEventTime } from "../../core/format";
 
+const DATE_FILTERS = [
+  { label: "All", value: "all" },
+  { label: "Today", value: "today" },
+  { label: "Tomorrow", value: "tomorrow" },
+  { label: "Next 7 Days", value: "next-7-days" }
+];
+
 type Fixture = {
   id?: string;
   providerFixtureId?: string;
@@ -58,6 +65,16 @@ export default function MobileFootball() {
     const key = localDateKey(fixture.kickoffAt || null);
     if (scope === "today") return key === todayKey;
     if (scope === "tomorrow") return key === tomorrowKey;
+    if (scope === "next-7-days") {
+      const kickoffTime = new Date(fixture.kickoffAt || "").getTime();
+      if (!Number.isFinite(kickoffTime)) return false;
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 7);
+      end.setHours(23, 59, 59, 999);
+      return kickoffTime >= start.getTime() && kickoffTime <= end.getTime();
+    }
     return true;
   });
 
@@ -71,9 +88,9 @@ export default function MobileFootball() {
           <p>All soccer fixtures currently available from the API-Football cache.</p>
         </section>
         <section className="mobile-filter-pills" aria-label="Football fixture date filters">
-          {["all", "today", "tomorrow"].map((item) => (
-            <button className={scope === item ? "active" : ""} key={item} type="button" onClick={() => setScope(item)}>
-              {item}
+          {DATE_FILTERS.map((item) => (
+            <button className={scope === item.value ? "active" : ""} key={item.value} type="button" onClick={() => setScope(item.value)}>
+              {item.label}
             </button>
           ))}
         </section>

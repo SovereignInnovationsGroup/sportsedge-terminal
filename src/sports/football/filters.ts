@@ -5,7 +5,8 @@ export type FootballGridFilter = { label: string; value: string };
 export const FOOTBALL_DATE_SCOPE_FILTERS: FootballGridFilter[] = [
   { label: "All", value: "all" },
   { label: "Today", value: "today" },
-  { label: "Tomorrow", value: "tomorrow" }
+  { label: "Tomorrow", value: "tomorrow" },
+  { label: "Next 7 Days", value: "next-7-days" }
 ];
 
 export const FOOTBALL_LOCATION_SCOPE_FILTERS: FootballGridFilter[] = [
@@ -149,18 +150,26 @@ const GROUP_TERMS: Record<string, string[]> = {
 };
 
 export function footballDateGroupMatches(startAt: string | null, group: string) {
-  if (group !== "today" && group !== "tomorrow") return true;
+  if (group !== "today" && group !== "tomorrow" && group !== "next-7-days") return true;
   const today = localDateKey(new Date());
   const tomorrowDate = new Date();
   tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const target = group === "today" ? today : localDateKey(tomorrowDate);
-  return localDateKey(startAt) === target;
+  if (group === "today") return localDateKey(startAt) === today;
+  if (group === "tomorrow") return localDateKey(startAt) === localDateKey(tomorrowDate);
+  const eventTime = new Date(startAt || "").getTime();
+  if (!Number.isFinite(eventTime)) return false;
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 7);
+  end.setHours(23, 59, 59, 999);
+  return eventTime >= start.getTime() && eventTime <= end.getTime();
 }
 
 export function footballTextMatchesGroup(text: string, country: string | null | undefined, group: string, startAt?: string | null) {
   if (group === "all") return true;
   if (!footballDateGroupMatches(startAt || null, group)) return false;
-  if (group === "today" || group === "tomorrow") return true;
+  if (group === "today" || group === "tomorrow" || group === "next-7-days") return true;
   const normalizedCountry = normalizeFixtureText(country || "");
   const countryGroup = COUNTRY_GROUPS[group];
   const haystack = normalizeFixtureText(`${text} ${country || ""}`);
