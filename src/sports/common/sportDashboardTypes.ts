@@ -141,8 +141,6 @@ export const DASHBOARD_EXCHANGES = [
   { key: "matchbook", label: "Matchbook", short: "MB" },
   { key: "polymarket", label: "Polymarket", short: "PY", currency: "USD" },
   { key: "monaco", label: "BetDEX", short: "BX", currency: "USD" },
-  { key: "smarkets", label: "Smarkets", short: "SM" },
-  { key: "betdaq", label: "Betdaq", short: "BD" },
   { key: "sx", label: "SX" }
 ] as const;
 

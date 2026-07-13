@@ -94,8 +94,8 @@ export default function Liquidity() {
           try {
             const [fullOddsResponse, fixtureResponse] = await Promise.all([
               fetchMarketSnapshotRows(
-                "/api/markets/snapshot?sport=football&exchanges=betfair,matchbook,polymarket,smarkets,betdaq,sx&segment=upcoming4&limit=220",
-                "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,polymarket,smarkets,betdaq,sx&segment=upcoming4&limit=220"
+                "/api/markets/snapshot?sport=football&exchanges=betfair,matchbook,polymarket,monaco,sx&segment=upcoming4&limit=220",
+                "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,polymarket,monaco,sx&segment=upcoming4&limit=220"
               ),
               fetch("/api/football/fixtures?days=4&limit=2000&timezone=Europe/London", { cache: "no-store" })
             ]);
@@ -251,15 +251,13 @@ export default function Liquidity() {
     { field: "betfair", headerName: "BF", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betfair} className="ag-price-stack" /> },
     { field: "matchbook", headerName: "MB", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.matchbook} className="ag-price-stack" /> },
     { field: "polymarket", headerName: "PY", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.polymarket} className="ag-price-stack" /> },
-    { field: "smarkets", headerName: "SM", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.smarkets} className="ag-price-stack" /> },
-    { field: "betdaq", headerName: "BD", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betdaq} className="ag-price-stack" /> },
+    { field: "monaco", headerName: "BX", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.monaco} className="ag-price-stack" /> },
     { field: "sx", headerName: "SX", minWidth: 122, flex: 0.45, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.sx} className="ag-price-stack" /> },
     { field: "bias", headerName: "Bias", width: 92 },
     { field: "bfLiquidity", headerName: "BF £", width: 76 },
     { field: "mbLiquidity", headerName: "MB £", width: 76 },
     { field: "pyLiquidity", headerName: "PY $", width: 76 },
-    { field: "smLiquidity", headerName: "SM £", width: 76 },
-    { field: "bdLiquidity", headerName: "BD £", width: 76 },
+    { field: "bxLiquidity", headerName: "BX $", width: 76 },
     { field: "sxLiquidity", headerName: "SX £", width: 76 },
     { field: "fresh", headerName: "Fresh", width: 76 }
   ], []);
@@ -268,7 +266,7 @@ export default function Liquidity() {
     const pointerEvent = event.event as MouseEvent | undefined;
     const field = event.colDef?.field as keyof AgTestRow | undefined;
     if (!pointerEvent || !field || !event.data) return;
-    if (!["outcomes", "betfair", "matchbook", "polymarket", "smarkets", "betdaq", "sx"].includes(String(field))) {
+    if (!["outcomes", "betfair", "matchbook", "polymarket", "monaco", "sx"].includes(String(field))) {
       setHoverDetails(null);
       return;
     }
@@ -283,8 +281,7 @@ export default function Liquidity() {
       betfair: "Betfair ladder",
       matchbook: "Matchbook ladder",
       polymarket: "Polymarket book",
-      smarkets: "Smarkets ladder",
-      betdaq: "Betdaq ladder",
+      monaco: "BetDEX ladder",
       sx: "SX ladder"
     };
     setHoverDetails({
@@ -317,7 +314,7 @@ export default function Liquidity() {
           ariaLabel="Football liquidity filters"
         />
         <section className="agtest-source-strip" aria-label="Liquidity source status">
-          <span>Available now: BF / MB / PY / SM / BD / SX</span>
+          <span>Available now: BF / MB / PY / BX / SX</span>
           {hasDemoRows && <span className="demo">Hybrid demo fills missing fixtures</span>}
         </section>
         <section className="agtest-grid-wrap ag-theme-quartz-dark">
@@ -351,7 +348,7 @@ export default function Liquidity() {
           {!initialSnapshotLoaded && rows.length === 0 && (
             <div className="agtest-empty-state">
               <strong>Loading liquidity</strong>
-              <span>Fetching BF / MB / PY / SM / BD / SX exchange snapshot</span>
+              <span>Fetching BF / MB / PY / BX / SX exchange snapshot</span>
             </div>
           )}
           {initialSnapshotLoaded && !loading && rows.length === 0 && (

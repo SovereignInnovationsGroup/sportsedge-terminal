@@ -49,8 +49,6 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
             <th>MB £ Now</th>
             <th>PY $ Now</th>
             <th>BX $ Now</th>
-            <th>SM £ Now</th>
-            <th>BD £ Now</th>
             <th>SX £ Now</th>
             <th>Total £ Now</th>
             <th>Latest</th>
@@ -67,15 +65,13 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
               <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.matchbook, "GBP")}</td>
               <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.polymarket, "USD")}</td>
               <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.monaco, "USD")}</td>
-              <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.smarkets, "GBP")}</td>
-              <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.betdaq, "GBP")}</td>
               <td className="mono liquidity-money">{formatExchangeMoney(event.liquidityByExchange.sx, "GBP")}</td>
               <td className="mono liquidity-money total">{formatExchangeMoney(event.liquidity, "GBP")}</td>
               <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "-"}</td>
             </tr>
           ))}
-          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={13}>No fixtures returned for this day.</td></tr>}
-          {loading && rows.length === 0 && <tr><td className="empty" colSpan={13}>Loading fixtures.</td></tr>}
+          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={11}>No fixtures returned for this day.</td></tr>}
+          {loading && rows.length === 0 && <tr><td className="empty" colSpan={11}>Loading fixtures.</td></tr>}
         </tbody>
       </table>
     </section>
@@ -178,7 +174,7 @@ export function SportStandingByBoard({
 }) {
   const demoRows = [
     ["Exchange Rows", "Standing by", "No live venue rows yet"],
-    ["Routing", "Ready", "BF / MB / BX / SM / BD / SX slots"],
+    ["Routing", "Ready", "BF / MB / PY / BX / SX slots"],
     ["News", "Live", "Rail remains real when sport news exists"]
   ];
   const demoTape = [
