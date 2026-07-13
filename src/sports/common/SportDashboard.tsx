@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { eventHasPassed, localEventTime } from "../../core/format";
 import { FootballScopeFilter } from "../football/FootballScopeFilter";
@@ -12,7 +12,7 @@ import {
   SportStandingByBoard,
   StandingsPanel
 } from "./SportDashboardPanels";
-import { DASHBOARD_EXCHANGES, SportEntitiesPayload, SportEntityRow, SportLocationFilter } from "./sportDashboardTypes";
+import { DASHBOARD_EXCHANGES, SportEntitiesPayload, SportEntityRow, SportEventRow, SportLocationFilter } from "./sportDashboardTypes";
 import {
   apiSportValue,
   formatExchangeMoney,
@@ -22,6 +22,10 @@ import {
   newsHeadline
 } from "./sportDashboardUtils";
 import { useSportDashboardData } from "./useSportDashboardData";
+
+function sportEventLiquidityKey(event: SportEventRow) {
+  return String(event.id || `${event.name || ""}|${event.startAt || ""}|${event.competition || ""}`);
+}
 
 export function SportDashboard({
   sport,
@@ -46,10 +50,13 @@ export function SportDashboard({
   const isFootball = normalizedSport === "football";
   const [dateScope, setDateScope] = useState("all");
   const [locationScope, setLocationScope] = useState("all");
+  const [liquidityOnly, setLiquidityOnly] = useState(false);
   const [query, setQuery] = useState("");
   const [entities, setEntities] = useState<SportEntityRow[]>([]);
   const [entitiesLoading, setEntitiesLoading] = useState(false);
   const [entitiesError, setEntitiesError] = useState("");
+  const liquidEventIdsRef = useRef<Set<string>>(new Set());
+  const [liquidEventVersion, setLiquidEventVersion] = useState(0);
   const espnScopeKey = espnScopes.join(",");
   const {
     events,
@@ -65,15 +72,32 @@ export function SportDashboard({
     if (!isFootball) return events;
     return events.filter((event) => footballScopeMatches(`${event.name} ${event.competition || ""}`, event.country, event.startAt, dateScope, locationScope));
   }, [events, isFootball, hasScopeFilter, dateScope, locationScope, locationFilters]);
-  const liquidScopedEvents = useMemo(() => scopedEvents.filter((event) => Number(event.liquidity || 0) > 0), [scopedEvents]);
+
+  useEffect(() => {
+    if (!isFootball) return;
+    let changed = false;
+    scopedEvents.forEach((event) => {
+      if (Number(event.liquidity || 0) <= 0) return;
+      const key = sportEventLiquidityKey(event);
+      if (liquidEventIdsRef.current.has(key)) return;
+      liquidEventIdsRef.current.add(key);
+      changed = true;
+    });
+    if (changed) setLiquidEventVersion((value) => value + 1);
+  }, [scopedEvents, isFootball]);
+
+  const liquidScopedEvents = useMemo(() => scopedEvents.filter((event) => (
+    Number(event.liquidity || 0) > 0 || liquidEventIdsRef.current.has(sportEventLiquidityKey(event))
+  )), [scopedEvents, liquidEventVersion]);
+  const visibleEvents = isFootball && liquidityOnly ? liquidScopedEvents : scopedEvents;
   const timeOrderedEvents = useMemo(() => {
-    return [...scopedEvents].sort((left, right) => {
+    return [...visibleEvents].sort((left, right) => {
       const leftTime = left.startAt ? new Date(left.startAt).getTime() : Number.MAX_SAFE_INTEGER;
       const rightTime = right.startAt ? new Date(right.startAt).getTime() : Number.MAX_SAFE_INTEGER;
       if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) return leftTime - rightTime;
       return String(left.name || "").localeCompare(String(right.name || ""));
     });
-  }, [scopedEvents]);
+  }, [visibleEvents]);
 
   const todayRows = useMemo(() => timeOrderedEvents.filter((event) => isTodayLocal(event.startAt)), [timeOrderedEvents]);
   const tomorrowRows = useMemo(() => timeOrderedEvents.filter((event) => isTomorrowLocal(event.startAt)), [timeOrderedEvents]);
@@ -141,8 +165,10 @@ export function SportDashboard({
         <FootballScopeFilter
           dateScope={dateScope}
           locationScope={locationScope}
+          liquidityOnly={liquidityOnly}
           onDateScopeChange={setDateScope}
           onLocationScopeChange={setLocationScope}
+          onLiquidityOnlyChange={setLiquidityOnly}
           meta={[`${timeOrderedEvents.length} visible`, `${liquidScopedEvents.length} with £`, `${events.length} fixtures`]}
           ariaLabel="Football dashboard filters"
         />
