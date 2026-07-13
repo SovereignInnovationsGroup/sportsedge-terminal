@@ -80,7 +80,6 @@ const FixtureTableRow = memo(function FixtureTableRow({
       <MoneyCell value={event.liquidityByExchange.monaco} currency="USD" />
       <MoneyCell value={event.liquidityByExchange.sx} />
       <MoneyCell value={event.liquidity} total />
-      <td className="mono">{event.latestSeenAt ? fullFixtureTime(event.latestSeenAt) : "watch"}</td>
     </tr>
   );
 }, (previous, next) => (
@@ -89,7 +88,6 @@ const FixtureTableRow = memo(function FixtureTableRow({
   && previous.event.name === next.event.name
   && previous.event.competition === next.event.competition
   && previous.event.startAt === next.event.startAt
-  && previous.event.latestSeenAt === next.event.latestSeenAt
   && previous.event.liquidity === next.event.liquidity
   && DASHBOARD_EXCHANGES.every((exchange) => (
     Number(previous.event.liquidityByExchange[exchange.key] || 0) === Number(next.event.liquidityByExchange[exchange.key] || 0)
@@ -121,7 +119,6 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
             <th>BX $ Now</th>
             <th>SX £ Now</th>
             <th>Total £ Now</th>
-            <th>Latest</th>
           </tr>
         </thead>
         <tbody>
@@ -129,8 +126,8 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
             const rowKey = event.id;
             return <FixtureTableRow event={event} key={rowKey} rowClass={eventRowClass(event)} rowKey={rowKey} />;
           })}
-          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={11}>No fixtures match the current filter.</td></tr>}
-          {loading && rows.length === 0 && <tr><td className="empty" colSpan={11}>Loading fixtures.</td></tr>}
+          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={10}>No fixtures match the current filter.</td></tr>}
+          {loading && rows.length === 0 && <tr><td className="empty" colSpan={10}>Loading fixtures.</td></tr>}
         </tbody>
       </table>
     </section>
