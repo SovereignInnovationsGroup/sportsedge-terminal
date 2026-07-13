@@ -46,6 +46,7 @@ export function SportDashboard({
   const isFootball = normalizedSport === "football";
   const [dateScope, setDateScope] = useState("all");
   const [locationScope, setLocationScope] = useState("all");
+  const [liquidityOnly, setLiquidityOnly] = useState(true);
   const [query, setQuery] = useState("");
   const [entities, setEntities] = useState<SportEntityRow[]>([]);
   const [entitiesLoading, setEntitiesLoading] = useState(false);
@@ -60,11 +61,15 @@ export function SportDashboard({
   } = useSportDashboardData({ normalizedSport, isFootball, espnScopeKey });
 
   const hasScopeFilter = locationFilters.length > 0;
-  const filteredEvents = useMemo(() => {
+  const scopedEvents = useMemo(() => {
     if (!isFootball && hasScopeFilter) return events.filter((event) => genericScopeMatches(event, dateScope, locationScope, locationFilters));
     if (!isFootball) return events;
     return events.filter((event) => footballScopeMatches(`${event.name} ${event.competition || ""}`, event.country, event.startAt, dateScope, locationScope));
   }, [events, isFootball, hasScopeFilter, dateScope, locationScope, locationFilters]);
+  const filteredEvents = useMemo(() => {
+    if (!isFootball || !liquidityOnly) return scopedEvents;
+    return scopedEvents.filter((event) => Number(event.liquidity || 0) > 0);
+  }, [scopedEvents, isFootball, liquidityOnly]);
 
   const todayRows = useMemo(() => filteredEvents.filter((event) => isTodayLocal(event.startAt)), [filteredEvents]);
   const tomorrowRows = useMemo(() => filteredEvents.filter((event) => isTomorrowLocal(event.startAt)), [filteredEvents]);
@@ -137,9 +142,11 @@ export function SportDashboard({
         <FootballScopeFilter
           dateScope={dateScope}
           locationScope={locationScope}
+          liquidityOnly={liquidityOnly}
           onDateScopeChange={setDateScope}
           onLocationScopeChange={setLocationScope}
-          meta={[`${filteredEvents.length} / ${events.length} fixtures`]}
+          onLiquidityOnlyChange={setLiquidityOnly}
+          meta={[`${filteredEvents.length} / ${scopedEvents.length} visible`, `${events.length} fixtures`]}
           ariaLabel="Football dashboard filters"
         />
       )}

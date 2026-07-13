@@ -9933,6 +9933,19 @@ button {
   border-bottom-color: var(--blue);
 }
 
+.agtest-subbar button.football-liquidity-toggle {
+  border: 1px solid rgba(46, 68, 91, 0.85);
+  border-radius: 4px;
+  height: 22px;
+  padding: 0 8px;
+}
+
+.agtest-subbar button.football-liquidity-toggle.active {
+  border-color: rgba(103, 232, 154, 0.72);
+  background: rgba(16, 185, 129, 0.14);
+  color: #7df2a8;
+}
+
 .agtest-subbar span {
   color: var(--muted);
   font-family: var(--mono);

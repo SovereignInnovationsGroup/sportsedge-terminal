@@ -7,15 +7,19 @@ import {
 export function FootballScopeFilter({
   dateScope,
   locationScope,
+  liquidityOnly,
   onDateScopeChange,
   onLocationScopeChange,
+  onLiquidityOnlyChange,
   meta,
   ariaLabel = "Football filters"
 }: {
   dateScope: string;
   locationScope: string;
+  liquidityOnly?: boolean;
   onDateScopeChange: (value: string) => void;
   onLocationScopeChange: (value: string) => void;
+  onLiquidityOnlyChange?: (value: boolean) => void;
   meta?: string[];
   ariaLabel?: string;
 }) {
@@ -44,6 +48,20 @@ export function FootballScopeFilter({
               {filter.label}
             </button>
           ))}
+          {onLiquidityOnlyChange && (
+            <>
+              <span className="agtest-filter-crumb">/</span>
+              <button
+                aria-pressed={Boolean(liquidityOnly)}
+                className={liquidityOnly ? "active football-liquidity-toggle" : "football-liquidity-toggle"}
+                type="button"
+                onClick={() => onLiquidityOnlyChange(!liquidityOnly)}
+                title={liquidityOnly ? "Showing only fixtures with visible exchange liquidity" : "Showing all fixtures, including zero-liquidity rows"}
+              >
+                HAS £
+              </button>
+            </>
+          )}
         </nav>
       </div>
       <div>
