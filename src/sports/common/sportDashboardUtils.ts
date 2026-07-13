@@ -39,6 +39,42 @@ export function isTomorrowLocal(value: string | null | undefined) {
   return Boolean(value) && localDateKey(value) === localDateKey(tomorrow);
 }
 
+const LIVE_FOOTBALL_STATUS_CODES = new Set(["1H", "2H", "HT", "ET", "BT", "P", "SUSP", "INT", "LIVE"]);
+
+export function fixtureStatusCode(event: Pick<SportEventRow, "statusShort">) {
+  return String(event.statusShort || "").trim().toUpperCase();
+}
+
+export function isLiveSportEvent(event: Pick<SportEventRow, "statusShort" | "statusLong">) {
+  const code = fixtureStatusCode(event);
+  if (LIVE_FOOTBALL_STATUS_CODES.has(code)) return true;
+  const text = String(event.statusLong || "").toLowerCase();
+  return text.includes("first half")
+    || text.includes("second half")
+    || text.includes("halftime")
+    || text.includes("extra time")
+    || text.includes("break time")
+    || text.includes("penalty in progress")
+    || text.includes("suspended")
+    || text.includes("interrupted");
+}
+
+export function fixtureStatusLabel(event: Pick<SportEventRow, "statusShort" | "statusLong" | "elapsed">) {
+  const code = fixtureStatusCode(event);
+  if (isLiveSportEvent(event)) {
+    if (event.elapsed != null && Number.isFinite(Number(event.elapsed)) && !["HT", "BT", "P"].includes(code)) {
+      return `${code || "LIVE"} ${Number(event.elapsed)}'`;
+    }
+    return code || "LIVE";
+  }
+  return code || "NS";
+}
+
+export function fixtureScoreLabel(event: Pick<SportEventRow, "scoreHome" | "scoreAway">) {
+  if (event.scoreHome == null || event.scoreAway == null) return "-";
+  return `${event.scoreHome}-${event.scoreAway}`;
+}
+
 function rowLatestObservedMs(row: BackendPriceRow) {
   return Math.max(0, ...Object.values(row.matches || {}).map((match) => {
     const observedAt = match?.observedAt;
@@ -144,6 +180,11 @@ export function mergeSportEvents(entries: SportEventRow[]) {
     existing.exchanges = Array.from(new Set([...existing.exchanges, ...entry.exchanges]));
     existing.country = existing.country || entry.country || null;
     existing.competition = existing.competition || entry.competition || null;
+    existing.statusShort = existing.statusShort || entry.statusShort || null;
+    existing.statusLong = existing.statusLong || entry.statusLong || null;
+    existing.elapsed = existing.elapsed ?? entry.elapsed ?? null;
+    existing.scoreHome = existing.scoreHome ?? entry.scoreHome ?? null;
+    existing.scoreAway = existing.scoreAway ?? entry.scoreAway ?? null;
     const entryLatest = entry.latestSeenAt ? new Date(entry.latestSeenAt).getTime() : 0;
     const existingLatest = existing.latestSeenAt ? new Date(existing.latestSeenAt).getTime() : 0;
     if (entryLatest > existingLatest) existing.latestSeenAt = entry.latestSeenAt;
@@ -170,6 +211,11 @@ export function footballFixtureToEvent(fixture: FootballFixtureRow): SportEventR
     competition: fixture.leagueName || null,
     country: fixture.country || null,
     startAt,
+    statusShort: fixture.statusShort || null,
+    statusLong: fixture.statusLong || null,
+    elapsed: fixture.elapsed ?? null,
+    scoreHome: fixture.goals?.home ?? null,
+    scoreAway: fixture.goals?.away ?? null,
     liquidity: 0,
     liquidityByExchange: Object.fromEntries(DASHBOARD_EXCHANGES.map((exchange) => [exchange.key, 0])),
     latestSeenAt: fixture.updatedAt || fixture.syncedAt || null,

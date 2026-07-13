@@ -9,7 +9,16 @@ import {
   SportLocationFilter,
   StandingRow
 } from "./sportDashboardTypes";
-import { formatExchangeMoney, newsHeadline, newsImpact, newsTag, newsTime } from "./sportDashboardUtils";
+import {
+  fixtureScoreLabel,
+  fixtureStatusLabel,
+  formatExchangeMoney,
+  isLiveSportEvent,
+  newsHeadline,
+  newsImpact,
+  newsTag,
+  newsTime
+} from "./sportDashboardUtils";
 
 function fullFixtureTime(value: string | null | undefined) {
   return localEventTime(value, {
@@ -71,6 +80,12 @@ const FixtureTableRow = memo(function FixtureTableRow({
   return (
     <tr className={rowClass} data-row-key={rowKey}>
       <td className="mono positive">{fullFixtureTime(event.startAt)}</td>
+      <td className="mono">
+        <span className={isLiveSportEvent(event) ? "fixture-status is-live" : "fixture-status"}>
+          {fixtureStatusLabel(event)}
+        </span>
+      </td>
+      <td className={isLiveSportEvent(event) ? "mono fixture-score is-live" : "mono fixture-score"}>{fixtureScoreLabel(event)}</td>
       <td><strong>{event.name || "Fixture pending"}</strong></td>
       <td>{event.competition || "Football"}</td>
       <td><ExchangeCoverageCell event={event} /></td>
@@ -88,6 +103,11 @@ const FixtureTableRow = memo(function FixtureTableRow({
   && previous.event.name === next.event.name
   && previous.event.competition === next.event.competition
   && previous.event.startAt === next.event.startAt
+  && previous.event.statusShort === next.event.statusShort
+  && previous.event.statusLong === next.event.statusLong
+  && previous.event.elapsed === next.event.elapsed
+  && previous.event.scoreHome === next.event.scoreHome
+  && previous.event.scoreAway === next.event.scoreAway
   && previous.event.liquidity === next.event.liquidity
   && DASHBOARD_EXCHANGES.every((exchange) => (
     Number(previous.event.liquidityByExchange[exchange.key] || 0) === Number(next.event.liquidityByExchange[exchange.key] || 0)
@@ -96,6 +116,7 @@ const FixtureTableRow = memo(function FixtureTableRow({
 
 export function FixtureTable({ title, rows, loading }: { title: string; rows: SportEventRow[]; loading: boolean }) {
   function eventRowClass(event: SportEventRow) {
+    if (isLiveSportEvent(event)) return "is-live-event";
     if (!eventHasPassed(event.startAt)) return "";
     return event.liquidity > 0 ? "is-started-event" : "is-past-event";
   }
@@ -110,6 +131,8 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
         <thead>
           <tr>
             <th>Time</th>
+            <th>State</th>
+            <th>Score</th>
             <th>Fixture</th>
             <th>Competition</th>
             <th>Coverage</th>
@@ -126,8 +149,8 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
             const rowKey = event.id;
             return <FixtureTableRow event={event} key={rowKey} rowClass={eventRowClass(event)} rowKey={rowKey} />;
           })}
-          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={10}>No fixtures match the current filter.</td></tr>}
-          {loading && rows.length === 0 && <tr><td className="empty" colSpan={10}>Loading fixtures.</td></tr>}
+          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={12}>No fixtures match the current filter.</td></tr>}
+          {loading && rows.length === 0 && <tr><td className="empty" colSpan={12}>Loading fixtures.</td></tr>}
         </tbody>
       </table>
     </section>

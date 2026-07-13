@@ -17,6 +17,7 @@ import {
   apiSportValue,
   formatExchangeMoney,
   genericScopeMatches,
+  isLiveSportEvent,
   isTodayLocal,
   isTomorrowLocal,
   newsHeadline
@@ -71,6 +72,9 @@ export function SportDashboard({
   const visibleEvents = isFootball && liquidityOnly ? liquidScopedEvents : scopedEvents;
   const timeOrderedEvents = useMemo(() => {
     return [...visibleEvents].sort((left, right) => {
+      const leftLiveRank = isLiveSportEvent(left) ? 0 : 1;
+      const rightLiveRank = isLiveSportEvent(right) ? 0 : 1;
+      if (leftLiveRank !== rightLiveRank) return leftLiveRank - rightLiveRank;
       const leftTime = left.startAt ? new Date(left.startAt).getTime() : Number.MAX_SAFE_INTEGER;
       const rightTime = right.startAt ? new Date(right.startAt).getTime() : Number.MAX_SAFE_INTEGER;
       if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) return leftTime - rightTime;
@@ -83,7 +87,7 @@ export function SportDashboard({
   const todayLiquidity = todayRows.reduce((sum, event) => sum + event.liquidity, 0);
   const exchangeCount = new Set(timeOrderedEvents.flatMap((event) => event.exchanges)).size;
   const nearTermRows = useMemo(() => [...todayRows, ...tomorrowRows]
-    .filter((event) => !eventHasPassed(event.startAt))
+    .filter((event) => isLiveSportEvent(event) || !eventHasPassed(event.startAt))
     .slice(0, 6), [todayRows, tomorrowRows]);
   const coveredRows = useMemo(() => timeOrderedEvents.filter((event) => event.exchanges.length > 0), [timeOrderedEvents]);
   const exchangeLiquidityRows = useMemo(() => DASHBOARD_EXCHANGES.map((exchange) => ({

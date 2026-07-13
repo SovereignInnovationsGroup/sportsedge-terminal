@@ -10992,7 +10992,7 @@ button {
 
 .sport-summary-fixtures table {
   width: 100%;
-  min-width: 1600px;
+  min-width: 1760px;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -11025,6 +11025,11 @@ button {
   opacity: 0.42;
 }
 
+.sport-summary-fixtures tbody tr.is-live-event td {
+  background: rgba(6, 78, 59, 0.22);
+  color: #d1fae5;
+}
+
 .sport-summary-fixtures tbody tr.is-started-event td {
   background: rgba(15, 23, 42, 0.58);
   color: rgba(226, 232, 240, 0.86);
@@ -11034,22 +11039,24 @@ button {
 .sport-summary-fixtures td:nth-child(1) { width: 178px; }
 
 .sport-summary-fixtures th:nth-child(2),
-.sport-summary-fixtures td:nth-child(2) { width: 420px; }
+.sport-summary-fixtures td:nth-child(2) { width: 94px; }
 
 .sport-summary-fixtures th:nth-child(3),
-.sport-summary-fixtures td:nth-child(3) { width: 190px; }
+.sport-summary-fixtures td:nth-child(3) { width: 78px; }
 
 .sport-summary-fixtures th:nth-child(4),
-.sport-summary-fixtures td:nth-child(4) {
+.sport-summary-fixtures td:nth-child(4) { width: 420px; }
+
+.sport-summary-fixtures th:nth-child(5),
+.sport-summary-fixtures td:nth-child(5) { width: 190px; }
+
+.sport-summary-fixtures th:nth-child(6),
+.sport-summary-fixtures td:nth-child(6) {
   width: 252px;
   overflow: visible;
   text-overflow: clip;
 }
 
-.sport-summary-fixtures th:nth-child(5),
-.sport-summary-fixtures td:nth-child(5),
-.sport-summary-fixtures th:nth-child(6),
-.sport-summary-fixtures td:nth-child(6),
 .sport-summary-fixtures th:nth-child(7),
 .sport-summary-fixtures td:nth-child(7),
 .sport-summary-fixtures th:nth-child(8),
@@ -11057,7 +11064,39 @@ button {
 .sport-summary-fixtures th:nth-child(9),
 .sport-summary-fixtures td:nth-child(9),
 .sport-summary-fixtures th:nth-child(10),
-.sport-summary-fixtures td:nth-child(10) { width: 88px; }
+.sport-summary-fixtures td:nth-child(10),
+.sport-summary-fixtures th:nth-child(11),
+.sport-summary-fixtures td:nth-child(11),
+.sport-summary-fixtures th:nth-child(12),
+.sport-summary-fixtures td:nth-child(12) { width: 88px; }
+
+.fixture-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  height: 22px;
+  border: 1px solid rgba(71, 85, 105, 0.75);
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.62);
+  color: rgba(203, 213, 225, 0.92);
+  font-size: 10px;
+  font-weight: 950;
+}
+
+.fixture-status.is-live {
+  border-color: rgba(16, 185, 129, 0.88);
+  background: rgba(6, 95, 70, 0.5);
+  color: #a7f3d0;
+}
+
+.fixture-score {
+  font-weight: 950;
+}
+
+.fixture-score.is-live {
+  color: #86efac;
+}
 
 .sport-summary-coverage span {
   min-width: 28px;

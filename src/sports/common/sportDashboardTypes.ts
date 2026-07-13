@@ -44,6 +44,11 @@ export type SportEventRow = {
   competition: string | null;
   country?: string | null;
   startAt: string | null;
+  statusShort?: string | null;
+  statusLong?: string | null;
+  elapsed?: number | null;
+  scoreHome?: number | null;
+  scoreAway?: number | null;
   liquidity: number;
   liquidityByExchange: Record<string, number>;
   latestSeenAt: string | null;
@@ -74,6 +79,10 @@ export type FootballFixtureRow = {
   country?: string | null;
   leagueName?: string | null;
   kickoffAt?: string | null;
+  statusShort?: string | null;
+  statusLong?: string | null;
+  elapsed?: number | null;
+  goals?: { home?: number | null; away?: number | null };
   syncedAt?: string | null;
   updatedAt?: string | null;
   home?: { name?: string | null };
