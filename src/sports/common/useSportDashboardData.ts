@@ -55,7 +55,7 @@ export function useSportDashboardData({
   espnScopeKey: string;
 }) {
   const snapshotKey = `sport-dashboard.${normalizedSport}.${espnScopeKey || "default"}`;
-  const cacheMaxAgeMs = isFootball ? 5_000 : 90_000;
+  const cacheMaxAgeMs = isFootball ? 120_000 : 90_000;
   const refreshIntervalMs = isFootball ? 5_000 : 15_000;
   const fixtureDays = isFootball ? "2" : "0";
   const cachedSnapshot = readSnapshot<SportDashboardSnapshot>(snapshotKey, cacheMaxAgeMs) || emptySportDashboardSnapshot();
@@ -131,9 +131,12 @@ export function useSportDashboardData({
               .map(capturedSportEventToEvent)
               .filter(Boolean) as SportEventRow[]
             : [];
-          baseEventRowsRef.current = isFootball ? fixtureEvents : capturedEvents;
+          const baseEvents = isFootball
+            ? (fixtureEvents.length > 0 ? fixtureEvents : baseEventRowsRef.current)
+            : capturedEvents;
+          baseEventRowsRef.current = baseEvents;
           const nextSnapshot: SportDashboardSnapshot = {
-            events: isFootball ? mergeSportEvents([...fixtureEvents, ...exchangeEvents]) : mergeSportEvents([...capturedEvents, ...exchangeEvents]),
+            events: mergeSportEvents([...baseEvents, ...exchangeEvents]),
             news: Array.isArray(newsPayload.items) ? newsPayload.items as NewsItem[] : [],
             standings: Array.isArray(standingsPayload.rows) ? standingsPayload.rows : [],
             standingsStatus: String(standingsPayload.sourceStatus || ""),

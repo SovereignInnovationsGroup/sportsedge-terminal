@@ -46,7 +46,6 @@ export function SportDashboard({
   const isFootball = normalizedSport === "football";
   const [dateScope, setDateScope] = useState("all");
   const [locationScope, setLocationScope] = useState("all");
-  const [liquidityOnly, setLiquidityOnly] = useState(false);
   const [query, setQuery] = useState("");
   const [entities, setEntities] = useState<SportEntityRow[]>([]);
   const [entitiesLoading, setEntitiesLoading] = useState(false);
@@ -66,18 +65,15 @@ export function SportDashboard({
     if (!isFootball) return events;
     return events.filter((event) => footballScopeMatches(`${event.name} ${event.competition || ""}`, event.country, event.startAt, dateScope, locationScope));
   }, [events, isFootball, hasScopeFilter, dateScope, locationScope, locationFilters]);
-  const filteredEvents = useMemo(() => {
-    if (!isFootball || !liquidityOnly) return scopedEvents;
-    return scopedEvents.filter((event) => Number(event.liquidity || 0) > 0);
-  }, [scopedEvents, isFootball, liquidityOnly]);
+  const liquidScopedEvents = useMemo(() => scopedEvents.filter((event) => Number(event.liquidity || 0) > 0), [scopedEvents]);
   const timeOrderedEvents = useMemo(() => {
-    return [...filteredEvents].sort((left, right) => {
+    return [...scopedEvents].sort((left, right) => {
       const leftTime = left.startAt ? new Date(left.startAt).getTime() : Number.MAX_SAFE_INTEGER;
       const rightTime = right.startAt ? new Date(right.startAt).getTime() : Number.MAX_SAFE_INTEGER;
       if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) return leftTime - rightTime;
       return String(left.name || "").localeCompare(String(right.name || ""));
     });
-  }, [filteredEvents]);
+  }, [scopedEvents]);
 
   const todayRows = useMemo(() => timeOrderedEvents.filter((event) => isTodayLocal(event.startAt)), [timeOrderedEvents]);
   const tomorrowRows = useMemo(() => timeOrderedEvents.filter((event) => isTomorrowLocal(event.startAt)), [timeOrderedEvents]);
@@ -145,11 +141,9 @@ export function SportDashboard({
         <FootballScopeFilter
           dateScope={dateScope}
           locationScope={locationScope}
-          liquidityOnly={liquidityOnly}
           onDateScopeChange={setDateScope}
           onLocationScopeChange={setLocationScope}
-          onLiquidityOnlyChange={setLiquidityOnly}
-          meta={[`${timeOrderedEvents.length} / ${scopedEvents.length} visible`, `${events.length} fixtures`]}
+          meta={[`${timeOrderedEvents.length} visible`, `${liquidScopedEvents.length} with £`, `${events.length} fixtures`]}
           ariaLabel="Football dashboard filters"
         />
       )}
