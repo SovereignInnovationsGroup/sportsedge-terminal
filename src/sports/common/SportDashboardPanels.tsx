@@ -129,7 +129,7 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
             const rowKey = event.id;
             return <FixtureTableRow event={event} key={rowKey} rowClass={eventRowClass(event)} rowKey={rowKey} />;
           })}
-          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={11}>No fixtures returned for this day.</td></tr>}
+          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={11}>No fixtures match the current filter.</td></tr>}
           {loading && rows.length === 0 && <tr><td className="empty" colSpan={11}>Loading fixtures.</td></tr>}
         </tbody>
       </table>

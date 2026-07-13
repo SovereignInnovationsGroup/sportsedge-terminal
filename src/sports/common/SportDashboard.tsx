@@ -96,7 +96,7 @@ export function SportDashboard({
     .map((event) => event.latestSeenAt ? new Date(event.latestSeenAt).getTime() : 0)
     .filter((value) => Number.isFinite(value) && value > 0)
     .sort((a, b) => b - a)[0];
-  const showDemoHolding = !loading && timeOrderedEvents.length === 0;
+  const showDemoHolding = !isFootball && !loading && timeOrderedEvents.length === 0;
   const activeSection = active.replace(`${sport}-`, "");
   const entityType = activeSection === "teams" ? "team" : activeSection === "players" || activeSection === "drivers" ? "player" : "";
   const isEntityPage = Boolean(entityType);
