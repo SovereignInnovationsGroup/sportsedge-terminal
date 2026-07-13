@@ -139,7 +139,6 @@ export function useSportDashboardData({
           setStandingsProvider(nextSnapshot.standingsProvider);
           const failed = [
             oddsResult.status === "rejected" ? "markets" : "",
-            newsResult.status === "rejected" ? "news" : "",
             fixturesResult.status === "rejected" ? "fixtures" : "",
             standingsResult.status === "rejected" ? "standings" : "",
             capturedEventsResult.status === "rejected" ? "events" : ""
