@@ -67,6 +67,7 @@ export function useSportDashboardData({
   const [loading, setLoading] = useState(cachedSnapshot.events.length === 0 && cachedSnapshot.news.length === 0 && cachedSnapshot.standings.length === 0);
   const [error, setError] = useState("");
   const footballMarketRowsRef = useRef<FootballBackendPriceRow[]>([]);
+  const hasRenderedDataRef = useRef(cachedSnapshot.events.length > 0 || cachedSnapshot.news.length > 0 || cachedSnapshot.standings.length > 0);
   const baseEventRowsRef = useRef<SportEventRow[]>(cachedSnapshot.events.map((event) => ({
     ...event,
     liquidity: 0,
@@ -107,11 +108,11 @@ export function useSportDashboardData({
         const marketSnapshotUrl = `/api/markets/snapshot?${oddsParams.toString()}`;
         const exchangeFallbackUrl = `/api/exchange-odds?${oddsParams.toString()}`;
         const [oddsResult, newsResult, fixturesResult, standingsResult, capturedEventsResult] = await Promise.allSettled([
-          withTimeout(fetchMarketSnapshotRows(marketSnapshotUrl, exchangeFallbackUrl), 3500, "markets"),
-          withTimeout(fetch(`/api/news?${newsParams.toString()}`, { cache: "no-store" }), 3000, "news"),
-          withTimeout(fixturesPromise, 3500, "fixtures"),
-          withTimeout(fetch(`/api/sports/standings?${standingsParams.toString()}`, { cache: "no-store" }), 3000, "standings"),
-          withTimeout(capturedEventsPromise, 3500, "captured events")
+          withTimeout(fetchMarketSnapshotRows(marketSnapshotUrl, exchangeFallbackUrl), 9000, "markets"),
+          withTimeout(fetch(`/api/news?${newsParams.toString()}`, { cache: "no-store" }), 6000, "news"),
+          withTimeout(fixturesPromise, 9000, "fixtures"),
+          withTimeout(fetch(`/api/sports/standings?${standingsParams.toString()}`, { cache: "no-store" }), 6000, "standings"),
+          withTimeout(capturedEventsPromise, 9000, "captured events")
         ]);
         const oddsRows = oddsResult.status === "fulfilled" && Array.isArray(oddsResult.value) ? oddsResult.value : [];
         if (isFootball) footballMarketRowsRef.current = oddsRows as FootballBackendPriceRow[];
@@ -144,22 +145,17 @@ export function useSportDashboardData({
           setStandings(nextSnapshot.standings);
           setStandingsStatus(nextSnapshot.standingsStatus);
           setStandingsProvider(nextSnapshot.standingsProvider);
+          hasRenderedDataRef.current = nextSnapshot.events.length > 0 || nextSnapshot.news.length > 0 || nextSnapshot.standings.length > 0;
           const failed = [
-            oddsResult.status === "rejected" ? "markets" : "",
             fixturesResult.status === "rejected" ? "fixtures" : "",
-            standingsResult.status === "rejected" ? "standings" : "",
-            capturedEventsResult.status === "rejected" ? "events" : ""
+            standingsResult.status === "rejected" && nextSnapshot.standings.length === 0 ? "standings" : "",
+            capturedEventsResult.status === "rejected" && !isFootball && nextSnapshot.events.length === 0 ? "events" : ""
           ].filter(Boolean);
-          setError(failed.length ? `Slow or unavailable: ${failed.join(", ")}` : "");
+          setError(failed.length && nextSnapshot.events.length === 0 ? `Slow or unavailable: ${failed.join(", ")}` : "");
         }
       } catch (err) {
         if (!cancelled) {
-          setEvents([]);
-          setNews([]);
-          setStandings([]);
-          setStandingsStatus("");
-          setStandingsProvider("");
-          setError(err instanceof Error ? err.message : "sport dashboard failed");
+          setError(hasRenderedDataRef.current ? "" : err instanceof Error ? err.message : "sport dashboard failed");
         }
       } finally {
         inFlight = false;
