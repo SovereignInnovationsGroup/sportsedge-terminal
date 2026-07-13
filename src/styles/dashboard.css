@@ -5506,16 +5506,6 @@ button {
   opacity: 0.62;
 }
 
-.fixture-exchange-cell.live-tick {
-  border-color: rgba(118, 255, 176, 0.72);
-  background: rgba(30, 255, 138, 0.12);
-  box-shadow: 0 0 0 1px rgba(30, 255, 138, 0.18), 0 0 18px rgba(30, 255, 138, 0.12);
-}
-
-.fixture-exchange-cell.live-tick small {
-  color: var(--green);
-}
-
 .arb-pill {
   display: inline-flex;
   align-items: center;
@@ -9944,44 +9934,6 @@ button {
   border-color: rgba(103, 232, 154, 0.72);
   background: rgba(16, 185, 129, 0.14);
   color: #7df2a8;
-}
-
-.sport-summary-fixtures td.liquidity-money {
-  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.sport-summary-fixtures td.money-flash-up {
-  animation: sport-money-flash-up 1.2s ease-out;
-}
-
-.sport-summary-fixtures td.money-flash-down {
-  animation: sport-money-flash-down 1.2s ease-out;
-}
-
-@keyframes sport-money-flash-up {
-  0% {
-    background: rgba(16, 185, 129, 0.42);
-    color: #7df2a8;
-    box-shadow: inset 0 0 0 1px rgba(103, 232, 154, 0.48);
-  }
-  100% {
-    background: transparent;
-    color: inherit;
-    box-shadow: inset 0 0 0 1px transparent;
-  }
-}
-
-@keyframes sport-money-flash-down {
-  0% {
-    background: rgba(239, 68, 68, 0.34);
-    color: #ff8f8f;
-    box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.42);
-  }
-  100% {
-    background: transparent;
-    color: inherit;
-    box-shadow: inset 0 0 0 1px transparent;
-  }
 }
 
 .agtest-subbar span {

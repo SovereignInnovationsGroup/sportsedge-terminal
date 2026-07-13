@@ -225,6 +225,14 @@ function stableDisplayRowKey(row: BackendPriceRow) {
   return normalizeFixtureText(`${fixtureName} ${String(row.startAt || "").slice(0, 16)}`);
 }
 
+function stableFixtureRowKey(fixture: FootballFixture) {
+  const fixtureName = normalizeFixtureText(footballFixtureName(fixture))
+    .replace(/\bvs\b/g, " v ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return normalizeFixtureText(`${fixtureName} ${String(fixture.kickoffAt || "").slice(0, 16)}`) || String(fixture.id);
+}
+
 function marketSortRank(row: BackendPriceRow) {
   const text = normalizeFixtureText(`${row.marketType || ""} ${row.marketName || ""}`);
   if (text.includes("match odds") || text.includes("match result") || text.includes("one x two")) return 0;
@@ -576,8 +584,9 @@ export function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendP
   const fixtureRows = cleanFootballFixtures(fixtures).filter((fixture) => !eventHasPassed(fixture.kickoffAt)).map((fixture) => {
     const backend = findMarketRowForFootballFixture(fixture, displayRows);
     if (backend) matchedBackendRowIds.add(stableDisplayRowKey(backend) || backend.id);
+    const fixtureRowId = stableFixtureRowKey(fixture);
     const base = backend ? agRowFromBackend(backend) : {
-      id: fixture.id,
+      id: fixtureRowId,
       startAt: fixture.kickoffAt,
       kickoff: formatFootballFixtureTime(fixture),
       match: footballFixtureName(fixture),
@@ -599,7 +608,7 @@ export function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendP
       sxLiquidity: "-",
       fresh: "watch"
     };
-    return { ...base, id: fixture.id, startAt: fixture.kickoffAt, kickoff: formatFootballFixtureTime(fixture), match: footballFixtureName(fixture), competition: footballFixtureCompetition(fixture), country: fixture.country };
+    return { ...base, id: fixtureRowId, startAt: fixture.kickoffAt, kickoff: formatFootballFixtureTime(fixture), match: footballFixtureName(fixture), competition: footballFixtureCompetition(fixture), country: fixture.country };
   });
 
   const backendOnlyRows = displayRows

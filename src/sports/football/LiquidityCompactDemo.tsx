@@ -184,24 +184,37 @@ export default function LiquidityCompactDemo() {
   const socketRef = useRef<WebSocket | null>(null);
   const pendingPriceEventsRef = useRef<Array<{ channel: string; payload: unknown }>>([]);
   const priceFlushTimerRef = useRef<number | null>(null);
+  const rowOrderRef = useRef(new Map<string, number>());
   const allRows = useMemo(() => compactRowsFromBackend(backendRows), [backendRows]);
-  const rows = useMemo(() => allRows.filter((row) => {
-    if (!footballScopeMatches(`${row.match} ${row.competition}`, row.country, row.startAt, dateScope, locationScope)) return false;
-    const terms = normalizeFixtureText(searchQuery).split(" ").filter(Boolean);
-    if (!terms.length) return true;
-    const haystack = normalizeFixtureText([
-      row.kickoff,
-      row.match,
-      row.competition,
-      row.country || "",
-      row.coverage.filter((exchange) => exchange.available).map((exchange) => exchange.label).join(" "),
-      row.best?.label || "",
-      row.best?.price || "",
-      row.total,
-      row.fresh
-    ].join(" "));
-    return terms.every((term) => haystack.includes(term));
-  }), [allRows, dateScope, locationScope, searchQuery]);
+  const rows = useMemo(() => {
+    const filteredRows = allRows.filter((row) => {
+      if (!footballScopeMatches(`${row.match} ${row.competition}`, row.country, row.startAt, dateScope, locationScope)) return false;
+      const terms = normalizeFixtureText(searchQuery).split(" ").filter(Boolean);
+      if (!terms.length) return true;
+      const haystack = normalizeFixtureText([
+        row.kickoff,
+        row.match,
+        row.competition,
+        row.country || "",
+        row.coverage.filter((exchange) => exchange.available).map((exchange) => exchange.label).join(" "),
+        row.best?.label || "",
+        row.best?.price || "",
+        row.total,
+        row.fresh
+      ].join(" "));
+      return terms.every((term) => haystack.includes(term));
+    });
+    filteredRows.forEach((row) => {
+      if (!rowOrderRef.current.has(row.id)) {
+        rowOrderRef.current.set(row.id, rowOrderRef.current.size);
+      }
+    });
+    return [...filteredRows].sort((left, right) => {
+      const leftOrder = rowOrderRef.current.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = rowOrderRef.current.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+      return leftOrder - rightOrder;
+    });
+  }, [allRows, dateScope, locationScope, searchQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -389,6 +402,7 @@ export default function LiquidityCompactDemo() {
           <AgGridReact
             rowData={rows}
             columnDefs={columnDefs}
+            getRowId={(params) => params.data.id}
             loading={!initialSnapshotLoaded && rows.length === 0}
             overlayNoRowsTemplate="<span></span>"
             overlayLoadingTemplate="<span></span>"
@@ -397,7 +411,6 @@ export default function LiquidityCompactDemo() {
             onCellMouseOut={() => setHoverDetails(null)}
             rowHeight={46}
             headerHeight={34}
-            animateRows
             suppressCellFocus
             defaultColDef={{ sortable: true, resizable: true, filter: false, suppressHeaderMenuButton: true }}
           />

@@ -63,12 +63,25 @@ export default function Liquidity() {
   const socketRef = useRef<WebSocket | null>(null);
   const pendingPriceEventsRef = useRef<Array<{ channel: string; payload: unknown }>>([]);
   const priceFlushTimerRef = useRef<number | null>(null);
+  const rowOrderRef = useRef(new Map<string, number>());
   const allRows = useMemo(() => buildAgTestRows(fixtures, backendRows), [fixtures, backendRows]);
   const hasDemoRows = useMemo(() => allRows.some((row) => row.isDemo), [allRows]);
   const groupedRows = useMemo(() => allRows.filter((row) => (
     footballScopeMatches(`${row.match} ${row.competition}`, row.country, row.startAt, dateScope, locationScope)
   )), [allRows, dateScope, locationScope]);
-  const rows = useMemo(() => filterAgTestRows(groupedRows, searchQuery), [groupedRows, searchQuery]);
+  const rows = useMemo(() => {
+    const nextRows = filterAgTestRows(groupedRows, searchQuery);
+    nextRows.forEach((row) => {
+      if (!rowOrderRef.current.has(row.id)) {
+        rowOrderRef.current.set(row.id, rowOrderRef.current.size);
+      }
+    });
+    return [...nextRows].sort((left, right) => {
+      const leftOrder = rowOrderRef.current.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = rowOrderRef.current.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+      return leftOrder - rightOrder;
+    });
+  }, [groupedRows, searchQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -321,6 +334,7 @@ export default function Liquidity() {
           <AgGridReact
             rowData={rows}
             columnDefs={columnDefs}
+            getRowId={(params) => params.data.id}
             onGridReady={(event) => {
               const state = readLiquidityColumnState();
               if (state.length) event.api.applyColumnState({ state, applyOrder: true });
@@ -341,7 +355,6 @@ export default function Liquidity() {
             onCellMouseOut={() => setHoverDetails(null)}
             rowHeight={36}
             headerHeight={34}
-            animateRows
             suppressCellFocus
             defaultColDef={{ sortable: true, resizable: true, filter: false, suppressHeaderMenuButton: true }}
           />

@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useMemo } from "react";
 import { eventHasPassed, localEventTime } from "../../core/format";
 import {
   DASHBOARD_EXCHANGES,
@@ -32,7 +32,7 @@ export function ExchangeCoverageCell({ event }: { event: SportEventRow }) {
   );
 }
 
-const FlashingMoneyCell = memo(function FlashingMoneyCell({
+const MoneyCell = memo(function MoneyCell({
   value,
   currency = "GBP",
   total = false
@@ -42,23 +42,9 @@ const FlashingMoneyCell = memo(function FlashingMoneyCell({
   total?: boolean;
 }) {
   const numeric = Number(value || 0);
-  const previousRef = useRef(numeric);
-  const [flash, setFlash] = useState<"up" | "down" | "">("");
-
-  useEffect(() => {
-    const previous = previousRef.current;
-    if (Number.isFinite(numeric) && Number.isFinite(previous) && numeric !== previous) {
-      setFlash(numeric > previous ? "up" : "down");
-      const timer = window.setTimeout(() => setFlash(""), 1200);
-      previousRef.current = numeric;
-      return () => window.clearTimeout(timer);
-    }
-    previousRef.current = numeric;
-    return undefined;
-  }, [numeric]);
 
   return (
-    <td className={`mono liquidity-money ${total ? "total" : ""} ${flash ? `money-flash-${flash}` : ""}`}>
+    <td className={`mono liquidity-money ${total ? "total" : ""}`}>
       {formatPopulatedMoney(numeric, currency)}
     </td>
   );
@@ -79,12 +65,12 @@ const FixtureTableRow = memo(function FixtureTableRow({
       <td><strong>{event.name || "Fixture pending"}</strong></td>
       <td>{event.competition || "Football"}</td>
       <td><ExchangeCoverageCell event={event} /></td>
-      <FlashingMoneyCell value={event.liquidityByExchange.betfair} />
-      <FlashingMoneyCell value={event.liquidityByExchange.matchbook} />
-      <FlashingMoneyCell value={event.liquidityByExchange.polymarket} currency="USD" />
-      <FlashingMoneyCell value={event.liquidityByExchange.monaco} currency="USD" />
-      <FlashingMoneyCell value={event.liquidityByExchange.sx} />
-      <FlashingMoneyCell value={event.liquidity} total />
+      <MoneyCell value={event.liquidityByExchange.betfair} />
+      <MoneyCell value={event.liquidityByExchange.matchbook} />
+      <MoneyCell value={event.liquidityByExchange.polymarket} currency="USD" />
+      <MoneyCell value={event.liquidityByExchange.monaco} currency="USD" />
+      <MoneyCell value={event.liquidityByExchange.sx} />
+      <MoneyCell value={event.liquidity} total />
       <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "watch"}</td>
     </tr>
   );
@@ -131,7 +117,7 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
         </thead>
         <tbody>
           {rows.map((event) => {
-            const rowKey = `${title}-${event.id}-${event.startAt}`;
+            const rowKey = event.id;
             return <FixtureTableRow event={event} key={rowKey} rowClass={eventRowClass(event)} rowKey={rowKey} />;
           })}
           {!loading && rows.length === 0 && <tr><td className="empty" colSpan={11}>No fixtures returned for this day.</td></tr>}
