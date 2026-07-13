@@ -410,7 +410,12 @@ export function mergeMarketStateRows(rows: BackendPriceRow[], payload: unknown, 
 
 function displayStartTime(row: BackendPriceRow) {
   if (!row.startAt) return "-";
-  return localEventTime(row.startAt, { day: "2-digit", month: "short" });
+  return localEventTime(row.startAt, {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "2-digit"
+  });
 }
 
 function displayEventName(name: string) {
@@ -443,7 +448,12 @@ function inferCountryFromCompetition(value: string | null | undefined) {
 
 function formatFootballFixtureTime(fixture: FootballFixture) {
   if (!fixture.kickoffAt) return "-";
-  return localEventTime(fixture.kickoffAt, { day: "2-digit", month: "short" });
+  return localEventTime(fixture.kickoffAt, {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "2-digit"
+  });
 }
 
 function exchangeCoverage(row?: BackendPriceRow) {

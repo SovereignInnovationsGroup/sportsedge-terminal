@@ -67,6 +67,12 @@ export function useSportDashboardData({
   const [loading, setLoading] = useState(cachedSnapshot.events.length === 0 && cachedSnapshot.news.length === 0 && cachedSnapshot.standings.length === 0);
   const [error, setError] = useState("");
   const footballMarketRowsRef = useRef<FootballBackendPriceRow[]>([]);
+  const baseEventRowsRef = useRef<SportEventRow[]>(cachedSnapshot.events.map((event) => ({
+    ...event,
+    liquidity: 0,
+    liquidityByExchange: Object.fromEntries(DASHBOARD_EXCHANGES.map((exchange) => [exchange.key, 0])),
+    exchanges: []
+  })));
 
   useEffect(() => {
     let cancelled = false;
@@ -124,6 +130,7 @@ export function useSportDashboardData({
               .map(capturedSportEventToEvent)
               .filter(Boolean) as SportEventRow[]
             : [];
+          baseEventRowsRef.current = isFootball ? fixtureEvents : capturedEvents;
           const nextSnapshot: SportDashboardSnapshot = {
             events: isFootball ? mergeSportEvents([...fixtureEvents, ...exchangeEvents]) : mergeSportEvents([...capturedEvents, ...exchangeEvents]),
             news: Array.isArray(newsPayload.items) ? newsPayload.items as NewsItem[] : [],
@@ -188,7 +195,7 @@ export function useSportDashboardData({
     function applyFootballMarketRows(nextRows: FootballBackendPriceRow[]) {
       footballMarketRowsRef.current = nextRows;
       const exchangeEvents = mergeEvents(nextRows as unknown as BackendPriceRow[], normalizedSport);
-      setEvents((currentEvents) => mergeSportEvents([...currentEvents, ...exchangeEvents]));
+      setEvents(mergeSportEvents([...baseEventRowsRef.current, ...exchangeEvents]));
     }
 
     function flushPriceEvents() {

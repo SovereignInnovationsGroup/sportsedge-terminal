@@ -11,6 +11,15 @@ import {
 } from "./sportDashboardTypes";
 import { formatExchangeMoney, newsHeadline, newsImpact, newsTag, newsTime } from "./sportDashboardUtils";
 
+function fullFixtureTime(value: string | null | undefined) {
+  return localEventTime(value, {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "2-digit"
+  });
+}
+
 function formatPopulatedMoney(value: number | null | undefined, currency = "GBP") {
   const numeric = Number(value || 0);
   if (numeric <= 0 || !Number.isFinite(numeric)) return currency === "USD" ? "$0" : "£0";
@@ -61,7 +70,7 @@ const FixtureTableRow = memo(function FixtureTableRow({
 }) {
   return (
     <tr className={rowClass} data-row-key={rowKey}>
-      <td className="mono positive">{localEventTime(event.startAt)}</td>
+      <td className="mono positive">{fullFixtureTime(event.startAt)}</td>
       <td><strong>{event.name || "Fixture pending"}</strong></td>
       <td>{event.competition || "Football"}</td>
       <td><ExchangeCoverageCell event={event} /></td>
@@ -71,7 +80,7 @@ const FixtureTableRow = memo(function FixtureTableRow({
       <MoneyCell value={event.liquidityByExchange.monaco} currency="USD" />
       <MoneyCell value={event.liquidityByExchange.sx} />
       <MoneyCell value={event.liquidity} total />
-      <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "watch"}</td>
+      <td className="mono">{event.latestSeenAt ? fullFixtureTime(event.latestSeenAt) : "watch"}</td>
     </tr>
   );
 }, (previous, next) => (

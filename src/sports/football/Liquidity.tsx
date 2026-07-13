@@ -63,7 +63,6 @@ export default function Liquidity() {
   const socketRef = useRef<WebSocket | null>(null);
   const pendingPriceEventsRef = useRef<Array<{ channel: string; payload: unknown }>>([]);
   const priceFlushTimerRef = useRef<number | null>(null);
-  const rowOrderRef = useRef(new Map<string, number>());
   const allRows = useMemo(() => buildAgTestRows(fixtures, backendRows), [fixtures, backendRows]);
   const hasDemoRows = useMemo(() => allRows.some((row) => row.isDemo), [allRows]);
   const groupedRows = useMemo(() => allRows.filter((row) => (
@@ -71,15 +70,11 @@ export default function Liquidity() {
   )), [allRows, dateScope, locationScope]);
   const rows = useMemo(() => {
     const nextRows = filterAgTestRows(groupedRows, searchQuery);
-    nextRows.forEach((row) => {
-      if (!rowOrderRef.current.has(row.id)) {
-        rowOrderRef.current.set(row.id, rowOrderRef.current.size);
-      }
-    });
     return [...nextRows].sort((left, right) => {
-      const leftOrder = rowOrderRef.current.get(left.id) ?? Number.MAX_SAFE_INTEGER;
-      const rightOrder = rowOrderRef.current.get(right.id) ?? Number.MAX_SAFE_INTEGER;
-      return leftOrder - rightOrder;
+      const leftTime = left.startAt ? new Date(left.startAt).getTime() : Number.MAX_SAFE_INTEGER;
+      const rightTime = right.startAt ? new Date(right.startAt).getTime() : Number.MAX_SAFE_INTEGER;
+      if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) return leftTime - rightTime;
+      return String(left.match || "").localeCompare(String(right.match || ""));
     });
   }, [groupedRows, searchQuery]);
 
@@ -234,7 +229,7 @@ export default function Liquidity() {
   }, []);
 
   const columnDefs = useMemo<ColDef<AgTestRow>[]>(() => [
-    { field: "kickoff", headerName: "Time", width: 132, minWidth: 124, pinned: "left" },
+    { field: "kickoff", headerName: "Time", width: 178, minWidth: 168, pinned: "left" },
     {
       field: "match",
       headerName: "Fixture",

@@ -124,12 +124,17 @@ function exchangeOddsRowToEvent(row: BackendPriceRow, fallbackSport: string): Sp
 
 export function mergeSportEvents(entries: SportEventRow[]) {
   const merged = new Map<string, SportEventRow>();
+  const cloneEvent = (entry: SportEventRow): SportEventRow => ({
+    ...entry,
+    liquidityByExchange: { ...entry.liquidityByExchange },
+    exchanges: [...entry.exchanges]
+  });
   entries.forEach((entry) => {
     if (!entry) return;
     const key = eventKey(entry);
     const existing = merged.get(key) || Array.from(merged.values()).find((candidate) => sameFixtureDay(candidate, entry));
     if (!existing) {
-      merged.set(key, entry);
+      merged.set(key, cloneEvent(entry));
       return;
     }
     existing.liquidity += entry.liquidity;

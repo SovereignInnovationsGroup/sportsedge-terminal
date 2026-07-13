@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { eventHasPassed, localEventTime } from "../../core/format";
 import { FootballScopeFilter } from "../football/FootballScopeFilter";
@@ -46,12 +46,11 @@ export function SportDashboard({
   const isFootball = normalizedSport === "football";
   const [dateScope, setDateScope] = useState("all");
   const [locationScope, setLocationScope] = useState("all");
-  const [liquidityOnly, setLiquidityOnly] = useState(true);
+  const [liquidityOnly, setLiquidityOnly] = useState(false);
   const [query, setQuery] = useState("");
   const [entities, setEntities] = useState<SportEntityRow[]>([]);
   const [entitiesLoading, setEntitiesLoading] = useState(false);
   const [entitiesError, setEntitiesError] = useState("");
-  const eventOrderRef = useRef(new Map<string, number>());
   const espnScopeKey = espnScopes.join(",");
   const {
     events,
@@ -71,37 +70,33 @@ export function SportDashboard({
     if (!isFootball || !liquidityOnly) return scopedEvents;
     return scopedEvents.filter((event) => Number(event.liquidity || 0) > 0);
   }, [scopedEvents, isFootball, liquidityOnly]);
-  const orderedEvents = useMemo(() => {
-    filteredEvents.forEach((event) => {
-      if (!eventOrderRef.current.has(event.id)) {
-        eventOrderRef.current.set(event.id, eventOrderRef.current.size);
-      }
-    });
+  const timeOrderedEvents = useMemo(() => {
     return [...filteredEvents].sort((left, right) => {
-      const leftOrder = eventOrderRef.current.get(left.id) ?? Number.MAX_SAFE_INTEGER;
-      const rightOrder = eventOrderRef.current.get(right.id) ?? Number.MAX_SAFE_INTEGER;
-      return leftOrder - rightOrder;
+      const leftTime = left.startAt ? new Date(left.startAt).getTime() : Number.MAX_SAFE_INTEGER;
+      const rightTime = right.startAt ? new Date(right.startAt).getTime() : Number.MAX_SAFE_INTEGER;
+      if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) return leftTime - rightTime;
+      return String(left.name || "").localeCompare(String(right.name || ""));
     });
   }, [filteredEvents]);
 
-  const todayRows = useMemo(() => orderedEvents.filter((event) => isTodayLocal(event.startAt)), [orderedEvents]);
-  const tomorrowRows = useMemo(() => orderedEvents.filter((event) => isTomorrowLocal(event.startAt)), [orderedEvents]);
+  const todayRows = useMemo(() => timeOrderedEvents.filter((event) => isTodayLocal(event.startAt)), [timeOrderedEvents]);
+  const tomorrowRows = useMemo(() => timeOrderedEvents.filter((event) => isTomorrowLocal(event.startAt)), [timeOrderedEvents]);
   const todayLiquidity = todayRows.reduce((sum, event) => sum + event.liquidity, 0);
-  const exchangeCount = new Set(orderedEvents.flatMap((event) => event.exchanges)).size;
+  const exchangeCount = new Set(timeOrderedEvents.flatMap((event) => event.exchanges)).size;
   const nearTermRows = useMemo(() => [...todayRows, ...tomorrowRows]
     .filter((event) => !eventHasPassed(event.startAt))
     .slice(0, 6), [todayRows, tomorrowRows]);
-  const coveredRows = useMemo(() => orderedEvents.filter((event) => event.exchanges.length > 0), [orderedEvents]);
+  const coveredRows = useMemo(() => timeOrderedEvents.filter((event) => event.exchanges.length > 0), [timeOrderedEvents]);
   const exchangeLiquidityRows = useMemo(() => DASHBOARD_EXCHANGES.map((exchange) => ({
     ...exchange,
-    liquidity: orderedEvents.reduce((sum, event) => sum + Number(event.liquidityByExchange[exchange.key] || 0), 0),
-    eventCount: orderedEvents.filter((event) => Number(event.liquidityByExchange[exchange.key] || 0) > 0).length
-  })).filter((row) => row.liquidity > 0 || row.eventCount > 0), [orderedEvents]);
-  const latestTick = orderedEvents
+    liquidity: timeOrderedEvents.reduce((sum, event) => sum + Number(event.liquidityByExchange[exchange.key] || 0), 0),
+    eventCount: timeOrderedEvents.filter((event) => Number(event.liquidityByExchange[exchange.key] || 0) > 0).length
+  })).filter((row) => row.liquidity > 0 || row.eventCount > 0), [timeOrderedEvents]);
+  const latestTick = timeOrderedEvents
     .map((event) => event.latestSeenAt ? new Date(event.latestSeenAt).getTime() : 0)
     .filter((value) => Number.isFinite(value) && value > 0)
     .sort((a, b) => b - a)[0];
-  const showDemoHolding = !loading && orderedEvents.length === 0;
+  const showDemoHolding = !loading && timeOrderedEvents.length === 0;
   const activeSection = active.replace(`${sport}-`, "");
   const entityType = activeSection === "teams" ? "team" : activeSection === "players" || activeSection === "drivers" ? "player" : "";
   const isEntityPage = Boolean(entityType);
@@ -154,7 +149,7 @@ export function SportDashboard({
           onDateScopeChange={setDateScope}
           onLocationScopeChange={setLocationScope}
           onLiquidityOnlyChange={setLiquidityOnly}
-          meta={[`${orderedEvents.length} / ${scopedEvents.length} visible`, `${events.length} fixtures`]}
+          meta={[`${timeOrderedEvents.length} / ${scopedEvents.length} visible`, `${events.length} fixtures`]}
           ariaLabel="Football dashboard filters"
         />
       )}
@@ -166,7 +161,7 @@ export function SportDashboard({
           locationFilters={locationFilters}
           onDateScopeChange={setDateScope}
           onLocationScopeChange={setLocationScope}
-          meta={[`${orderedEvents.length} / ${events.length} events`]}
+          meta={[`${timeOrderedEvents.length} / ${events.length} events`]}
           ariaLabel={scopeLabel || `${label} dashboard filters`}
         />
       )}
@@ -196,9 +191,9 @@ export function SportDashboard({
                 loading={loading}
               />
             ) : isLiquidityPage || isBiasPage ? (
-              <FixtureTable title={isBiasPage ? "Bias / Liquidity Board" : "Liquidity Board"} rows={orderedEvents} loading={loading} />
+              <FixtureTable title={isBiasPage ? "Bias / Liquidity Board" : "Liquidity Board"} rows={timeOrderedEvents} loading={loading} />
             ) : isResultsPage ? (
-              <FixtureTable title="Event Calendar / Results" rows={orderedEvents} loading={loading} />
+              <FixtureTable title="Event Calendar / Results" rows={timeOrderedEvents} loading={loading} />
             ) : isInjuriesPage ? (
               <SportStandingByBoard label={label} espnScopes={espnScopes} dataStatus={`${label} injury feed configured when provider rows are available.`} />
             ) : (
@@ -221,12 +216,12 @@ export function SportDashboard({
                         <tbody>
                           {nearTermRows.map((event) => (
                             <tr key={`command-${event.id}-${event.startAt}`}>
-                              <td className="mono positive">{localEventTime(event.startAt)}</td>
+                              <td className="mono positive">{localEventTime(event.startAt, { weekday: "short", day: "2-digit", month: "short", year: "2-digit" })}</td>
                               <td><strong>{event.name}</strong></td>
                               <td>{event.competition || "-"}</td>
                               <td><ExchangeCoverageCell event={event} /></td>
                               <td className="mono liquidity-money total">{formatExchangeMoney(event.liquidity, "GBP")}</td>
-                              <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt) : "-"}</td>
+                              <td className="mono">{event.latestSeenAt ? localEventTime(event.latestSeenAt, { weekday: "short", day: "2-digit", month: "short", year: "2-digit" }) : "-"}</td>
                             </tr>
                           ))}
                           {!loading && nearTermRows.length === 0 && <tr><td className="empty" colSpan={6}>No near-term events returned for the current filter.</td></tr>}
@@ -237,7 +232,7 @@ export function SportDashboard({
                     <div className="sport-command-panel sport-command-intel">
                       <header><span>Sport Intel</span><strong>{news.length}</strong></header>
                       <div>
-                        <article><span>Covered events</span><strong>{coveredRows.length}</strong><em>{orderedEvents.length} total in view</em></article>
+                        <article><span>Covered events</span><strong>{coveredRows.length}</strong><em>{timeOrderedEvents.length} total in view</em></article>
                         <article><span>Exchange venues</span><strong>{exchangeCount || "-"}</strong><em>{exchangeLiquidityRows.length ? "liquidity visible" : "waiting for venue rows"}</em></article>
                         <article><span>News tape</span><strong>{news.length ? "Live" : loading ? "Loading" : "Quiet"}</strong><em>{news[0] ? newsHeadline(news[0]) : `${label} news rail remains filtered.`}</em></article>
                       </div>
@@ -247,7 +242,7 @@ export function SportDashboard({
                 {showDemoHolding ? (
                   <SportStandingByBoard label={label} espnScopes={espnScopes} dataStatus={dataStatus} />
                 ) : isFootball ? (
-                  <FixtureTable title="Fixtures" rows={orderedEvents} loading={loading} />
+                  <FixtureTable title="Fixtures" rows={timeOrderedEvents} loading={loading} />
                 ) : (
                   <>
                     {showDefaultStandings && (

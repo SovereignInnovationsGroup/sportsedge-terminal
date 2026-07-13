@@ -53,7 +53,12 @@ type CompactLiquidityRow = {
 
 function displayStartTime(row: BackendPriceRow) {
   if (!row.startAt) return "-";
-  return localEventTime(row.startAt, { day: "2-digit", month: "short" });
+  return localEventTime(row.startAt, {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "2-digit"
+  });
 }
 
 function displayEventName(name: string) {
@@ -184,7 +189,6 @@ export default function LiquidityCompactDemo() {
   const socketRef = useRef<WebSocket | null>(null);
   const pendingPriceEventsRef = useRef<Array<{ channel: string; payload: unknown }>>([]);
   const priceFlushTimerRef = useRef<number | null>(null);
-  const rowOrderRef = useRef(new Map<string, number>());
   const allRows = useMemo(() => compactRowsFromBackend(backendRows), [backendRows]);
   const rows = useMemo(() => {
     const filteredRows = allRows.filter((row) => {
@@ -204,15 +208,11 @@ export default function LiquidityCompactDemo() {
       ].join(" "));
       return terms.every((term) => haystack.includes(term));
     });
-    filteredRows.forEach((row) => {
-      if (!rowOrderRef.current.has(row.id)) {
-        rowOrderRef.current.set(row.id, rowOrderRef.current.size);
-      }
-    });
     return [...filteredRows].sort((left, right) => {
-      const leftOrder = rowOrderRef.current.get(left.id) ?? Number.MAX_SAFE_INTEGER;
-      const rightOrder = rowOrderRef.current.get(right.id) ?? Number.MAX_SAFE_INTEGER;
-      return leftOrder - rightOrder;
+      const leftTime = left.startAt ? new Date(left.startAt).getTime() : Number.MAX_SAFE_INTEGER;
+      const rightTime = right.startAt ? new Date(right.startAt).getTime() : Number.MAX_SAFE_INTEGER;
+      if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) return leftTime - rightTime;
+      return String(left.match || "").localeCompare(String(right.match || ""));
     });
   }, [allRows, dateScope, locationScope, searchQuery]);
 
@@ -311,7 +311,7 @@ export default function LiquidityCompactDemo() {
   }, []);
 
   const columnDefs = useMemo<ColDef<CompactLiquidityRow>[]>(() => [
-    { field: "kickoff", headerName: "Time", width: 108, minWidth: 102 },
+    { field: "kickoff", headerName: "Time", width: 178, minWidth: 168 },
     {
       field: "match",
       headerName: "Fixture",
