@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { readSnapshot, writeSnapshot } from "../../core/snapshotCache";
 import {
+  cachedFootballLiquidityRows,
   fetchMarketSnapshotRows,
   isPrimaryTradingMarket,
   mergeLivePriceRows,
   mergeMarketStateRows,
   sportsEdgeWsUrl,
+  storeFootballLiquidity,
   type BackendPriceRow as FootballBackendPriceRow
 } from "../football/marketData";
 import {
@@ -45,6 +47,18 @@ function emptySportDashboardSnapshot(): SportDashboardSnapshot {
   };
 }
 
+const FOOTBALL_MARKET_STALE_MS = 120_000;
+
+function footballRowsHaveLiquidity(rows: FootballBackendPriceRow[]) {
+  return rows.some((row) => DASHBOARD_EXCHANGES.some((exchange) => {
+    const aggregate = Number(row.aggregateLiquidityByExchange?.[exchange.key] || 0);
+    if (aggregate > 0) return true;
+    return (row.matches?.[exchange.key]?.runners || []).some((runner) => (
+      Number(runner.back?.amount || 0) > 0 || Number(runner.lay?.amount || 0) > 0
+    ));
+  }));
+}
+
 export function useSportDashboardData({
   normalizedSport,
   isFootball,
@@ -66,7 +80,8 @@ export function useSportDashboardData({
   const [standingsProvider, setStandingsProvider] = useState(cachedSnapshot.standingsProvider);
   const [loading, setLoading] = useState(cachedSnapshot.events.length === 0 && cachedSnapshot.news.length === 0 && cachedSnapshot.standings.length === 0);
   const [error, setError] = useState("");
-  const footballMarketRowsRef = useRef<FootballBackendPriceRow[]>([]);
+  const footballMarketRowsRef = useRef<FootballBackendPriceRow[]>(isFootball ? cachedFootballLiquidityRows(FOOTBALL_MARKET_STALE_MS) : []);
+  const footballMarketRowsAtRef = useRef(footballMarketRowsRef.current.length ? Date.now() : 0);
   const hasRenderedDataRef = useRef(cachedSnapshot.events.length > 0 || cachedSnapshot.news.length > 0 || cachedSnapshot.standings.length > 0);
   const baseEventRowsRef = useRef<SportEventRow[]>(cachedSnapshot.events.map((event) => ({
     ...event,
@@ -114,8 +129,28 @@ export function useSportDashboardData({
           withTimeout(fetch(`/api/sports/standings?${standingsParams.toString()}`, { cache: "no-store" }), 6000, "standings"),
           withTimeout(capturedEventsPromise, 9000, "captured events")
         ]);
-        const oddsRows = oddsResult.status === "fulfilled" && Array.isArray(oddsResult.value) ? oddsResult.value : [];
-        if (isFootball) footballMarketRowsRef.current = oddsRows as FootballBackendPriceRow[];
+        const fetchedOddsRows = oddsResult.status === "fulfilled" && Array.isArray(oddsResult.value) ? oddsResult.value as FootballBackendPriceRow[] : [];
+        let oddsRows = fetchedOddsRows as BackendPriceRow[];
+        if (isFootball) {
+          const now = Date.now();
+          const previousRowsAreFresh = footballRowsHaveLiquidity(footballMarketRowsRef.current) && now - footballMarketRowsAtRef.current <= FOOTBALL_MARKET_STALE_MS;
+          const cachedRows = cachedFootballLiquidityRows(FOOTBALL_MARKET_STALE_MS);
+          if (footballRowsHaveLiquidity(fetchedOddsRows)) {
+            footballMarketRowsRef.current = fetchedOddsRows;
+            footballMarketRowsAtRef.current = now;
+            storeFootballLiquidity(fetchedOddsRows);
+            oddsRows = fetchedOddsRows as BackendPriceRow[];
+          } else if (previousRowsAreFresh) {
+            oddsRows = footballMarketRowsRef.current as BackendPriceRow[];
+          } else if (footballRowsHaveLiquidity(cachedRows)) {
+            footballMarketRowsRef.current = cachedRows;
+            footballMarketRowsAtRef.current = now;
+            oddsRows = cachedRows as BackendPriceRow[];
+          } else {
+            footballMarketRowsRef.current = fetchedOddsRows;
+            footballMarketRowsAtRef.current = fetchedOddsRows.length ? now : 0;
+          }
+        }
         const newsPayload = newsResult.status === "fulfilled" ? await responseJson(newsResult.value) : {};
         const fixturesPayload = fixturesResult.status === "fulfilled" ? await responseJson(fixturesResult.value) : {};
         const standingsPayload = standingsResult.status === "fulfilled" ? await responseJson(standingsResult.value) as StandingsPayload : {};
@@ -192,8 +227,18 @@ export function useSportDashboardData({
     }
 
     function applyFootballMarketRows(nextRows: FootballBackendPriceRow[]) {
-      footballMarketRowsRef.current = nextRows;
-      const exchangeEvents = mergeEvents(nextRows as unknown as BackendPriceRow[], normalizedSport);
+      const now = Date.now();
+      const nextRowsHaveLiquidity = footballRowsHaveLiquidity(nextRows);
+      const previousRowsAreFresh = footballRowsHaveLiquidity(footballMarketRowsRef.current) && now - footballMarketRowsAtRef.current <= FOOTBALL_MARKET_STALE_MS;
+      const rowsToApply = nextRowsHaveLiquidity
+        ? nextRows
+        : previousRowsAreFresh ? footballMarketRowsRef.current : nextRows;
+      footballMarketRowsRef.current = rowsToApply;
+      if (nextRowsHaveLiquidity) {
+        footballMarketRowsAtRef.current = now;
+        storeFootballLiquidity(rowsToApply);
+      }
+      const exchangeEvents = mergeEvents(rowsToApply as unknown as BackendPriceRow[], normalizedSport);
       setEvents(mergeSportEvents([...baseEventRowsRef.current, ...exchangeEvents]));
     }
 
