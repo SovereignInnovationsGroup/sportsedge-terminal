@@ -244,7 +244,9 @@ function marketSortRank(row: BackendPriceRow) {
 
 function isDisplayableFootballMarket(row: BackendPriceRow) {
   const text = normalizeFixtureText(`${row.name || ""} ${row.marketType || ""} ${row.marketName || ""}`);
-  if (["announcer", "announcers", "corner", "card", "booking", "goalscorer", "correct score", "exact score", "player", "cross"].some((value) => text.includes(value))) return false;
+  const name = normalizeFixtureText(row.name || "");
+  if (!name.includes(" v ")) return false;
+  if (["announcer", "announcers", "corner", "card", "booking", "goalscorer", "correct score", "exact score", "player", "cross", "outright", "futures", "champion", "tournament winner", "top goalscorer", "relegation"].some((value) => text.includes(value))) return false;
   if (text.includes("match odds") || text.includes("match result") || text.includes("one x two") || text.includes("one_x_two")) return true;
   if (text.includes("moneyline") || text.includes("winner")) return true;
   if (/\bwill\b.+\bwin\b/.test(text)) return true;
