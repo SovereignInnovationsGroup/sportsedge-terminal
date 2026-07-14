@@ -11017,7 +11017,7 @@ button {
 
 .sport-summary-fixtures table {
   width: 100%;
-  min-width: 1760px;
+  min-width: 1880px;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -11076,14 +11076,15 @@ button {
 .sport-summary-fixtures td:nth-child(5) { width: 190px; }
 
 .sport-summary-fixtures th:nth-child(6),
-.sport-summary-fixtures td:nth-child(6) {
+.sport-summary-fixtures td:nth-child(6) { width: 118px; }
+
+.sport-summary-fixtures th:nth-child(7),
+.sport-summary-fixtures td:nth-child(7) {
   width: 252px;
   overflow: visible;
   text-overflow: clip;
 }
 
-.sport-summary-fixtures th:nth-child(7),
-.sport-summary-fixtures td:nth-child(7),
 .sport-summary-fixtures th:nth-child(8),
 .sport-summary-fixtures td:nth-child(8),
 .sport-summary-fixtures th:nth-child(9),
@@ -11093,7 +11094,24 @@ button {
 .sport-summary-fixtures th:nth-child(11),
 .sport-summary-fixtures td:nth-child(11),
 .sport-summary-fixtures th:nth-child(12),
-.sport-summary-fixtures td:nth-child(12) { width: 88px; }
+.sport-summary-fixtures td:nth-child(12),
+.sport-summary-fixtures th:nth-child(13),
+.sport-summary-fixtures td:nth-child(13) { width: 88px; }
+
+.fixture-country {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.fixture-country span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .fixture-status {
   display: inline-flex;

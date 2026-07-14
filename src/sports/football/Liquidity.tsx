@@ -7,6 +7,18 @@ import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { FootballScopeFilter } from "./FootballScopeFilter";
 import { footballScopeBreadcrumb, footballScopeMatches } from "./filters";
 import {
+  FOOTBALL_COUNTRY_STATE_KEY,
+  FOOTBALL_HAS_MONEY_STATE_KEY,
+  FOOTBALL_LIQUIDITY_THRESHOLD_OPTIONS,
+  FOOTBALL_MIN_TOTAL_STATE_KEY,
+  countryFilterLabel,
+  countryFlag,
+  readBooleanPreference,
+  readMinLiquidityPreference,
+  readStringPreference,
+  savePreference
+} from "./liquidityFilterOptions";
+import {
   AgStackCell,
   BETTING_EXCHANGE_COLUMNS,
   buildAgTestRows,
@@ -28,64 +40,6 @@ import {
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const LIQUIDITY_COLUMN_STATE_KEY = "sportsedge.footballLiquidityColumnState.v2";
-const LIQUIDITY_HAS_MONEY_STATE_KEY = "sportsedge.footballLiquidity.hasMoney.v1";
-const LIQUIDITY_MIN_TOTAL_STATE_KEY = "sportsedge.footballLiquidity.minTotal.v1";
-const LIQUIDITY_COUNTRY_STATE_KEY = "sportsedge.footballLiquidity.country.v1";
-const LIQUIDITY_THRESHOLD_OPTIONS = [
-  { value: 0, label: "ANY £" },
-  { value: 1_000, label: "£1K+" },
-  { value: 10_000, label: "£10K+" },
-  { value: 50_000, label: "£50K+" },
-  { value: 100_000, label: "£100K+" },
-  { value: 1_000_000, label: "£1M+" }
-];
-
-const COUNTRY_FLAGS: Record<string, string> = {
-  Argentina: "🇦🇷",
-  Australia: "🇦🇺",
-  Austria: "🇦🇹",
-  Belgium: "🇧🇪",
-  Brazil: "🇧🇷",
-  Bulgaria: "🇧🇬",
-  Canada: "🇨🇦",
-  Chile: "🇨🇱",
-  China: "🇨🇳",
-  Colombia: "🇨🇴",
-  Croatia: "🇭🇷",
-  "Czech Republic": "🇨🇿",
-  Denmark: "🇩🇰",
-  England: "🏴",
-  Finland: "🇫🇮",
-  France: "🇫🇷",
-  Germany: "🇩🇪",
-  Greece: "🇬🇷",
-  Hungary: "🇭🇺",
-  Iceland: "🇮🇸",
-  Ireland: "🇮🇪",
-  Italy: "🇮🇹",
-  Japan: "🇯🇵",
-  Mexico: "🇲🇽",
-  Netherlands: "🇳🇱",
-  "Northern Ireland": "🇬🇧",
-  Norway: "🇳🇴",
-  Poland: "🇵🇱",
-  Portugal: "🇵🇹",
-  Romania: "🇷🇴",
-  Scotland: "🏴",
-  Serbia: "🇷🇸",
-  Slovakia: "🇸🇰",
-  Slovenia: "🇸🇮",
-  "South Korea": "🇰🇷",
-  Spain: "🇪🇸",
-  Sweden: "🇸🇪",
-  Switzerland: "🇨🇭",
-  Turkey: "🇹🇷",
-  Ukraine: "🇺🇦",
-  "United Kingdom": "🇬🇧",
-  "United States": "🇺🇸",
-  Vietnam: "🇻🇳",
-  Wales: "🏴"
-};
 
 function readLiquidityColumnState() {
   try {
@@ -105,50 +59,6 @@ function saveLiquidityColumnState(api: { getColumnState?: () => unknown[] }) {
   }
 }
 
-function readBooleanPreference(key: string, fallback: boolean) {
-  try {
-    const value = window.localStorage.getItem(key);
-    if (value === "true") return true;
-    if (value === "false") return false;
-  } catch {
-    // Preference only.
-  }
-  return fallback;
-}
-
-function readMinLiquidityPreference() {
-  try {
-    const value = Number(window.localStorage.getItem(LIQUIDITY_MIN_TOTAL_STATE_KEY) || 0);
-    return LIQUIDITY_THRESHOLD_OPTIONS.some((option) => option.value === value) ? value : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function savePreference(key: string, value: string) {
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    // Preference only.
-  }
-}
-
-function readStringPreference(key: string, fallback = "all") {
-  try {
-    return window.localStorage.getItem(key) || fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function countryFlag(country: string | null | undefined) {
-  return COUNTRY_FLAGS[String(country || "").trim()] || "";
-}
-
-function countryFilterLabel(country: string) {
-  return [countryFlag(country), country].filter(Boolean).join(" ");
-}
-
 export default function Liquidity() {
   const cachedLiquidityRows = cachedFootballLiquidityRows();
   const [fixtures, setFixtures] = useState<FootballFixture[]>([]);
@@ -159,9 +69,9 @@ export default function Liquidity() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dateScope, setDateScope] = useState("all");
   const [locationScope, setLocationScope] = useState("all");
-  const [liquidityOnly, setLiquidityOnly] = useState(() => readBooleanPreference(LIQUIDITY_HAS_MONEY_STATE_KEY, true));
+  const [liquidityOnly, setLiquidityOnly] = useState(() => readBooleanPreference(FOOTBALL_HAS_MONEY_STATE_KEY, true));
   const [minLiquidity, setMinLiquidity] = useState(readMinLiquidityPreference);
-  const [countryScope, setCountryScope] = useState(() => readStringPreference(LIQUIDITY_COUNTRY_STATE_KEY));
+  const [countryScope, setCountryScope] = useState(() => readStringPreference(FOOTBALL_COUNTRY_STATE_KEY));
   const [socketStatus, setSocketStatus] = useState<"offline" | "connecting" | "live" | "waiting">("offline");
   const [hoverDetails, setHoverDetails] = useState<{ x: number; y: number; title: string; lines: string[] } | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
@@ -204,15 +114,15 @@ export default function Liquidity() {
   }, [moneyFilteredRows, searchQuery]);
 
   useEffect(() => {
-    savePreference(LIQUIDITY_HAS_MONEY_STATE_KEY, String(liquidityOnly));
+    savePreference(FOOTBALL_HAS_MONEY_STATE_KEY, String(liquidityOnly));
   }, [liquidityOnly]);
 
   useEffect(() => {
-    savePreference(LIQUIDITY_MIN_TOTAL_STATE_KEY, String(minLiquidity));
+    savePreference(FOOTBALL_MIN_TOTAL_STATE_KEY, String(minLiquidity));
   }, [minLiquidity]);
 
   useEffect(() => {
-    savePreference(LIQUIDITY_COUNTRY_STATE_KEY, countryScope);
+    savePreference(FOOTBALL_COUNTRY_STATE_KEY, countryScope);
   }, [countryScope]);
 
   useEffect(() => {
@@ -462,7 +372,7 @@ export default function Liquidity() {
           locationScope={locationScope}
           liquidityOnly={liquidityOnly}
           minLiquidity={minLiquidity}
-          liquidityThresholdOptions={LIQUIDITY_THRESHOLD_OPTIONS}
+          liquidityThresholdOptions={FOOTBALL_LIQUIDITY_THRESHOLD_OPTIONS}
           countryScope={countryScope}
           countryFilterOptions={countryOptions}
           onDateScopeChange={setDateScope}

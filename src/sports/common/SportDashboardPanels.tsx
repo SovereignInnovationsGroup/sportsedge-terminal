@@ -1,5 +1,6 @@
 import { memo, useMemo } from "react";
 import { eventHasPassed, localEventTime } from "../../core/format";
+import { countryFlag } from "../football/liquidityFilterOptions";
 import {
   DASHBOARD_EXCHANGES,
   DEFAULT_DATE_SCOPE_FILTERS,
@@ -88,6 +89,12 @@ const FixtureTableRow = memo(function FixtureTableRow({
       <td className={isLiveSportEvent(event) ? "mono fixture-score is-live" : "mono fixture-score"}>{fixtureScoreLabel(event)}</td>
       <td><strong>{event.name || "Fixture pending"}</strong></td>
       <td>{event.competition || "Football"}</td>
+      <td>
+        <span className="fixture-country">
+          {countryFlag(event.country) ? <span aria-hidden="true">{countryFlag(event.country)}</span> : null}
+          <span>{event.country || "-"}</span>
+        </span>
+      </td>
       <td><ExchangeCoverageCell event={event} /></td>
       <MoneyCell value={event.liquidityByExchange.betfair} />
       <MoneyCell value={event.liquidityByExchange.matchbook} />
@@ -102,6 +109,7 @@ const FixtureTableRow = memo(function FixtureTableRow({
   && previous.rowKey === next.rowKey
   && previous.event.name === next.event.name
   && previous.event.competition === next.event.competition
+  && previous.event.country === next.event.country
   && previous.event.startAt === next.event.startAt
   && previous.event.statusShort === next.event.statusShort
   && previous.event.statusLong === next.event.statusLong
@@ -135,6 +143,7 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
             <th>Score</th>
             <th>Fixture</th>
             <th>Competition</th>
+            <th>Country</th>
             <th>Coverage</th>
             <th>BF £ Now</th>
             <th>MB £ Now</th>
@@ -149,8 +158,8 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
             const rowKey = event.id;
             return <FixtureTableRow event={event} key={rowKey} rowClass={eventRowClass(event)} rowKey={rowKey} />;
           })}
-          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={12}>No fixtures match the current filter.</td></tr>}
-          {loading && rows.length === 0 && <tr><td className="empty" colSpan={12}>Loading fixtures.</td></tr>}
+          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={13}>No fixtures match the current filter.</td></tr>}
+          {loading && rows.length === 0 && <tr><td className="empty" colSpan={13}>Loading fixtures.</td></tr>}
         </tbody>
       </table>
     </section>

@@ -4,6 +4,17 @@ import { eventHasPassed, localEventTime } from "../../core/format";
 import { FootballScopeFilter } from "../football/FootballScopeFilter";
 import { footballScopeMatches } from "../football/filters";
 import {
+  FOOTBALL_COUNTRY_STATE_KEY,
+  FOOTBALL_HAS_MONEY_STATE_KEY,
+  FOOTBALL_LIQUIDITY_THRESHOLD_OPTIONS,
+  FOOTBALL_MIN_TOTAL_STATE_KEY,
+  countryFilterLabel,
+  readBooleanPreference,
+  readMinLiquidityPreference,
+  readStringPreference,
+  savePreference
+} from "../football/liquidityFilterOptions";
+import {
   ExchangeCoverageCell,
   FixtureTable,
   SportEntitiesPanel,
@@ -47,7 +58,9 @@ export function SportDashboard({
   const isFootball = normalizedSport === "football";
   const [dateScope, setDateScope] = useState("all");
   const [locationScope, setLocationScope] = useState("all");
-  const [liquidityOnly, setLiquidityOnly] = useState(true);
+  const [liquidityOnly, setLiquidityOnly] = useState(() => readBooleanPreference(FOOTBALL_HAS_MONEY_STATE_KEY, true));
+  const [minLiquidity, setMinLiquidity] = useState(readMinLiquidityPreference);
+  const [countryScope, setCountryScope] = useState(() => readStringPreference(FOOTBALL_COUNTRY_STATE_KEY));
   const [query, setQuery] = useState("");
   const [entities, setEntities] = useState<SportEntityRow[]>([]);
   const [entitiesLoading, setEntitiesLoading] = useState(false);
@@ -68,8 +81,31 @@ export function SportDashboard({
     return events.filter((event) => footballScopeMatches(`${event.name} ${event.competition || ""}`, event.country, event.startAt, dateScope, locationScope));
   }, [events, isFootball, hasScopeFilter, dateScope, locationScope, locationFilters]);
 
-  const liquidScopedEvents = useMemo(() => scopedEvents.filter((event) => Number(event.liquidity || 0) > 0), [scopedEvents]);
-  const visibleEvents = isFootball && liquidityOnly ? liquidScopedEvents : scopedEvents;
+  const countryOptions = useMemo(() => {
+    if (!isFootball) return [];
+    const countries = new Set(scopedEvents.map((event) => event.country || "").filter(Boolean));
+    if (countryScope !== "all") countries.add(countryScope);
+    return [
+      { value: "all", label: "ALL COUNTRIES" },
+      ...Array.from(countries)
+        .sort((left, right) => left.localeCompare(right))
+        .map((country) => ({ value: country, label: countryFilterLabel(country) }))
+    ];
+  }, [isFootball, scopedEvents, countryScope]);
+  const countryScopedEvents = useMemo(() => {
+    if (!isFootball || countryScope === "all") return scopedEvents;
+    return scopedEvents.filter((event) => event.country === countryScope);
+  }, [scopedEvents, isFootball, countryScope]);
+  const liquidScopedEvents = useMemo(() => countryScopedEvents.filter((event) => Number(event.liquidity || 0) > 0), [countryScopedEvents]);
+  const visibleEvents = useMemo(() => {
+    if (!isFootball) return scopedEvents;
+    return countryScopedEvents.filter((event) => {
+      const liquidity = Number(event.liquidity || 0);
+      if (liquidityOnly && liquidity <= 0) return false;
+      if (minLiquidity > 0 && liquidity < minLiquidity) return false;
+      return true;
+    });
+  }, [countryScopedEvents, isFootball, liquidityOnly, minLiquidity, scopedEvents]);
   const timeOrderedEvents = useMemo(() => {
     return [...visibleEvents].sort((left, right) => {
       const leftLiveRank = isLiveSportEvent(left) ? 0 : 1;
@@ -108,6 +144,21 @@ export function SportDashboard({
   const isLiquidityPage = activeSection === "liquidity" || activeSection === "markets";
   const isBiasPage = activeSection === "bias-matrix";
   const isInjuriesPage = activeSection === "injuries";
+
+  useEffect(() => {
+    if (!isFootball) return;
+    savePreference(FOOTBALL_HAS_MONEY_STATE_KEY, String(liquidityOnly));
+  }, [isFootball, liquidityOnly]);
+
+  useEffect(() => {
+    if (!isFootball) return;
+    savePreference(FOOTBALL_MIN_TOTAL_STATE_KEY, String(minLiquidity));
+  }, [isFootball, minLiquidity]);
+
+  useEffect(() => {
+    if (!isFootball) return;
+    savePreference(FOOTBALL_COUNTRY_STATE_KEY, countryScope);
+  }, [isFootball, countryScope]);
 
   useEffect(() => {
     if (!isEntityPage) return;
@@ -149,9 +200,18 @@ export function SportDashboard({
           dateScope={dateScope}
           locationScope={locationScope}
           liquidityOnly={liquidityOnly}
+          minLiquidity={minLiquidity}
+          liquidityThresholdOptions={FOOTBALL_LIQUIDITY_THRESHOLD_OPTIONS}
+          countryScope={countryScope}
+          countryFilterOptions={countryOptions}
           onDateScopeChange={setDateScope}
           onLocationScopeChange={setLocationScope}
           onLiquidityOnlyChange={setLiquidityOnly}
+          onMinLiquidityChange={(value) => {
+            setMinLiquidity(value);
+            if (value > 0) setLiquidityOnly(true);
+          }}
+          onCountryScopeChange={setCountryScope}
           meta={[`${timeOrderedEvents.length} visible`, `${liquidScopedEvents.length} with £`, `${events.length} fixtures`]}
           ariaLabel="Football dashboard filters"
         />
