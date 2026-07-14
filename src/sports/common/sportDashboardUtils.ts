@@ -1,5 +1,5 @@
 import { localDateKey, localEventTime } from "../../core/format";
-import { countryNameFromCode, inferFootballCountry } from "../football/countryInference";
+import { countryNameFromCode, inferFootballCountry, isGenericFootballCountry } from "../football/countryInference";
 import {
   BackendExchangeMatch,
   BackendPriceRow,
@@ -124,13 +124,17 @@ function normalizeEventName(value: string) {
 
 function exchangeRowCountry(row: BackendPriceRow, matches: Array<[string, BackendExchangeMatch]>) {
   const directCountry = String(row.country || matches.find(([, match]) => match.country)?.[1].country || "").trim();
-  if (directCountry) return directCountry;
   const directCode = String(row.countryCode || matches.find(([, match]) => match.countryCode)?.[1].countryCode || "").trim();
-  return countryNameFromCode(directCode) || inferFootballCountry({
+  const inferredCountry = inferFootballCountry({
     competition: row.competitionName,
     fixture: row.name,
     extra: matches.map(([, match]) => `${match.competitionName || ""} ${match.name || ""}`).join(" ")
   });
+  if (directCountry && !isGenericFootballCountry(directCountry)) return directCountry;
+  if (inferredCountry) return inferredCountry;
+  if (directCountry) return directCountry;
+  if (isGenericFootballCountry(directCode)) return "World";
+  return countryNameFromCode(directCode);
 }
 
 function exchangeMatchIsLive(match: BackendExchangeMatch | undefined) {

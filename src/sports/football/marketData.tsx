@@ -1,5 +1,5 @@
 import { eventHasPassed, formatExchangeMoney, localEventTime, normalizeFixtureText } from "../../core/format";
-import { countryNameFromCode, inferFootballCountry } from "./countryInference";
+import { countryNameFromCode, inferFootballCountry, isGenericFootballCountry } from "./countryInference";
 import { sportsEdgeWsUrl } from "../../core/news";
 import { readSnapshot, writeSnapshot } from "../../core/snapshotCache";
 import { footballTextMatchesGroup } from "./filters";
@@ -452,14 +452,18 @@ function footballFixtureCompetition(fixture: FootballFixture) {
 }
 
 function countryFromBackendRow(row: BackendPriceRow) {
-  const directCountry = row.country || Object.values(row.matches || {}).find((match) => match?.country)?.country;
-  if (directCountry) return directCountry;
-  const directCode = row.countryCode || Object.values(row.matches || {}).find((match) => match?.countryCode)?.countryCode;
-  return countryNameFromCode(directCode) || inferFootballCountry({
+  const directCountry = String(row.country || Object.values(row.matches || {}).find((match) => match?.country)?.country || "").trim();
+  const directCode = String(row.countryCode || Object.values(row.matches || {}).find((match) => match?.countryCode)?.countryCode || "").trim();
+  const inferredCountry = inferFootballCountry({
     competition: row.competitionName,
     fixture: row.name,
     extra: Object.values(row.matches || {}).map((match) => `${match?.competitionName || ""} ${match?.name || ""}`).join(" ")
   });
+  if (directCountry && !isGenericFootballCountry(directCountry)) return directCountry;
+  if (inferredCountry) return inferredCountry;
+  if (directCountry) return directCountry;
+  if (isGenericFootballCountry(directCode)) return "World";
+  return countryNameFromCode(directCode);
 }
 
 function formatFootballFixtureTime(fixture: FootballFixture) {

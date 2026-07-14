@@ -171,6 +171,11 @@ export function countryNameFromCode(value: string | null | undefined) {
   return code ? COUNTRY_CODE_NAMES[code] || code : "";
 }
 
+export function isGenericFootballCountry(value: string | null | undefined) {
+  const normalized = normalizeCountryText(value);
+  return normalized === "world" || normalized === "un" || normalized === "uefa" || normalized === "europe";
+}
+
 export function inferFootballCountry({
   competition,
   fixture,
