@@ -161,6 +161,17 @@ type BotStatus = {
     liveRows: number;
     reconnects: number;
   };
+  liveScoreFeeds?: Array<{
+    provider: string;
+    label?: string;
+    enabled?: boolean;
+    connected?: boolean;
+    lastMessageAt?: string | null;
+    lastError?: string;
+    liveRows?: number;
+    reconnects?: number;
+    sources?: string[];
+  }>;
 };
 
 type LadderLevel = {
@@ -620,11 +631,13 @@ export default function AIBot() {
           <article><span>Total P/L</span><strong className={(status?.totalPnl || 0) >= 0 ? "positive" : "negative"}>{money(status?.totalPnl)}</strong><small>Realised {money(status?.realisedPnl)}</small></article>
           <article><span>Watching</span><strong>{rows.length}</strong><small>{watchedWithMoney} with Poly money</small></article>
           <article><span>Next Match</span><strong>{nextMatch ? fullTimestamp(nextMatch.startAt) : "-"}</strong><small>{nextMatch?.eventName || "Waiting for fixture"}</small></article>
-          <article>
-            <span>Score WSS</span>
-            <strong className={status?.liveScoreFeed?.connected ? "positive" : ""}>{status?.liveScoreFeed?.connected ? "Live" : status?.liveScoreFeed?.enabled ? "Waiting" : "Off"}</strong>
-            <small>{status?.liveScoreFeed?.lastMessageAt ? `${fullTimestamp(status.liveScoreFeed.lastMessageAt)} tick` : status?.liveScoreFeed?.lastError || "AllSportsAPI"}</small>
-          </article>
+          {(status?.liveScoreFeeds?.length ? status.liveScoreFeeds : status?.liveScoreFeed ? [status.liveScoreFeed] : []).map((feed) => (
+            <article key={feed.provider}>
+              <span>{feed.label || feed.provider}</span>
+              <strong className={feed.connected ? "positive" : ""}>{feed.connected ? "Live" : feed.enabled ? "Waiting" : "Off"}</strong>
+              <small>{Number(feed.liveRows || 0)} rows / {feed.lastMessageAt ? `${fullTimestamp(feed.lastMessageAt)} tick` : feed.lastError || "-"}</small>
+            </article>
+          ))}
           <article><span>Orders</span><strong>{orders.filter((order) => ["OPEN", "PARTIAL"].includes(order.status)).length}</strong><small>{orders.filter((order) => order.status === "FILLED").length} filled</small></article>
         </section>
 

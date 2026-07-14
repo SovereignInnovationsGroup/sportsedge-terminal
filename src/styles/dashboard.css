@@ -11106,6 +11106,92 @@ button {
   table-layout: fixed;
 }
 
+.football-feed-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+  border-top: 1px solid rgba(36, 50, 65, 0.58);
+  border-bottom: 1px solid rgba(36, 50, 65, 0.58);
+  background: #081018;
+}
+
+.football-feed-strip article {
+  min-height: 72px;
+  padding: 9px 10px;
+  border-right: 1px solid rgba(36, 50, 65, 0.58);
+  overflow: hidden;
+}
+
+.football-feed-strip article:last-child {
+  border-right: 0;
+}
+
+.football-feed-strip span,
+.football-feed-strip em,
+.football-feed-strip small {
+  display: block;
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.football-feed-strip span {
+  color: rgba(203, 213, 225, 0.78);
+}
+
+.football-feed-strip strong {
+  display: block;
+  margin-top: 5px;
+  color: #e2e8f0;
+  font-size: 18px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.football-feed-strip em {
+  margin-top: 5px;
+  color: rgba(148, 163, 184, 0.84);
+}
+
+.football-feed-strip small {
+  margin-top: 4px;
+  color: rgba(148, 163, 184, 0.7);
+  text-transform: none;
+}
+
+.football-feed-strip article.is-live {
+  box-shadow: inset 3px 0 0 #22c55e;
+}
+
+.football-feed-strip article.is-live strong {
+  color: #86efac;
+}
+
+.football-feed-strip article.is-waiting {
+  box-shadow: inset 3px 0 0 #facc15;
+}
+
+.football-feed-strip article.is-waiting strong {
+  color: #fde68a;
+}
+
+.football-feed-strip article.is-off {
+  opacity: 0.62;
+  box-shadow: inset 3px 0 0 #64748b;
+}
+
+@media (max-width: 1100px) {
+  .football-feed-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .sport-summary-fixtures th,
 .sport-summary-fixtures td {
   height: 38px;

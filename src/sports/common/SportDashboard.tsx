@@ -26,7 +26,7 @@ import {
   SportStandingByBoard,
   StandingsPanel
 } from "./SportDashboardPanels";
-import { DASHBOARD_EXCHANGES, SportEntitiesPayload, SportEntityRow, SportLocationFilter } from "./sportDashboardTypes";
+import { DASHBOARD_EXCHANGES, LiveScoreFeedStatus, SportEntitiesPayload, SportEntityRow, SportLocationFilter } from "./sportDashboardTypes";
 import {
   apiSportValue,
   formatExchangeMoney,
@@ -38,6 +38,44 @@ import {
   newsHeadline
 } from "./sportDashboardUtils";
 import { useSportDashboardData } from "./useSportDashboardData";
+
+function feedLabel(feed: LiveScoreFeedStatus) {
+  return feed.label || feed.provider.replace(/[-_]/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function feedState(feed: LiveScoreFeedStatus) {
+  if (!feed.enabled) return "Off";
+  if (feed.connected) return "Live";
+  return "Waiting";
+}
+
+function feedClass(feed: LiveScoreFeedStatus) {
+  if (!feed.enabled) return "is-off";
+  if (feed.connected) return "is-live";
+  return "is-waiting";
+}
+
+function feedDetail(feed: LiveScoreFeedStatus) {
+  if (feed.lastMessageAt) return `${localEventTime(feed.lastMessageAt)} tick`;
+  return feed.lastError || "No tick";
+}
+
+function FootballLiveScoreFeeds({ feeds }: { feeds: LiveScoreFeedStatus[] }) {
+  if (!feeds.length) return null;
+  return (
+    <section className="football-feed-strip" aria-label="Live score feeds">
+      {feeds.map((feed) => (
+        <article className={feedClass(feed)} key={feed.provider}>
+          <span>{feedLabel(feed)}</span>
+          <strong>{feedState(feed)}</strong>
+          <em>{Number(feed.liveRows || 0)} rows</em>
+          <small>{feedDetail(feed)}</small>
+          {Array.isArray(feed.sources) && feed.sources.length > 0 && <small>{feed.sources.slice(0, 4).join(" / ")}</small>}
+        </article>
+      ))}
+    </section>
+  );
+}
 
 export function SportDashboard({
   sport,
@@ -74,6 +112,7 @@ export function SportDashboard({
     events,
     news,
     standings,
+    liveScoreFeeds,
     loading,
     error
   } = useSportDashboardData({ normalizedSport, isFootball, espnScopeKey });
@@ -313,7 +352,10 @@ export function SportDashboard({
                 {showDemoHolding ? (
                   <SportStandingByBoard label={label} espnScopes={espnScopes} dataStatus={dataStatus} />
                 ) : isFootball ? (
-                  <FixtureTable title="Fixtures" rows={timeOrderedEvents} loading={loading} />
+                  <>
+                    <FootballLiveScoreFeeds feeds={liveScoreFeeds} />
+                    <FixtureTable title="Fixtures" rows={timeOrderedEvents} loading={loading} />
+                  </>
                 ) : (
                   <>
                     {showDefaultStandings && (

@@ -68,6 +68,18 @@ export type SportEventRow = {
   exchanges: string[];
 };
 
+export type LiveScoreFeedStatus = {
+  provider: string;
+  label?: string;
+  enabled?: boolean;
+  connected?: boolean;
+  lastMessageAt?: string | null;
+  lastError?: string | null;
+  liveRows?: number;
+  reconnects?: number;
+  sources?: string[];
+};
+
 export type CapturedSportEvent = {
   id: string;
   provider: string;

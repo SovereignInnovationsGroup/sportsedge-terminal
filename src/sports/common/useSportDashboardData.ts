@@ -15,6 +15,7 @@ import {
   CapturedSportEvent,
   DASHBOARD_EXCHANGES,
   FootballFixtureRow,
+  LiveScoreFeedStatus,
   NewsItem,
   StandingRow,
   StandingsPayload,
@@ -35,6 +36,7 @@ type SportDashboardSnapshot = {
   standings: StandingRow[];
   standingsStatus: string;
   standingsProvider: string;
+  liveScoreFeeds: LiveScoreFeedStatus[];
 };
 
 function emptySportDashboardSnapshot(): SportDashboardSnapshot {
@@ -43,7 +45,8 @@ function emptySportDashboardSnapshot(): SportDashboardSnapshot {
     news: [],
     standings: [],
     standingsStatus: "",
-    standingsProvider: ""
+    standingsProvider: "",
+    liveScoreFeeds: []
   };
 }
 
@@ -80,6 +83,7 @@ export function useSportDashboardData({
   const [standings, setStandings] = useState<StandingRow[]>(cachedSnapshot.standings);
   const [standingsStatus, setStandingsStatus] = useState(cachedSnapshot.standingsStatus);
   const [standingsProvider, setStandingsProvider] = useState(cachedSnapshot.standingsProvider);
+  const [liveScoreFeeds, setLiveScoreFeeds] = useState<LiveScoreFeedStatus[]>(cachedSnapshot.liveScoreFeeds || []);
   const [loading, setLoading] = useState(cachedSnapshot.events.length === 0 && cachedSnapshot.news.length === 0 && cachedSnapshot.standings.length === 0);
   const [error, setError] = useState("");
   const footballMarketRowsRef = useRef<FootballBackendPriceRow[]>(isFootball ? cachedFootballLiquidityRows(FOOTBALL_MARKET_STALE_MS) : []);
@@ -114,6 +118,9 @@ export function useSportDashboardData({
         const fixturesPromise = isFootball
           ? fetch(`/api/football/fixtures?days=${fixtureDays}&limit=5000&timezone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London")}`, { cache: "no-store" })
           : Promise.resolve(null);
+        const liveScoreFeedsPromise = isFootball
+          ? fetch("/api/football/live-score-feeds", { cache: "no-store" })
+          : Promise.resolve(null);
         const capturedEventsPromise = !isFootball
           ? fetch(`/api/sports/events?timezone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London")}&limit=1200`, { cache: "no-store" })
           : Promise.resolve(null);
@@ -124,12 +131,13 @@ export function useSportDashboardData({
         });
         const marketSnapshotUrl = `/api/markets/snapshot?${oddsParams.toString()}`;
         const exchangeFallbackUrl = `/api/exchange-odds?${oddsParams.toString()}`;
-        const [oddsResult, newsResult, fixturesResult, standingsResult, capturedEventsResult] = await Promise.allSettled([
+        const [oddsResult, newsResult, fixturesResult, standingsResult, capturedEventsResult, liveScoreFeedsResult] = await Promise.allSettled([
           withTimeout(fetchMarketSnapshotRows(marketSnapshotUrl, exchangeFallbackUrl), 9000, "markets"),
           withTimeout(fetch(`/api/news?${newsParams.toString()}`, { cache: "no-store" }), 6000, "news"),
           withTimeout(fixturesPromise, 9000, "fixtures"),
           withTimeout(fetch(`/api/sports/standings?${standingsParams.toString()}`, { cache: "no-store" }), 6000, "standings"),
-          withTimeout(capturedEventsPromise, 9000, "captured events")
+          withTimeout(capturedEventsPromise, 9000, "captured events"),
+          withTimeout(liveScoreFeedsPromise, 6000, "live score feeds")
         ]);
         const fetchedOddsRows = oddsResult.status === "fulfilled" && Array.isArray(oddsResult.value) ? oddsResult.value as FootballBackendPriceRow[] : [];
         let oddsRows = fetchedOddsRows as BackendPriceRow[];
@@ -157,6 +165,7 @@ export function useSportDashboardData({
         const fixturesPayload = fixturesResult.status === "fulfilled" ? await responseJson(fixturesResult.value) : {};
         const standingsPayload = standingsResult.status === "fulfilled" ? await responseJson(standingsResult.value) as StandingsPayload : {};
         const capturedEventsPayload = capturedEventsResult.status === "fulfilled" ? await responseJson(capturedEventsResult.value) : {};
+        const liveScoreFeedsPayload = liveScoreFeedsResult.status === "fulfilled" ? await responseJson(liveScoreFeedsResult.value) : {};
         if (!cancelled) {
           const exchangeEvents = mergeEvents(oddsRows as BackendPriceRow[], normalizedSport);
           const fixtureEvents = Array.isArray(fixturesPayload.fixtures)
@@ -177,7 +186,8 @@ export function useSportDashboardData({
             news: Array.isArray(newsPayload.items) ? newsPayload.items as NewsItem[] : [],
             standings: Array.isArray(standingsPayload.rows) ? standingsPayload.rows : [],
             standingsStatus: String(standingsPayload.sourceStatus || ""),
-            standingsProvider: String(standingsPayload.provider || "")
+            standingsProvider: String(standingsPayload.provider || ""),
+            liveScoreFeeds: Array.isArray(liveScoreFeedsPayload.feeds) ? liveScoreFeedsPayload.feeds as LiveScoreFeedStatus[] : liveScoreFeeds
           };
           writeSnapshot(snapshotKey, nextSnapshot);
           setEvents(nextSnapshot.events);
@@ -185,6 +195,7 @@ export function useSportDashboardData({
           setStandings(nextSnapshot.standings);
           setStandingsStatus(nextSnapshot.standingsStatus);
           setStandingsProvider(nextSnapshot.standingsProvider);
+          setLiveScoreFeeds(nextSnapshot.liveScoreFeeds);
           hasRenderedDataRef.current = nextSnapshot.events.length > 0 || nextSnapshot.news.length > 0 || nextSnapshot.standings.length > 0;
           const failed = [
             fixturesResult.status === "rejected" ? "fixtures" : "",
@@ -311,6 +322,7 @@ export function useSportDashboardData({
     standings,
     standingsStatus,
     standingsProvider,
+    liveScoreFeeds,
     loading,
     error
   };
