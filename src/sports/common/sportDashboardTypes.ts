@@ -13,6 +13,11 @@ export type BackendExchangeMatch = {
   name?: string;
   sportName?: string;
   competitionName?: string | null;
+  country?: string | null;
+  countryCode?: string | null;
+  timezone?: string | null;
+  status?: string | null;
+  isLive?: boolean | null;
   startAt?: string | null;
   observedAt?: string | null;
   sourceLiquidity?: number;
@@ -25,6 +30,11 @@ export type BackendPriceRow = {
   name: string;
   sportName?: string;
   competitionName?: string | null;
+  country?: string | null;
+  countryCode?: string | null;
+  timezone?: string | null;
+  status?: string | null;
+  isLive?: boolean | null;
   startAt: string | null;
   matches?: Record<string, BackendExchangeMatch | undefined>;
   aggregateLiquidityByExchange?: Record<string, number>;

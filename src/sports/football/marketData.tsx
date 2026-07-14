@@ -28,6 +28,8 @@ export type BackendExchangeMatch = {
   timezone?: string | null;
   marketName?: string | null;
   marketType?: string | null;
+  status?: string | null;
+  isLive?: boolean | null;
   startAt: string | null;
   observedAt: string | null;
   volume?: number;
@@ -47,6 +49,8 @@ export type BackendPriceRow = {
   timezone?: string | null;
   marketName?: string | null;
   marketType?: string | null;
+  status?: string | null;
+  isLive?: boolean | null;
   startAt: string | null;
   matches: Record<string, BackendExchangeMatch | undefined>;
   arbs?: Array<{ edgePct?: number; backExchange?: string; layExchange?: string; label?: string }>;
@@ -404,8 +408,13 @@ function marketStateRowsFromPayload(payload: unknown) {
       name: match.name,
       sportName: match.sportName,
       competitionName: match.competitionName,
+      country: match.country,
+      countryCode: match.countryCode,
+      timezone: match.timezone,
       marketName: match.marketName,
       marketType: match.marketType,
+      status: match.status,
+      isLive: match.isLive,
       startAt: match.startAt,
       matches: { [normalizeExchangeCode(match.exchange)]: match }
     }];
