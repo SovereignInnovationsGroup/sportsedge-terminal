@@ -9936,6 +9936,25 @@ button {
   color: #7df2a8;
 }
 
+.agtest-subbar select.football-liquidity-threshold {
+  flex: 0 0 auto;
+  height: 22px;
+  border: 1px solid rgba(46, 68, 91, 0.85);
+  border-radius: 4px;
+  background: #070d14;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  padding: 0 24px 0 8px;
+  text-transform: uppercase;
+}
+
+.agtest-subbar select.football-liquidity-threshold:focus {
+  border-color: rgba(103, 232, 154, 0.72);
+  outline: none;
+}
+
 .agtest-subbar span {
   color: var(--muted);
   font-family: var(--mono);

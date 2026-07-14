@@ -8,18 +8,24 @@ export function FootballScopeFilter({
   dateScope,
   locationScope,
   liquidityOnly,
+  minLiquidity,
+  liquidityThresholdOptions,
   onDateScopeChange,
   onLocationScopeChange,
   onLiquidityOnlyChange,
+  onMinLiquidityChange,
   meta,
   ariaLabel = "Football filters"
 }: {
   dateScope: string;
   locationScope: string;
   liquidityOnly?: boolean;
+  minLiquidity?: number;
+  liquidityThresholdOptions?: Array<{ value: number; label: string }>;
   onDateScopeChange: (value: string) => void;
   onLocationScopeChange: (value: string) => void;
   onLiquidityOnlyChange?: (value: boolean) => void;
+  onMinLiquidityChange?: (value: number) => void;
   meta?: string[];
   ariaLabel?: string;
 }) {
@@ -60,6 +66,19 @@ export function FootballScopeFilter({
               >
                 HAS £
               </button>
+              {onMinLiquidityChange && liquidityThresholdOptions?.length ? (
+                <select
+                  aria-label="Minimum total liquidity"
+                  className="football-liquidity-threshold"
+                  onChange={(event) => onMinLiquidityChange(Number(event.currentTarget.value || 0))}
+                  title="Minimum total liquidity"
+                  value={String(minLiquidity || 0)}
+                >
+                  {liquidityThresholdOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              ) : null}
             </>
           )}
         </nav>

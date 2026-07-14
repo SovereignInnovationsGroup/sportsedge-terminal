@@ -23,6 +23,9 @@ export type BackendExchangeMatch = {
   name: string;
   sportName?: string | null;
   competitionName?: string | null;
+  country?: string | null;
+  countryCode?: string | null;
+  timezone?: string | null;
   marketName?: string | null;
   marketType?: string | null;
   startAt: string | null;
@@ -39,6 +42,9 @@ export type BackendPriceRow = {
   name: string;
   sportName?: string | null;
   competitionName?: string | null;
+  country?: string | null;
+  countryCode?: string | null;
+  timezone?: string | null;
   marketName?: string | null;
   marketType?: string | null;
   startAt: string | null;
@@ -93,6 +99,7 @@ export type AgTestRow = {
   sx: string[];
   bias: string;
   liquidity: string;
+  totalLiquidity: number;
   bfLiquidity: string;
   mbLiquidity: string;
   pyLiquidity: string;
@@ -434,20 +441,117 @@ function footballFixtureCompetition(fixture: FootballFixture) {
   return [fixture.country, fixture.leagueName].filter(Boolean).join(" / ") || "Football";
 }
 
+const COUNTRY_CODE_NAMES: Record<string, string> = {
+  AR: "Argentina",
+  AU: "Australia",
+  AT: "Austria",
+  BE: "Belgium",
+  BR: "Brazil",
+  BG: "Bulgaria",
+  CA: "Canada",
+  CL: "Chile",
+  CN: "China",
+  CO: "Colombia",
+  HR: "Croatia",
+  CZ: "Czech Republic",
+  DK: "Denmark",
+  EN: "England",
+  FI: "Finland",
+  FR: "France",
+  DE: "Germany",
+  GR: "Greece",
+  HU: "Hungary",
+  IS: "Iceland",
+  IE: "Ireland",
+  IT: "Italy",
+  JP: "Japan",
+  KR: "South Korea",
+  MX: "Mexico",
+  NL: "Netherlands",
+  NO: "Norway",
+  PL: "Poland",
+  PT: "Portugal",
+  RO: "Romania",
+  RS: "Serbia",
+  SK: "Slovakia",
+  SI: "Slovenia",
+  ES: "Spain",
+  SE: "Sweden",
+  CH: "Switzerland",
+  TR: "Turkey",
+  UA: "Ukraine",
+  GB: "United Kingdom",
+  UK: "United Kingdom",
+  US: "United States",
+  USA: "United States",
+  VN: "Vietnam",
+  WA: "Wales",
+  WORLD: "World"
+};
+
+const COMPETITION_COUNTRY_HINTS: Array<{ country: string; terms: string[] }> = [
+  { country: "England", terms: ["english", "england", "premier league", "championship", "league one", "league two", "fa cup", "efl cup"] },
+  { country: "Scotland", terms: ["scottish", "scotland"] },
+  { country: "Wales", terms: ["welsh", "wales"] },
+  { country: "Northern Ireland", terms: ["northern ireland"] },
+  { country: "Germany", terms: ["germany", "german", "bundesliga"] },
+  { country: "Spain", terms: ["spain", "spanish", "la liga"] },
+  { country: "Italy", terms: ["italy", "italian", "serie a", "serie b"] },
+  { country: "France", terms: ["france", "french", "ligue 1", "ligue 2"] },
+  { country: "Netherlands", terms: ["netherlands", "dutch", "eredivisie"] },
+  { country: "Portugal", terms: ["portugal", "portuguese", "primeira liga"] },
+  { country: "Turkey", terms: ["turkey", "turkish"] },
+  { country: "Vietnam", terms: ["vietnam", "vietnamese"] },
+  { country: "China", terms: ["china", "chinese", "super league"] },
+  { country: "Australia", terms: ["australia", "australian", "a league", "npl"] },
+  { country: "Brazil", terms: ["brazil", "brazilian", "brasileiro"] },
+  { country: "Argentina", terms: ["argentina", "argentinian", "argentine"] },
+  { country: "Chile", terms: ["chile", "chilean"] },
+  { country: "Colombia", terms: ["colombia", "colombian"] },
+  { country: "Mexico", terms: ["mexico", "mexican", "liga mx"] },
+  { country: "United States", terms: ["united states", "usa", "usl", "mls"] },
+  { country: "Japan", terms: ["japan", "japanese", "j league"] },
+  { country: "South Korea", terms: ["south korea", "korea", "k league"] },
+  { country: "Poland", terms: ["poland", "polish", "ekstraklasa"] },
+  { country: "Belgium", terms: ["belgium", "belgian", "jupiler"] },
+  { country: "Austria", terms: ["austria", "austrian"] },
+  { country: "Switzerland", terms: ["switzerland", "swiss"] },
+  { country: "Denmark", terms: ["denmark", "danish"] },
+  { country: "Norway", terms: ["norway", "norwegian"] },
+  { country: "Sweden", terms: ["sweden", "swedish"] },
+  { country: "Finland", terms: ["finland", "finnish"] },
+  { country: "Ireland", terms: ["ireland", "irish"] },
+  { country: "Greece", terms: ["greece", "greek"] },
+  { country: "Romania", terms: ["romania", "romanian"] },
+  { country: "Bulgaria", terms: ["bulgaria", "bulgarian"] },
+  { country: "Hungary", terms: ["hungary", "hungarian"] },
+  { country: "Croatia", terms: ["croatia", "croatian"] },
+  { country: "Serbia", terms: ["serbia", "serbian"] },
+  { country: "Czech Republic", terms: ["czech"] },
+  { country: "Slovakia", terms: ["slovakia", "slovak"] },
+  { country: "Slovenia", terms: ["slovenia", "slovenian"] },
+  { country: "Ukraine", terms: ["ukraine", "ukrainian"] }
+];
+
+function countryNameFromCode(value: string | null | undefined) {
+  const code = String(value || "").trim().toUpperCase();
+  if (!code) return null;
+  return COUNTRY_CODE_NAMES[code] || code;
+}
+
 function inferCountryFromCompetition(value: string | null | undefined) {
   const text = normalizeFixtureText(value || "");
-  if (text.includes("english") || text.includes("england ")) return "England";
-  if (text.includes("scottish") || text.includes("scotland ")) return "Scotland";
-  if (text.includes("welsh") || text === "wales" || text.includes(" wales ")) return "Wales";
-  if (text.includes("northern ireland")) return "Northern Ireland";
-  if (text.includes("germany") || text.includes("bundesliga")) return "Germany";
-  if (text.includes("spain") || text.includes("la liga")) return "Spain";
-  if (text.includes("italy") || text.includes("serie a")) return "Italy";
-  if (text.includes("france") || text.includes("ligue 1")) return "France";
-  if (text.includes("netherlands") || text.includes("eredivisie")) return "Netherlands";
-  if (text.includes("portugal") || text.includes("primeira liga")) return "Portugal";
-  if (text.includes("turkey")) return "Turkey";
+  for (const hint of COMPETITION_COUNTRY_HINTS) {
+    if (hint.terms.some((term) => text.includes(normalizeFixtureText(term)))) return hint.country;
+  }
   return null;
+}
+
+function countryFromBackendRow(row: BackendPriceRow) {
+  const directCountry = row.country || Object.values(row.matches || {}).find((match) => match?.country)?.country;
+  if (directCountry) return directCountry;
+  const directCode = row.countryCode || Object.values(row.matches || {}).find((match) => match?.countryCode)?.countryCode;
+  return countryNameFromCode(directCode) || inferCountryFromCompetition(`${row.competitionName || ""} ${row.name || ""}`);
 }
 
 function formatFootballFixtureTime(fixture: FootballFixture) {
@@ -584,7 +688,7 @@ function agRowFromBackend(row: BackendPriceRow): AgTestRow {
     kickoff: displayStartTime(row),
     match: displayEventName(row.name),
     competition: row.competitionName || "Exchange football",
-    country: inferCountryFromCompetition(row.competitionName),
+    country: countryFromBackendRow(row),
     coverage: exchangeCoverage(row),
     outcomes: marketCount > 1 ? [`${marketCount} markets`] : outcomes.length ? outcomes.map((outcome) => outcome.label) : ["Exchange market"],
     betfair: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "betfair")) : ["-"],
@@ -594,6 +698,7 @@ function agRowFromBackend(row: BackendPriceRow): AgTestRow {
     sx: outcomes.length ? outcomes.map((outcome) => formatOutcomeCell(outcome, "sx")) : ["-"],
     bias: biasFromRow(row),
     liquidity: liquidityValue ? formatExchangeMoney(liquidityValue, "GBP") : "-",
+    totalLiquidity: liquidityValue,
     bfLiquidity: formatBackendExchangeLiquidity(row, "betfair"),
     mbLiquidity: formatBackendExchangeLiquidity(row, "matchbook"),
     pyLiquidity: formatBackendExchangeLiquidity(row, "polymarket"),
@@ -627,6 +732,7 @@ export function buildAgTestRows(fixtures: FootballFixture[], priceRows: BackendP
       sx: ["-"],
       bias: "No route",
       liquidity: "-",
+      totalLiquidity: 0,
       bfLiquidity: "-",
       mbLiquidity: "-",
       pyLiquidity: "-",

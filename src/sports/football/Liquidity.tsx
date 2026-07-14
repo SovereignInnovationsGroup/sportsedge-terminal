@@ -27,7 +27,17 @@ import {
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const LIQUIDITY_COLUMN_STATE_KEY = "sportsedge.footballLiquidityColumnState.v1";
+const LIQUIDITY_COLUMN_STATE_KEY = "sportsedge.footballLiquidityColumnState.v2";
+const LIQUIDITY_HAS_MONEY_STATE_KEY = "sportsedge.footballLiquidity.hasMoney.v1";
+const LIQUIDITY_MIN_TOTAL_STATE_KEY = "sportsedge.footballLiquidity.minTotal.v1";
+const LIQUIDITY_THRESHOLD_OPTIONS = [
+  { value: 0, label: "ANY £" },
+  { value: 1_000, label: "£1K+" },
+  { value: 10_000, label: "£10K+" },
+  { value: 50_000, label: "£50K+" },
+  { value: 100_000, label: "£100K+" },
+  { value: 1_000_000, label: "£1M+" }
+];
 
 function readLiquidityColumnState() {
   try {
@@ -47,6 +57,34 @@ function saveLiquidityColumnState(api: { getColumnState?: () => unknown[] }) {
   }
 }
 
+function readBooleanPreference(key: string, fallback: boolean) {
+  try {
+    const value = window.localStorage.getItem(key);
+    if (value === "true") return true;
+    if (value === "false") return false;
+  } catch {
+    // Preference only.
+  }
+  return fallback;
+}
+
+function readMinLiquidityPreference() {
+  try {
+    const value = Number(window.localStorage.getItem(LIQUIDITY_MIN_TOTAL_STATE_KEY) || 0);
+    return LIQUIDITY_THRESHOLD_OPTIONS.some((option) => option.value === value) ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function savePreference(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Preference only.
+  }
+}
+
 export default function Liquidity() {
   const cachedLiquidityRows = cachedFootballLiquidityRows();
   const [fixtures, setFixtures] = useState<FootballFixture[]>([]);
@@ -57,6 +95,8 @@ export default function Liquidity() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dateScope, setDateScope] = useState("all");
   const [locationScope, setLocationScope] = useState("all");
+  const [liquidityOnly, setLiquidityOnly] = useState(() => readBooleanPreference(LIQUIDITY_HAS_MONEY_STATE_KEY, true));
+  const [minLiquidity, setMinLiquidity] = useState(readMinLiquidityPreference);
   const [socketStatus, setSocketStatus] = useState<"offline" | "connecting" | "live" | "waiting">("offline");
   const [hoverDetails, setHoverDetails] = useState<{ x: number; y: number; title: string; lines: string[] } | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
@@ -68,15 +108,29 @@ export default function Liquidity() {
   const groupedRows = useMemo(() => allRows.filter((row) => (
     footballScopeMatches(`${row.match} ${row.competition}`, row.country, row.startAt, dateScope, locationScope)
   )), [allRows, dateScope, locationScope]);
+  const moneyFilteredRows = useMemo(() => groupedRows.filter((row) => {
+    const total = Number(row.totalLiquidity || 0);
+    if (liquidityOnly && total <= 0) return false;
+    if (minLiquidity > 0 && total < minLiquidity) return false;
+    return true;
+  }), [groupedRows, liquidityOnly, minLiquidity]);
   const rows = useMemo(() => {
-    const nextRows = filterAgTestRows(groupedRows, searchQuery);
+    const nextRows = filterAgTestRows(moneyFilteredRows, searchQuery);
     return [...nextRows].sort((left, right) => {
       const leftTime = left.startAt ? new Date(left.startAt).getTime() : Number.MAX_SAFE_INTEGER;
       const rightTime = right.startAt ? new Date(right.startAt).getTime() : Number.MAX_SAFE_INTEGER;
       if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) return leftTime - rightTime;
       return String(left.match || "").localeCompare(String(right.match || ""));
     });
-  }, [groupedRows, searchQuery]);
+  }, [moneyFilteredRows, searchQuery]);
+
+  useEffect(() => {
+    savePreference(LIQUIDITY_HAS_MONEY_STATE_KEY, String(liquidityOnly));
+  }, [liquidityOnly]);
+
+  useEffect(() => {
+    savePreference(LIQUIDITY_MIN_TOTAL_STATE_KEY, String(minLiquidity));
+  }, [minLiquidity]);
 
   useEffect(() => {
     let cancelled = false;
@@ -233,7 +287,7 @@ export default function Liquidity() {
     {
       field: "match",
       headerName: "Fixture",
-      minWidth: 250,
+      minWidth: 235,
       flex: 1,
       pinned: "left",
       cellRenderer: ({ data }: { data?: AgTestRow }) => (
@@ -243,6 +297,7 @@ export default function Liquidity() {
         </div>
       )
     },
+    { field: "country", headerName: "Country", width: 118, valueFormatter: ({ value }) => value || "-" },
     {
       field: "coverage",
       headerName: "Coverage",
@@ -312,10 +367,18 @@ export default function Liquidity() {
         <FootballScopeFilter
           dateScope={dateScope}
           locationScope={locationScope}
+          liquidityOnly={liquidityOnly}
+          minLiquidity={minLiquidity}
+          liquidityThresholdOptions={LIQUIDITY_THRESHOLD_OPTIONS}
           onDateScopeChange={setDateScope}
           onLocationScopeChange={setLocationScope}
+          onLiquidityOnlyChange={setLiquidityOnly}
+          onMinLiquidityChange={(value) => {
+            setMinLiquidity(value);
+            if (value > 0) setLiquidityOnly(true);
+          }}
           meta={[
-            `${rows.length}${searchQuery.trim() || dateScope !== "all" || locationScope !== "all" ? ` / ${allRows.length}` : ""} markets`,
+            `${rows.length}${searchQuery.trim() || dateScope !== "all" || locationScope !== "all" || minLiquidity > 0 || !liquidityOnly ? ` / ${allRows.length}` : ""} markets`,
             "Available money now",
             socketStatus === "live" ? "wss live" : loading ? "loading" : socketStatus
           ]}
