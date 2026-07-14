@@ -1,6 +1,6 @@
 import { memo, useMemo } from "react";
 import { eventHasPassed, localEventTime } from "../../core/format";
-import { countryFlag } from "../football/liquidityFilterOptions";
+import { CountryFlag } from "../football/CountryFlag";
 import {
   DASHBOARD_EXCHANGES,
   DEFAULT_DATE_SCOPE_FILTERS,
@@ -91,8 +91,8 @@ const FixtureTableRow = memo(function FixtureTableRow({
       <td>{event.competition || "Football"}</td>
       <td>
         <span className="fixture-country">
-          {countryFlag(event.country) ? <span aria-hidden="true">{countryFlag(event.country)}</span> : null}
-          <span>{event.country || "-"}</span>
+          <CountryFlag country={event.country} />
+          <span className="fixture-country-label">{event.country || "-"}</span>
         </span>
       </td>
       <td><ExchangeCoverageCell event={event} /></td>

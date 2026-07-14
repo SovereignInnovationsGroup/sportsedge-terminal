@@ -9936,8 +9936,7 @@ button {
   color: #7df2a8;
 }
 
-.agtest-subbar select.football-liquidity-threshold,
-.agtest-subbar select.football-country-filter {
+.agtest-subbar select.football-liquidity-threshold {
   flex: 0 0 auto;
   height: 22px;
   border: 1px solid rgba(46, 68, 91, 0.85);
@@ -9951,14 +9950,93 @@ button {
   text-transform: uppercase;
 }
 
-.agtest-subbar select.football-country-filter {
-  min-width: 136px;
-}
-
-.agtest-subbar select.football-liquidity-threshold:focus,
-.agtest-subbar select.football-country-filter:focus {
+.agtest-subbar select.football-liquidity-threshold:focus {
   border-color: rgba(103, 232, 154, 0.72);
   outline: none;
+}
+
+.football-country-combobox {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.agtest-subbar button.football-country-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  justify-content: flex-start;
+  min-width: 158px;
+  height: 22px;
+  border: 1px solid rgba(46, 68, 91, 0.85);
+  border-radius: 4px;
+  background: #070d14;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  padding: 0 8px;
+  text-transform: uppercase;
+}
+
+.agtest-subbar button.football-country-filter:focus,
+.agtest-subbar button.football-country-filter:hover {
+  border-color: rgba(103, 232, 154, 0.72);
+  color: var(--text);
+  outline: none;
+}
+
+.football-country-filter > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.football-country-menu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 5px);
+  z-index: 80;
+  width: 220px;
+  max-height: 300px;
+  overflow: auto;
+  border: 1px solid rgba(61, 81, 104, 0.96);
+  border-radius: 6px;
+  background: #050b12;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.42);
+  padding: 4px;
+}
+
+.agtest-subbar button.football-country-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 26px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.88);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 950;
+  justify-content: flex-start;
+  padding: 0 7px;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.agtest-subbar button.football-country-option:hover,
+.agtest-subbar button.football-country-option.active {
+  background: rgba(16, 185, 129, 0.14);
+  color: #d1fae5;
+}
+
+.football-country-option > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .agtest-subbar span {
@@ -11106,11 +11184,45 @@ button {
   min-width: 0;
 }
 
-.fixture-country span:last-child {
+.fixture-country-label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.country-flag {
+  position: relative;
+  display: inline-grid;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 14px;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 2px;
+  background: rgba(15, 23, 42, 0.86);
+  color: #dbeafe;
+  line-height: 1;
+}
+
+.country-flag img,
+.country-flag-code {
+  grid-area: 1 / 1;
+}
+
+.country-flag img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.country-flag-code {
+  font-family: var(--mono);
+  font-size: 7px;
+  font-weight: 950;
+  letter-spacing: 0;
 }
 
 .fixture-status {
@@ -13700,10 +13812,14 @@ button {
   width: 100%;
 }
 
-.ag-country-cell span {
+.ag-country-cell > span:not(.country-flag) {
   flex: 0 0 auto;
   font-size: 14px;
   line-height: 1;
+}
+
+.ag-country-cell .country-flag {
+  flex: 0 0 20px;
 }
 
 .ag-country-cell strong {

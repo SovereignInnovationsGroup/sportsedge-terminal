@@ -4,6 +4,7 @@ import { AllCommunityModule, ModuleRegistry, type ColDef } from "ag-grid-communi
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
+import { CountryFlag } from "./CountryFlag";
 import { FootballScopeFilter } from "./FootballScopeFilter";
 import { footballScopeBreadcrumb, footballScopeMatches } from "./filters";
 import {
@@ -12,7 +13,6 @@ import {
   FOOTBALL_LIQUIDITY_THRESHOLD_OPTIONS,
   FOOTBALL_MIN_TOTAL_STATE_KEY,
   countryFilterLabel,
-  countryFlag,
   readBooleanPreference,
   readMinLiquidityPreference,
   readStringPreference,
@@ -296,7 +296,7 @@ export default function Liquidity() {
       width: 142,
       cellRenderer: ({ data }: { data?: AgTestRow }) => (
         <span className="ag-country-cell">
-          {countryFlag(data?.country) ? <span aria-hidden="true">{countryFlag(data?.country)}</span> : null}
+          <CountryFlag country={data?.country} />
           <strong>{data?.country || "-"}</strong>
         </span>
       )

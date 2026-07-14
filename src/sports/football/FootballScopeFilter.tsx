@@ -1,3 +1,5 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CountryFlag } from "./CountryFlag";
 import {
   FOOTBALL_DATE_SCOPE_FILTERS,
   FOOTBALL_LOCATION_SCOPE_FILTERS,
@@ -35,6 +37,21 @@ export function FootballScopeFilter({
   meta?: string[];
   ariaLabel?: string;
 }) {
+  const [countryMenuOpen, setCountryMenuOpen] = useState(false);
+  const countryMenuRef = useRef<HTMLDivElement | null>(null);
+  const selectedCountryOption = useMemo(() => (
+    countryFilterOptions?.find((option) => option.value === (countryScope || "all")) || countryFilterOptions?.[0]
+  ), [countryFilterOptions, countryScope]);
+
+  useEffect(() => {
+    if (!countryMenuOpen) return;
+    function closeOnOutsideClick(event: MouseEvent) {
+      if (!countryMenuRef.current?.contains(event.target as Node)) setCountryMenuOpen(false);
+    }
+    window.addEventListener("mousedown", closeOnOutsideClick);
+    return () => window.removeEventListener("mousedown", closeOnOutsideClick);
+  }, [countryMenuOpen]);
+
   return (
     <section className="agtest-subbar football-scope-filterbar" aria-label={ariaLabel}>
       <div className="agtest-filter-stack">
@@ -86,17 +103,43 @@ export function FootballScopeFilter({
                 </select>
               ) : null}
               {onCountryScopeChange && countryFilterOptions?.length ? (
-                <select
-                  aria-label="Country filter"
-                  className="football-country-filter"
-                  onChange={(event) => onCountryScopeChange(event.currentTarget.value)}
-                  title="Country filter"
-                  value={countryScope || "all"}
-                >
-                  {countryFilterOptions.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                <div className="football-country-combobox" ref={countryMenuRef}>
+                  <button
+                    aria-expanded={countryMenuOpen}
+                    aria-haspopup="listbox"
+                    aria-label="Country filter"
+                    className="football-country-filter"
+                    onClick={() => setCountryMenuOpen((open) => !open)}
+                    title="Country filter"
+                    type="button"
+                  >
+                    <CountryFlag country={selectedCountryOption?.value === "all" ? null : selectedCountryOption?.value} />
+                    <span>{selectedCountryOption?.label || "ALL COUNTRIES"}</span>
+                  </button>
+                  {countryMenuOpen ? (
+                    <div className="football-country-menu" role="listbox">
+                      {countryFilterOptions.map((option) => {
+                        const active = option.value === (countryScope || "all");
+                        return (
+                          <button
+                            aria-selected={active}
+                            className={active ? "football-country-option active" : "football-country-option"}
+                            key={option.value}
+                            onClick={() => {
+                              onCountryScopeChange(option.value);
+                              setCountryMenuOpen(false);
+                            }}
+                            role="option"
+                            type="button"
+                          >
+                            <CountryFlag country={option.value === "all" ? null : option.value} />
+                            <span>{option.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
             </>
           )}
