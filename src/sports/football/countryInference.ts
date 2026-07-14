@@ -54,6 +54,7 @@ const COUNTRY_CODE_NAMES: Record<string, string> = {
   NL: "Netherlands",
   NO: "Norway",
   PL: "Poland",
+  PE: "Peru",
   PT: "Portugal",
   PY: "Paraguay",
   RO: "Romania",
@@ -77,6 +78,7 @@ const COUNTRY_CODE_NAMES: Record<string, string> = {
 const COUNTRY_HINTS: CountryHint[] = [
   { country: "Kazakhstan", terms: ["kazakhstan", "kazakh", "fc astana", "astana fk", "ordabasy", "kairat", "qairat", "elimai", "irtysh pavlodar", "irtysh pavlaodar"] },
   { country: "Paraguay", terms: ["paraguay", "paraguayan", "alto parana", "resistencia sc", "cristobal colon", "sportivo limpeno", "general caballero"] },
+  { country: "Peru", terms: ["peru", "peruvian", "moquegua", "comerciantes unidos", "cienciano", "fbc melgar", "alianza lima", "universitario", "sporting cristal", "cusco fc", "sport boys", "cajamarca"] },
   { country: "Iceland", terms: ["iceland", "icelandic", "besta deild", "1 deild", "kopavog", "kopavogur", "reykjavik", "grindavik", "stjarnan", "thor ka", "valur", "breidablik", "hafnarfjordur", "vikingur reykjavik", "hk kopavogur", "ibv", "vestri"] },
   { country: "Georgia", terms: ["georgia", "georgian", "sk iberia", "iberia 1999", "torpedo kutaisi", "dinamo tbilisi", "dila gori"] },
   { country: "Germany", terms: ["germany", "german", "bundesliga", "braunschweig", "havelse", "darmstadt", "homburg"] },
