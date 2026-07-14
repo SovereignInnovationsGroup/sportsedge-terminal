@@ -1,4 +1,5 @@
 import { localDateKey, localEventTime } from "../../core/format";
+import { countryNameFromCode, inferFootballCountry } from "../football/countryInference";
 import {
   BackendExchangeMatch,
   BackendPriceRow,
@@ -121,59 +122,15 @@ function normalizeEventName(value: string) {
     .replace(/\s+/g, " ");
 }
 
-const COUNTRY_HINTS: Array<{ country: string; terms: string[] }> = [
-  { country: "Vietnam", terms: ["vietnam", "vietnamese"] },
-  { country: "China", terms: ["china", "chinese", "super league"] },
-  { country: "Australia", terms: ["australia", "australian", "a league", "npl"] },
-  { country: "England", terms: ["english", "england", "premier league", "championship", "league one", "league two", "fa cup", "efl cup"] },
-  { country: "Scotland", terms: ["scottish", "scotland"] },
-  { country: "Wales", terms: ["welsh", "wales"] },
-  { country: "Northern Ireland", terms: ["northern ireland"] },
-  { country: "Germany", terms: ["germany", "german", "bundesliga"] },
-  { country: "Spain", terms: ["spain", "spanish", "la liga"] },
-  { country: "Italy", terms: ["italy", "italian", "serie a", "serie b"] },
-  { country: "France", terms: ["france", "french", "ligue 1", "ligue 2"] },
-  { country: "Netherlands", terms: ["netherlands", "dutch", "eredivisie"] },
-  { country: "Portugal", terms: ["portugal", "portuguese", "primeira liga"] },
-  { country: "Turkey", terms: ["turkey", "turkish"] },
-  { country: "Brazil", terms: ["brazil", "brazilian", "brasileiro"] },
-  { country: "Argentina", terms: ["argentina", "argentinian", "argentine"] },
-  { country: "Chile", terms: ["chile", "chilean"] },
-  { country: "Colombia", terms: ["colombia", "colombian"] },
-  { country: "Mexico", terms: ["mexico", "mexican", "liga mx"] },
-  { country: "United States", terms: ["united states", "usa", "usl", "mls"] },
-  { country: "Japan", terms: ["japan", "japanese", "j league"] },
-  { country: "South Korea", terms: ["south korea", "korea", "k league"] },
-  { country: "Poland", terms: ["poland", "polish", "ekstraklasa"] }
-];
-
-const COUNTRY_CODE_NAMES: Record<string, string> = {
-  CN: "China",
-  GB: "United Kingdom",
-  UK: "United Kingdom",
-  US: "United States",
-  USA: "United States",
-  VN: "Vietnam"
-};
-
-function countryNameFromCode(value: string | null | undefined) {
-  const code = String(value || "").trim().toUpperCase();
-  return code ? COUNTRY_CODE_NAMES[code] || code : "";
-}
-
-function inferCountry(value: string) {
-  const text = normalizeEventName(value);
-  for (const hint of COUNTRY_HINTS) {
-    if (hint.terms.some((term) => text.includes(normalizeEventName(term)))) return hint.country;
-  }
-  return "";
-}
-
 function exchangeRowCountry(row: BackendPriceRow, matches: Array<[string, BackendExchangeMatch]>) {
   const directCountry = String(row.country || matches.find(([, match]) => match.country)?.[1].country || "").trim();
   if (directCountry) return directCountry;
   const directCode = String(row.countryCode || matches.find(([, match]) => match.countryCode)?.[1].countryCode || "").trim();
-  return countryNameFromCode(directCode) || inferCountry(`${row.competitionName || ""} ${row.name || ""} ${matches.map(([, match]) => `${match.competitionName || ""} ${match.name || ""}`).join(" ")}`);
+  return countryNameFromCode(directCode) || inferFootballCountry({
+    competition: row.competitionName,
+    fixture: row.name,
+    extra: matches.map(([, match]) => `${match.competitionName || ""} ${match.name || ""}`).join(" ")
+  });
 }
 
 function exchangeMatchIsLive(match: BackendExchangeMatch | undefined) {

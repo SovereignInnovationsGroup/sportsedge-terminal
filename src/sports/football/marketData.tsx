@@ -1,4 +1,5 @@
 import { eventHasPassed, formatExchangeMoney, localEventTime, normalizeFixtureText } from "../../core/format";
+import { countryNameFromCode, inferFootballCountry } from "./countryInference";
 import { sportsEdgeWsUrl } from "../../core/news";
 import { readSnapshot, writeSnapshot } from "../../core/snapshotCache";
 import { footballTextMatchesGroup } from "./filters";
@@ -450,117 +451,15 @@ function footballFixtureCompetition(fixture: FootballFixture) {
   return [fixture.country, fixture.leagueName].filter(Boolean).join(" / ") || "Football";
 }
 
-const COUNTRY_CODE_NAMES: Record<string, string> = {
-  AR: "Argentina",
-  AU: "Australia",
-  AT: "Austria",
-  BE: "Belgium",
-  BR: "Brazil",
-  BG: "Bulgaria",
-  CA: "Canada",
-  CL: "Chile",
-  CN: "China",
-  CO: "Colombia",
-  HR: "Croatia",
-  CZ: "Czech Republic",
-  DK: "Denmark",
-  EN: "England",
-  FI: "Finland",
-  FR: "France",
-  DE: "Germany",
-  GR: "Greece",
-  HU: "Hungary",
-  IS: "Iceland",
-  IE: "Ireland",
-  IT: "Italy",
-  JP: "Japan",
-  KR: "South Korea",
-  MX: "Mexico",
-  NL: "Netherlands",
-  NO: "Norway",
-  PL: "Poland",
-  PT: "Portugal",
-  RO: "Romania",
-  RS: "Serbia",
-  SK: "Slovakia",
-  SI: "Slovenia",
-  ES: "Spain",
-  SE: "Sweden",
-  CH: "Switzerland",
-  TR: "Turkey",
-  UA: "Ukraine",
-  GB: "United Kingdom",
-  UK: "United Kingdom",
-  US: "United States",
-  USA: "United States",
-  VN: "Vietnam",
-  WA: "Wales",
-  WORLD: "World"
-};
-
-const COMPETITION_COUNTRY_HINTS: Array<{ country: string; terms: string[] }> = [
-  { country: "England", terms: ["english", "england", "premier league", "championship", "league one", "league two", "fa cup", "efl cup"] },
-  { country: "Scotland", terms: ["scottish", "scotland"] },
-  { country: "Wales", terms: ["welsh", "wales"] },
-  { country: "Northern Ireland", terms: ["northern ireland"] },
-  { country: "Germany", terms: ["germany", "german", "bundesliga"] },
-  { country: "Spain", terms: ["spain", "spanish", "la liga"] },
-  { country: "Italy", terms: ["italy", "italian", "serie a", "serie b"] },
-  { country: "France", terms: ["france", "french", "ligue 1", "ligue 2"] },
-  { country: "Netherlands", terms: ["netherlands", "dutch", "eredivisie"] },
-  { country: "Portugal", terms: ["portugal", "portuguese", "primeira liga"] },
-  { country: "Turkey", terms: ["turkey", "turkish"] },
-  { country: "Vietnam", terms: ["vietnam", "vietnamese"] },
-  { country: "China", terms: ["china", "chinese", "super league"] },
-  { country: "Australia", terms: ["australia", "australian", "a league", "npl"] },
-  { country: "Brazil", terms: ["brazil", "brazilian", "brasileiro"] },
-  { country: "Argentina", terms: ["argentina", "argentinian", "argentine"] },
-  { country: "Chile", terms: ["chile", "chilean"] },
-  { country: "Colombia", terms: ["colombia", "colombian"] },
-  { country: "Mexico", terms: ["mexico", "mexican", "liga mx"] },
-  { country: "United States", terms: ["united states", "usa", "usl", "mls"] },
-  { country: "Japan", terms: ["japan", "japanese", "j league"] },
-  { country: "South Korea", terms: ["south korea", "korea", "k league"] },
-  { country: "Poland", terms: ["poland", "polish", "ekstraklasa"] },
-  { country: "Belgium", terms: ["belgium", "belgian", "jupiler"] },
-  { country: "Austria", terms: ["austria", "austrian"] },
-  { country: "Switzerland", terms: ["switzerland", "swiss"] },
-  { country: "Denmark", terms: ["denmark", "danish"] },
-  { country: "Norway", terms: ["norway", "norwegian"] },
-  { country: "Sweden", terms: ["sweden", "swedish"] },
-  { country: "Finland", terms: ["finland", "finnish"] },
-  { country: "Ireland", terms: ["ireland", "irish"] },
-  { country: "Greece", terms: ["greece", "greek"] },
-  { country: "Romania", terms: ["romania", "romanian"] },
-  { country: "Bulgaria", terms: ["bulgaria", "bulgarian"] },
-  { country: "Hungary", terms: ["hungary", "hungarian"] },
-  { country: "Croatia", terms: ["croatia", "croatian"] },
-  { country: "Serbia", terms: ["serbia", "serbian"] },
-  { country: "Czech Republic", terms: ["czech"] },
-  { country: "Slovakia", terms: ["slovakia", "slovak"] },
-  { country: "Slovenia", terms: ["slovenia", "slovenian"] },
-  { country: "Ukraine", terms: ["ukraine", "ukrainian"] }
-];
-
-function countryNameFromCode(value: string | null | undefined) {
-  const code = String(value || "").trim().toUpperCase();
-  if (!code) return null;
-  return COUNTRY_CODE_NAMES[code] || code;
-}
-
-function inferCountryFromCompetition(value: string | null | undefined) {
-  const text = normalizeFixtureText(value || "");
-  for (const hint of COMPETITION_COUNTRY_HINTS) {
-    if (hint.terms.some((term) => text.includes(normalizeFixtureText(term)))) return hint.country;
-  }
-  return null;
-}
-
 function countryFromBackendRow(row: BackendPriceRow) {
   const directCountry = row.country || Object.values(row.matches || {}).find((match) => match?.country)?.country;
   if (directCountry) return directCountry;
   const directCode = row.countryCode || Object.values(row.matches || {}).find((match) => match?.countryCode)?.countryCode;
-  return countryNameFromCode(directCode) || inferCountryFromCompetition(`${row.competitionName || ""} ${row.name || ""}`);
+  return countryNameFromCode(directCode) || inferFootballCountry({
+    competition: row.competitionName,
+    fixture: row.name,
+    extra: Object.values(row.matches || {}).map((match) => `${match?.competitionName || ""} ${match?.name || ""}`).join(" ")
+  });
 }
 
 function formatFootballFixtureTime(fixture: FootballFixture) {
