@@ -30,6 +30,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 const LIQUIDITY_COLUMN_STATE_KEY = "sportsedge.footballLiquidityColumnState.v2";
 const LIQUIDITY_HAS_MONEY_STATE_KEY = "sportsedge.footballLiquidity.hasMoney.v1";
 const LIQUIDITY_MIN_TOTAL_STATE_KEY = "sportsedge.footballLiquidity.minTotal.v1";
+const LIQUIDITY_COUNTRY_STATE_KEY = "sportsedge.footballLiquidity.country.v1";
 const LIQUIDITY_THRESHOLD_OPTIONS = [
   { value: 0, label: "ANY £" },
   { value: 1_000, label: "£1K+" },
@@ -38,6 +39,53 @@ const LIQUIDITY_THRESHOLD_OPTIONS = [
   { value: 100_000, label: "£100K+" },
   { value: 1_000_000, label: "£1M+" }
 ];
+
+const COUNTRY_FLAGS: Record<string, string> = {
+  Argentina: "🇦🇷",
+  Australia: "🇦🇺",
+  Austria: "🇦🇹",
+  Belgium: "🇧🇪",
+  Brazil: "🇧🇷",
+  Bulgaria: "🇧🇬",
+  Canada: "🇨🇦",
+  Chile: "🇨🇱",
+  China: "🇨🇳",
+  Colombia: "🇨🇴",
+  Croatia: "🇭🇷",
+  "Czech Republic": "🇨🇿",
+  Denmark: "🇩🇰",
+  England: "🏴",
+  Finland: "🇫🇮",
+  France: "🇫🇷",
+  Germany: "🇩🇪",
+  Greece: "🇬🇷",
+  Hungary: "🇭🇺",
+  Iceland: "🇮🇸",
+  Ireland: "🇮🇪",
+  Italy: "🇮🇹",
+  Japan: "🇯🇵",
+  Mexico: "🇲🇽",
+  Netherlands: "🇳🇱",
+  "Northern Ireland": "🇬🇧",
+  Norway: "🇳🇴",
+  Poland: "🇵🇱",
+  Portugal: "🇵🇹",
+  Romania: "🇷🇴",
+  Scotland: "🏴",
+  Serbia: "🇷🇸",
+  Slovakia: "🇸🇰",
+  Slovenia: "🇸🇮",
+  "South Korea": "🇰🇷",
+  Spain: "🇪🇸",
+  Sweden: "🇸🇪",
+  Switzerland: "🇨🇭",
+  Turkey: "🇹🇷",
+  Ukraine: "🇺🇦",
+  "United Kingdom": "🇬🇧",
+  "United States": "🇺🇸",
+  Vietnam: "🇻🇳",
+  Wales: "🏴"
+};
 
 function readLiquidityColumnState() {
   try {
@@ -85,6 +133,22 @@ function savePreference(key: string, value: string) {
   }
 }
 
+function readStringPreference(key: string, fallback = "all") {
+  try {
+    return window.localStorage.getItem(key) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function countryFlag(country: string | null | undefined) {
+  return COUNTRY_FLAGS[String(country || "").trim()] || "";
+}
+
+function countryFilterLabel(country: string) {
+  return [countryFlag(country), country].filter(Boolean).join(" ");
+}
+
 export default function Liquidity() {
   const cachedLiquidityRows = cachedFootballLiquidityRows();
   const [fixtures, setFixtures] = useState<FootballFixture[]>([]);
@@ -97,6 +161,7 @@ export default function Liquidity() {
   const [locationScope, setLocationScope] = useState("all");
   const [liquidityOnly, setLiquidityOnly] = useState(() => readBooleanPreference(LIQUIDITY_HAS_MONEY_STATE_KEY, true));
   const [minLiquidity, setMinLiquidity] = useState(readMinLiquidityPreference);
+  const [countryScope, setCountryScope] = useState(() => readStringPreference(LIQUIDITY_COUNTRY_STATE_KEY));
   const [socketStatus, setSocketStatus] = useState<"offline" | "connecting" | "live" | "waiting">("offline");
   const [hoverDetails, setHoverDetails] = useState<{ x: number; y: number; title: string; lines: string[] } | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
@@ -108,12 +173,26 @@ export default function Liquidity() {
   const groupedRows = useMemo(() => allRows.filter((row) => (
     footballScopeMatches(`${row.match} ${row.competition}`, row.country, row.startAt, dateScope, locationScope)
   )), [allRows, dateScope, locationScope]);
-  const moneyFilteredRows = useMemo(() => groupedRows.filter((row) => {
+  const countryOptions = useMemo(() => {
+    const countries = new Set(groupedRows.map((row) => row.country || "").filter(Boolean));
+    if (countryScope !== "all") countries.add(countryScope);
+    return [
+      { value: "all", label: "ALL COUNTRIES" },
+      ...Array.from(countries)
+        .sort((left, right) => left.localeCompare(right))
+        .map((country) => ({ value: country, label: countryFilterLabel(country) }))
+    ];
+  }, [groupedRows, countryScope]);
+  const countryFilteredRows = useMemo(() => {
+    if (countryScope === "all") return groupedRows;
+    return groupedRows.filter((row) => row.country === countryScope);
+  }, [groupedRows, countryScope]);
+  const moneyFilteredRows = useMemo(() => countryFilteredRows.filter((row) => {
     const total = Number(row.totalLiquidity || 0);
     if (liquidityOnly && total <= 0) return false;
     if (minLiquidity > 0 && total < minLiquidity) return false;
     return true;
-  }), [groupedRows, liquidityOnly, minLiquidity]);
+  }), [countryFilteredRows, liquidityOnly, minLiquidity]);
   const rows = useMemo(() => {
     const nextRows = filterAgTestRows(moneyFilteredRows, searchQuery);
     return [...nextRows].sort((left, right) => {
@@ -131,6 +210,10 @@ export default function Liquidity() {
   useEffect(() => {
     savePreference(LIQUIDITY_MIN_TOTAL_STATE_KEY, String(minLiquidity));
   }, [minLiquidity]);
+
+  useEffect(() => {
+    savePreference(LIQUIDITY_COUNTRY_STATE_KEY, countryScope);
+  }, [countryScope]);
 
   useEffect(() => {
     let cancelled = false;
@@ -297,7 +380,17 @@ export default function Liquidity() {
         </div>
       )
     },
-    { field: "country", headerName: "Country", width: 118, valueFormatter: ({ value }) => value || "-" },
+    {
+      field: "country",
+      headerName: "Country",
+      width: 142,
+      cellRenderer: ({ data }: { data?: AgTestRow }) => (
+        <span className="ag-country-cell">
+          {countryFlag(data?.country) ? <span aria-hidden="true">{countryFlag(data?.country)}</span> : null}
+          <strong>{data?.country || "-"}</strong>
+        </span>
+      )
+    },
     {
       field: "coverage",
       headerName: "Coverage",
@@ -370,6 +463,8 @@ export default function Liquidity() {
           liquidityOnly={liquidityOnly}
           minLiquidity={minLiquidity}
           liquidityThresholdOptions={LIQUIDITY_THRESHOLD_OPTIONS}
+          countryScope={countryScope}
+          countryFilterOptions={countryOptions}
           onDateScopeChange={setDateScope}
           onLocationScopeChange={setLocationScope}
           onLiquidityOnlyChange={setLiquidityOnly}
@@ -377,8 +472,9 @@ export default function Liquidity() {
             setMinLiquidity(value);
             if (value > 0) setLiquidityOnly(true);
           }}
+          onCountryScopeChange={setCountryScope}
           meta={[
-            `${rows.length}${searchQuery.trim() || dateScope !== "all" || locationScope !== "all" || minLiquidity > 0 || !liquidityOnly ? ` / ${allRows.length}` : ""} markets`,
+            `${rows.length}${searchQuery.trim() || dateScope !== "all" || locationScope !== "all" || minLiquidity > 0 || !liquidityOnly || countryScope !== "all" ? ` / ${allRows.length}` : ""} markets`,
             "Available money now",
             socketStatus === "live" ? "wss live" : loading ? "loading" : socketStatus
           ]}

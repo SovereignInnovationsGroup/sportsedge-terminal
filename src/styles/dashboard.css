@@ -9936,7 +9936,8 @@ button {
   color: #7df2a8;
 }
 
-.agtest-subbar select.football-liquidity-threshold {
+.agtest-subbar select.football-liquidity-threshold,
+.agtest-subbar select.football-country-filter {
   flex: 0 0 auto;
   height: 22px;
   border: 1px solid rgba(46, 68, 91, 0.85);
@@ -9950,7 +9951,12 @@ button {
   text-transform: uppercase;
 }
 
-.agtest-subbar select.football-liquidity-threshold:focus {
+.agtest-subbar select.football-country-filter {
+  min-width: 136px;
+}
+
+.agtest-subbar select.football-liquidity-threshold:focus,
+.agtest-subbar select.football-country-filter:focus {
   border-color: rgba(103, 232, 154, 0.72);
   outline: none;
 }
@@ -13666,6 +13672,26 @@ button {
   flex: 0 1 auto;
   font-size: 10px;
   font-weight: 800;
+}
+
+.ag-country-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  width: 100%;
+}
+
+.ag-country-cell span {
+  flex: 0 0 auto;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.ag-country-cell strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ag-stack-cell {

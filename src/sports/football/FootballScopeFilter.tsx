@@ -10,10 +10,13 @@ export function FootballScopeFilter({
   liquidityOnly,
   minLiquidity,
   liquidityThresholdOptions,
+  countryScope,
+  countryFilterOptions,
   onDateScopeChange,
   onLocationScopeChange,
   onLiquidityOnlyChange,
   onMinLiquidityChange,
+  onCountryScopeChange,
   meta,
   ariaLabel = "Football filters"
 }: {
@@ -22,10 +25,13 @@ export function FootballScopeFilter({
   liquidityOnly?: boolean;
   minLiquidity?: number;
   liquidityThresholdOptions?: Array<{ value: number; label: string }>;
+  countryScope?: string;
+  countryFilterOptions?: Array<{ value: string; label: string }>;
   onDateScopeChange: (value: string) => void;
   onLocationScopeChange: (value: string) => void;
   onLiquidityOnlyChange?: (value: boolean) => void;
   onMinLiquidityChange?: (value: number) => void;
+  onCountryScopeChange?: (value: string) => void;
   meta?: string[];
   ariaLabel?: string;
 }) {
@@ -75,6 +81,19 @@ export function FootballScopeFilter({
                   value={String(minLiquidity || 0)}
                 >
                   {liquidityThresholdOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              ) : null}
+              {onCountryScopeChange && countryFilterOptions?.length ? (
+                <select
+                  aria-label="Country filter"
+                  className="football-country-filter"
+                  onChange={(event) => onCountryScopeChange(event.currentTarget.value)}
+                  title="Country filter"
+                  value={countryScope || "all"}
+                >
+                  {countryFilterOptions.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
                 </select>
