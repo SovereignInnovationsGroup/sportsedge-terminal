@@ -41,6 +41,8 @@ export function isTomorrowLocal(value: string | null | undefined) {
 }
 
 const LIVE_FOOTBALL_STATUS_CODES = new Set(["1H", "2H", "HT", "ET", "BT", "P", "SUSP", "INT", "LIVE"]);
+const FINISHED_FOOTBALL_STATUS_CODES = new Set(["FT", "AET", "PEN", "CANC", "PST", "ABD", "AWD", "WO"]);
+const FOOTBALL_EXCHANGE_ONLY_MAX_STARTED_MS = 130 * 60 * 1000;
 
 export function fixtureStatusCode(event: Pick<SportEventRow, "statusShort">) {
   return String(event.statusShort || "").trim().toUpperCase();
@@ -60,20 +62,56 @@ export function isLiveSportEvent(event: Pick<SportEventRow, "statusShort" | "sta
     || text.includes("interrupted");
 }
 
+export function isFinishedSportEvent(event: Pick<SportEventRow, "statusShort" | "statusLong">) {
+  const code = fixtureStatusCode(event);
+  if (FINISHED_FOOTBALL_STATUS_CODES.has(code)) return true;
+  const text = String(event.statusLong || "").toLowerCase();
+  return text.includes("match finished")
+    || text.includes("full time")
+    || text.includes("after extra time")
+    || text.includes("after penalties")
+    || text.includes("match cancelled")
+    || text.includes("match postponed")
+    || text.includes("match abandoned");
+}
+
 export function fixtureStatusLabel(event: Pick<SportEventRow, "statusShort" | "statusLong" | "elapsed">) {
+  const code = fixtureStatusCode(event);
+  if (isLiveSportEvent(event)) return code || "LIVE";
+  return code || "NS";
+}
+
+export function fixtureClockLabel(event: Pick<SportEventRow, "statusShort" | "statusLong" | "elapsed" | "clock">) {
+  if (event.clock) return event.clock;
   const code = fixtureStatusCode(event);
   if (isLiveSportEvent(event)) {
     if (event.elapsed != null && Number.isFinite(Number(event.elapsed)) && !["HT", "BT", "P"].includes(code)) {
-      return `${code || "LIVE"} ${Number(event.elapsed)}'`;
+      return `${Number(event.elapsed)}'`;
     }
-    return code || "LIVE";
+    if (["HT", "BT", "P"].includes(code)) return code;
+    return "-";
   }
-  return code || "NS";
+  return "-";
 }
 
 export function fixtureScoreLabel(event: Pick<SportEventRow, "scoreHome" | "scoreAway">) {
   if (event.scoreHome == null || event.scoreAway == null) return "-";
   return `${event.scoreHome}-${event.scoreAway}`;
+}
+
+function eventStartAgeMs(startAt: string | null | undefined) {
+  const start = startAt ? new Date(startAt).getTime() : NaN;
+  if (!Number.isFinite(start)) return 0;
+  return Date.now() - start;
+}
+
+export function isStaleFootballEvent(event: SportEventRow) {
+  if (isFinishedSportEvent(event)) return true;
+  const ageMs = eventStartAgeMs(event.startAt);
+  if (ageMs <= FOOTBALL_EXCHANGE_ONLY_MAX_STARTED_MS) return false;
+  const hasScore = event.scoreHome != null && event.scoreAway != null;
+  const hasClock = Boolean(event.clock || event.elapsed != null);
+  return !hasScore && !hasClock;
 }
 
 function rowLatestObservedMs(row: BackendPriceRow) {
@@ -176,7 +214,9 @@ function exchangeOddsRowToEvent(row: BackendPriceRow, fallbackSport: string): Sp
     return DASHBOARD_EXCHANGES.find((exchange) => exchange.key === exchangeKey)?.label || displayLabel(exchangeKey);
   });
   const latestSeenAtMs = rowLatestObservedMs(row);
-  const isLive = Boolean(row.isLive) || matches.some(([, match]) => exchangeMatchIsLive(match));
+  const exchangeLive = Boolean(row.isLive) || matches.some(([, match]) => exchangeMatchIsLive(match));
+  const startedAgeMs = eventStartAgeMs(startAt);
+  const isLive = exchangeLive && startedAgeMs <= FOOTBALL_EXCHANGE_ONLY_MAX_STARTED_MS;
   return {
     id: row.id,
     name: row.name || firstMatch?.name || `${displayLabel(fallbackSport)} market`,
@@ -185,6 +225,7 @@ function exchangeOddsRowToEvent(row: BackendPriceRow, fallbackSport: string): Sp
     startAt,
     statusShort: isLive ? "LIVE" : null,
     statusLong: isLive ? "Exchange in-play" : null,
+    clock: null,
     liquidity: rowMatchedValue(row),
     liquidityByExchange: Object.fromEntries(DASHBOARD_EXCHANGES.map((exchange) => [exchange.key, backendMatchLiquidity(row, exchange.key)])),
     latestSeenAt: latestSeenAtMs ? new Date(latestSeenAtMs).toISOString() : firstMatch?.observedAt || null,
@@ -218,10 +259,12 @@ export function mergeSportEvents(entries: SportEventRow[]) {
       existing.statusShort = entry.statusShort || "LIVE";
       existing.statusLong = entry.statusLong || "Exchange in-play";
       existing.elapsed = entry.elapsed ?? existing.elapsed ?? null;
+      existing.clock = entry.clock ?? existing.clock ?? null;
     } else {
       existing.statusShort = existing.statusShort || entry.statusShort || null;
       existing.statusLong = existing.statusLong || entry.statusLong || null;
       existing.elapsed = existing.elapsed ?? entry.elapsed ?? null;
+      existing.clock = existing.clock ?? entry.clock ?? null;
     }
     existing.scoreHome = existing.scoreHome ?? entry.scoreHome ?? null;
     existing.scoreAway = existing.scoreAway ?? entry.scoreAway ?? null;
@@ -254,6 +297,7 @@ export function footballFixtureToEvent(fixture: FootballFixtureRow): SportEventR
     statusShort: fixture.statusShort || null,
     statusLong: fixture.statusLong || null,
     elapsed: fixture.elapsed ?? null,
+    clock: fixture.clock || (fixture.elapsed != null && Number.isFinite(Number(fixture.elapsed)) ? `${Number(fixture.elapsed)}'` : null),
     scoreHome: fixture.goals?.home ?? null,
     scoreAway: fixture.goals?.away ?? null,
     liquidity: 0,
@@ -271,6 +315,7 @@ export function capturedSportEventToEvent(event: CapturedSportEvent): SportEvent
     competition: event.competition || null,
     country: event.country || null,
     startAt: event.startAt,
+    clock: null,
     liquidity: 0,
     liquidityByExchange: Object.fromEntries(DASHBOARD_EXCHANGES.map((exchange) => [exchange.key, 0])),
     latestSeenAt: event.updatedAt || event.syncedAt || null,

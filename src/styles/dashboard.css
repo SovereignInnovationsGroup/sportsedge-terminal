@@ -11151,26 +11151,29 @@ button {
 .sport-summary-fixtures td:nth-child(2) { width: 94px; }
 
 .sport-summary-fixtures th:nth-child(3),
-.sport-summary-fixtures td:nth-child(3) { width: 78px; }
+.sport-summary-fixtures td:nth-child(3) { width: 72px; }
 
 .sport-summary-fixtures th:nth-child(4),
-.sport-summary-fixtures td:nth-child(4) { width: 420px; }
+.sport-summary-fixtures td:nth-child(4) { width: 78px; }
 
 .sport-summary-fixtures th:nth-child(5),
-.sport-summary-fixtures td:nth-child(5) { width: 190px; }
+.sport-summary-fixtures td:nth-child(5) { width: 388px; }
 
 .sport-summary-fixtures th:nth-child(6),
-.sport-summary-fixtures td:nth-child(6) { width: 118px; }
+.sport-summary-fixtures td:nth-child(6) { width: 190px; }
 
 .sport-summary-fixtures th:nth-child(7),
 .sport-summary-fixtures td:nth-child(7) {
+  width: 118px;
+}
+
+.sport-summary-fixtures th:nth-child(8),
+.sport-summary-fixtures td:nth-child(8) {
   width: 252px;
   overflow: visible;
   text-overflow: clip;
 }
 
-.sport-summary-fixtures th:nth-child(8),
-.sport-summary-fixtures td:nth-child(8),
 .sport-summary-fixtures th:nth-child(9),
 .sport-summary-fixtures td:nth-child(9),
 .sport-summary-fixtures th:nth-child(10),
@@ -11180,7 +11183,9 @@ button {
 .sport-summary-fixtures th:nth-child(12),
 .sport-summary-fixtures td:nth-child(12),
 .sport-summary-fixtures th:nth-child(13),
-.sport-summary-fixtures td:nth-child(13) { width: 88px; }
+.sport-summary-fixtures td:nth-child(13),
+.sport-summary-fixtures th:nth-child(14),
+.sport-summary-fixtures td:nth-child(14) { width: 88px; }
 
 .fixture-country {
   display: inline-flex;
@@ -11255,8 +11260,17 @@ button {
   font-weight: 950;
 }
 
+.fixture-clock {
+  color: rgba(203, 213, 225, 0.92);
+  font-weight: 950;
+}
+
 .fixture-score.is-live {
   color: #86efac;
+}
+
+.fixture-clock.is-live {
+  color: #a7f3d0;
 }
 
 .sport-summary-coverage span {

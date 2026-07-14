@@ -11,6 +11,7 @@ import {
   StandingRow
 } from "./sportDashboardTypes";
 import {
+  fixtureClockLabel,
   fixtureScoreLabel,
   fixtureStatusLabel,
   formatExchangeMoney,
@@ -86,6 +87,7 @@ const FixtureTableRow = memo(function FixtureTableRow({
           {fixtureStatusLabel(event)}
         </span>
       </td>
+      <td className={isLiveSportEvent(event) ? "mono fixture-clock is-live" : "mono fixture-clock"}>{fixtureClockLabel(event)}</td>
       <td className={isLiveSportEvent(event) ? "mono fixture-score is-live" : "mono fixture-score"}>{fixtureScoreLabel(event)}</td>
       <td><strong>{event.name || "Fixture pending"}</strong></td>
       <td>{event.competition || "Football"}</td>
@@ -114,6 +116,7 @@ const FixtureTableRow = memo(function FixtureTableRow({
   && previous.event.statusShort === next.event.statusShort
   && previous.event.statusLong === next.event.statusLong
   && previous.event.elapsed === next.event.elapsed
+  && previous.event.clock === next.event.clock
   && previous.event.scoreHome === next.event.scoreHome
   && previous.event.scoreAway === next.event.scoreAway
   && previous.event.liquidity === next.event.liquidity
@@ -140,6 +143,7 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
           <tr>
             <th>Time</th>
             <th>State</th>
+            <th>Clock</th>
             <th>Score</th>
             <th>Fixture</th>
             <th>Competition</th>
@@ -158,8 +162,8 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
             const rowKey = event.id;
             return <FixtureTableRow event={event} key={rowKey} rowClass={eventRowClass(event)} rowKey={rowKey} />;
           })}
-          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={13}>No fixtures match the current filter.</td></tr>}
-          {loading && rows.length === 0 && <tr><td className="empty" colSpan={13}>Loading fixtures.</td></tr>}
+          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={14}>No fixtures match the current filter.</td></tr>}
+          {loading && rows.length === 0 && <tr><td className="empty" colSpan={14}>Loading fixtures.</td></tr>}
         </tbody>
       </table>
     </section>

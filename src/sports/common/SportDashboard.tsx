@@ -32,6 +32,7 @@ import {
   formatExchangeMoney,
   genericScopeMatches,
   isLiveSportEvent,
+  isStaleFootballEvent,
   isTodayLocal,
   isTomorrowLocal,
   newsHeadline
@@ -100,11 +101,14 @@ export function SportDashboard({
     if (!isFootball || countryScope === "all") return scopedEvents;
     return scopedEvents.filter((event) => countryMatches(event.country, countryScope));
   }, [scopedEvents, isFootball, countryScope]);
-  const liquidScopedEvents = useMemo(() => countryScopedEvents.filter((event) => Number(event.liquidity || 0) > 0), [countryScopedEvents]);
+  const liquidScopedEvents = useMemo(() => countryScopedEvents.filter((event) => (
+    Number(event.liquidity || 0) > 0 && (!isFootball || !isStaleFootballEvent(event))
+  )), [countryScopedEvents, isFootball]);
   const visibleEvents = useMemo(() => {
     if (!isFootball) return scopedEvents;
     return countryScopedEvents.filter((event) => {
       const liquidity = Number(event.liquidity || 0);
+      if (isStaleFootballEvent(event)) return false;
       if (liquidityOnly && liquidity <= 0) return false;
       if (minLiquidity > 0 && liquidity < minLiquidity) return false;
       return true;
