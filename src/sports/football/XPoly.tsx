@@ -87,13 +87,15 @@ const MAX_QUOTE_ODDS = 50;
 function matchLiquidity(match?: BackendExchangeMatch) {
   const sourceValue = Number(match?.sourceLiquidity || match?.marketLiquidity || 0);
   if (match?.exchange === "polymarket" && Number.isFinite(sourceValue) && sourceValue > 0) return sourceValue;
-  return (match?.runners || []).reduce((sum, runner) => (
-    sum
-    + Number(runner.back?.amount || 0)
-    + Number(runner.lay?.amount || 0)
-    + Number(runner.backLevels?.reduce((levelSum, level) => levelSum + Number(level.amount || 0), 0) || 0)
-    + Number(runner.layLevels?.reduce((levelSum, level) => levelSum + Number(level.amount || 0), 0) || 0)
-  ), 0);
+  return (match?.runners || []).reduce((sum, runner) => {
+    const back = runner.backLevels?.length
+      ? runner.backLevels.reduce((levelSum, level) => levelSum + Number(level.amount || 0), 0)
+      : Number(runner.back?.amount || 0);
+    const lay = runner.layLevels?.length
+      ? runner.layLevels.reduce((levelSum, level) => levelSum + Number(level.amount || 0), 0)
+      : Number(runner.lay?.amount || 0);
+    return sum + back + lay;
+  }, 0);
 }
 
 function runnerCoverOdds(runner: BackendRunner) {

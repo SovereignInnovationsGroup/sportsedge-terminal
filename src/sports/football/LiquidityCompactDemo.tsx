@@ -68,7 +68,15 @@ function displayEventName(name: string) {
 function matchLiquidity(match?: BackendExchangeMatch) {
   const sourceValue = Number(match?.sourceLiquidity || match?.marketLiquidity || 0);
   if (match?.exchange === "polymarket" && Number.isFinite(sourceValue) && sourceValue > 0) return sourceValue;
-  return (match?.runners || []).reduce((sum, runner) => sum + Number(runner.back?.amount || 0) + Number(runner.lay?.amount || 0), 0);
+  return (match?.runners || []).reduce((sum, runner) => {
+    const back = runner.backLevels?.length
+      ? runner.backLevels.reduce((levelSum, level) => levelSum + Number(level.amount || 0), 0)
+      : Number(runner.back?.amount || 0);
+    const lay = runner.layLevels?.length
+      ? runner.layLevels.reduce((levelSum, level) => levelSum + Number(level.amount || 0), 0)
+      : Number(runner.lay?.amount || 0);
+    return sum + back + lay;
+  }, 0);
 }
 
 function formatFresh(row?: BackendPriceRow) {
@@ -104,7 +112,10 @@ function compactQuote(match: BackendExchangeMatch | undefined, currency: string)
 }
 
 function totalLiquidity(row: BackendPriceRow) {
-  return COMPACT_EXCHANGES.reduce((sum, exchange) => sum + matchLiquidity(row.matches?.[exchange.key]), 0);
+  return COMPACT_EXCHANGES.reduce((sum, exchange) => {
+    const aggregate = Number(row.aggregateLiquidityByExchange?.[exchange.key] || 0);
+    return sum + (aggregate > 0 ? aggregate : matchLiquidity(row.matches?.[exchange.key]));
+  }, 0);
 }
 
 function bestRoute(quotes: CompactLiquidityRow["quotes"]) {

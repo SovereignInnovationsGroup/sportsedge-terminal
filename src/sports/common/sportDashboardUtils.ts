@@ -92,8 +92,12 @@ export function backendMatchLiquidity(row: BackendPriceRow, exchangeKey: string)
   const sourceValue = Number(match.sourceLiquidity || match.marketLiquidity || 0);
   if (exchangeKey === "polymarket" && Number.isFinite(sourceValue) && sourceValue > 0) return sourceValue;
   return match.runners.reduce((sum, runner) => {
-    const back = Number(runner.back?.amount || 0);
-    const lay = Number(runner.lay?.amount || 0);
+    const back = runner.backLevels?.length
+      ? runner.backLevels.reduce((levelSum, level) => levelSum + Number(level.amount || 0), 0)
+      : Number(runner.back?.amount || 0);
+    const lay = runner.layLevels?.length
+      ? runner.layLevels.reduce((levelSum, level) => levelSum + Number(level.amount || 0), 0)
+      : Number(runner.lay?.amount || 0);
     return sum + back + lay;
   }, 0);
 }

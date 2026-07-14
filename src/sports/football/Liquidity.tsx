@@ -262,11 +262,11 @@ export default function Liquidity() {
     { field: "monaco", headerName: "BX", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.monaco} className="ag-price-stack" /> },
     { field: "sx", headerName: "SX", minWidth: 122, flex: 0.45, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.sx} className="ag-price-stack" /> },
     { field: "bias", headerName: "Bias", width: 92 },
-    { field: "bfLiquidity", headerName: "BF £", width: 76 },
-    { field: "mbLiquidity", headerName: "MB £", width: 76 },
-    { field: "pyLiquidity", headerName: "PY $", width: 76 },
-    { field: "bxLiquidity", headerName: "BX $", width: 76 },
-    { field: "sxLiquidity", headerName: "SX £", width: 76 },
+    { field: "bfLiquidity", headerName: "BF ALL £", width: 92 },
+    { field: "mbLiquidity", headerName: "MB ALL £", width: 92 },
+    { field: "pyLiquidity", headerName: "PY ALL $", width: 92 },
+    { field: "bxLiquidity", headerName: "BX ALL $", width: 92 },
+    { field: "sxLiquidity", headerName: "SX ALL £", width: 92 },
     { field: "fresh", headerName: "Fresh", width: 76 }
   ], []);
 

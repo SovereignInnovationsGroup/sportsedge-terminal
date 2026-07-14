@@ -470,7 +470,17 @@ function exchangeCoverage(row?: BackendPriceRow) {
 function matchLiquidity(match?: BackendExchangeMatch) {
   const sourceValue = Number(match?.sourceLiquidity || match?.marketLiquidity || 0);
   if (match?.exchange === "polymarket" && Number.isFinite(sourceValue) && sourceValue > 0) return sourceValue;
-  return (match?.runners || []).reduce((sum, runner) => sum + Number(runner.back?.amount || 0) + Number(runner.lay?.amount || 0), 0);
+  return (match?.runners || []).reduce((sum, runner) => {
+    const backLevels = runner.backLevels;
+    const layLevels = runner.layLevels;
+    const back = backLevels?.length
+      ? backLevels.reduce((levelSum, level) => levelSum + Number(level.amount || 0), 0)
+      : Number(runner.back?.amount || 0);
+    const lay = layLevels?.length
+      ? layLevels.reduce((levelSum, level) => levelSum + Number(level.amount || 0), 0)
+      : Number(runner.lay?.amount || 0);
+    return sum + back + lay;
+  }, 0);
 }
 
 function rowMatchedValue(row?: BackendPriceRow) {
