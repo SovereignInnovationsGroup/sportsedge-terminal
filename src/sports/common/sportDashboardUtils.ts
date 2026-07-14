@@ -89,6 +89,8 @@ export function backendMatchLiquidity(row: BackendPriceRow, exchangeKey: string)
   if (aggregateValue > 0) return aggregateValue;
   const match = row.matches?.[exchangeKey];
   if (!match) return 0;
+  const sourceValue = Number(match.sourceLiquidity || match.marketLiquidity || 0);
+  if (exchangeKey === "polymarket" && Number.isFinite(sourceValue) && sourceValue > 0) return sourceValue;
   return match.runners.reduce((sum, runner) => {
     const back = Number(runner.back?.amount || 0);
     const lay = Number(runner.lay?.amount || 0);

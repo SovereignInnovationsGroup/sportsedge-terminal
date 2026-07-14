@@ -15,6 +15,8 @@ export type BackendExchangeMatch = {
   competitionName?: string | null;
   startAt?: string | null;
   observedAt?: string | null;
+  sourceLiquidity?: number;
+  marketLiquidity?: number;
   runners: BackendRunner[];
 };
 

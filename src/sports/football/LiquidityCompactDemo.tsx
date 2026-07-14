@@ -66,6 +66,8 @@ function displayEventName(name: string) {
 }
 
 function matchLiquidity(match?: BackendExchangeMatch) {
+  const sourceValue = Number(match?.sourceLiquidity || match?.marketLiquidity || 0);
+  if (match?.exchange === "polymarket" && Number.isFinite(sourceValue) && sourceValue > 0) return sourceValue;
   return (match?.runners || []).reduce((sum, runner) => sum + Number(runner.back?.amount || 0) + Number(runner.lay?.amount || 0), 0);
 }
 

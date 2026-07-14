@@ -85,6 +85,8 @@ const MIN_QUOTE_ODDS = 1.02;
 const MAX_QUOTE_ODDS = 50;
 
 function matchLiquidity(match?: BackendExchangeMatch) {
+  const sourceValue = Number(match?.sourceLiquidity || match?.marketLiquidity || 0);
+  if (match?.exchange === "polymarket" && Number.isFinite(sourceValue) && sourceValue > 0) return sourceValue;
   return (match?.runners || []).reduce((sum, runner) => (
     sum
     + Number(runner.back?.amount || 0)

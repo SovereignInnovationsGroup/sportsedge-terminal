@@ -53,6 +53,8 @@ function footballRowsHaveLiquidity(rows: FootballBackendPriceRow[]) {
   return rows.some((row) => DASHBOARD_EXCHANGES.some((exchange) => {
     const aggregate = Number(row.aggregateLiquidityByExchange?.[exchange.key] || 0);
     if (aggregate > 0) return true;
+    const source = Number(row.matches?.[exchange.key]?.sourceLiquidity || row.matches?.[exchange.key]?.marketLiquidity || 0);
+    if (source > 0) return true;
     return (row.matches?.[exchange.key]?.runners || []).some((runner) => (
       Number(runner.back?.amount || 0) > 0 || Number(runner.lay?.amount || 0) > 0
     ));
