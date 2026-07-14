@@ -12,7 +12,10 @@ import {
   FOOTBALL_HAS_MONEY_STATE_KEY,
   FOOTBALL_LIQUIDITY_THRESHOLD_OPTIONS,
   FOOTBALL_MIN_TOTAL_STATE_KEY,
+  countryMatches,
   countryFilterLabel,
+  countryOptionValue,
+  normalizeCountryName,
   readBooleanPreference,
   readMinLiquidityPreference,
   readStringPreference,
@@ -84,8 +87,9 @@ export default function Liquidity() {
     footballScopeMatches(`${row.match} ${row.competition}`, row.country, row.startAt, dateScope, locationScope)
   )), [allRows, dateScope, locationScope]);
   const countryOptions = useMemo(() => {
-    const countries = new Set(groupedRows.map((row) => row.country || "").filter(Boolean));
-    if (countryScope !== "all") countries.add(countryScope);
+    const countries = new Set(groupedRows.map((row) => countryOptionValue(row.country)).filter(Boolean));
+    const selectedCountry = normalizeCountryName(countryScope);
+    if (selectedCountry) countries.add(selectedCountry);
     return [
       { value: "all", label: "ALL COUNTRIES" },
       ...Array.from(countries)
@@ -95,7 +99,7 @@ export default function Liquidity() {
   }, [groupedRows, countryScope]);
   const countryFilteredRows = useMemo(() => {
     if (countryScope === "all") return groupedRows;
-    return groupedRows.filter((row) => row.country === countryScope);
+    return groupedRows.filter((row) => countryMatches(row.country, countryScope));
   }, [groupedRows, countryScope]);
   const moneyFilteredRows = useMemo(() => countryFilteredRows.filter((row) => {
     const total = Number(row.totalLiquidity || 0);

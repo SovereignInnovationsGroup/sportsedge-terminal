@@ -1,7 +1,7 @@
-import { countryFlagCode, countryFlagUrl } from "./liquidityFilterOptions";
+import { countryFlagCode, countryFlagUrl, normalizeCountryName } from "./liquidityFilterOptions";
 
 export function CountryFlag({ country }: { country: string | null | undefined }) {
-  const label = String(country || "").trim();
+  const label = normalizeCountryName(country);
   if (!label) return null;
   const url = countryFlagUrl(label);
   const code = countryFlagCode(label);

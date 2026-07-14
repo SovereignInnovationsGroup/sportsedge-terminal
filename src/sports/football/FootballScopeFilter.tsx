@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CountryFlag } from "./CountryFlag";
+import { countryMatches } from "./liquidityFilterOptions";
 import {
   FOOTBALL_DATE_SCOPE_FILTERS,
   FOOTBALL_LOCATION_SCOPE_FILTERS,
@@ -39,9 +40,10 @@ export function FootballScopeFilter({
 }) {
   const [countryMenuOpen, setCountryMenuOpen] = useState(false);
   const countryMenuRef = useRef<HTMLDivElement | null>(null);
+  const isAllCountryScope = !countryScope || countryScope === "all";
   const selectedCountryOption = useMemo(() => (
-    countryFilterOptions?.find((option) => option.value === (countryScope || "all")) || countryFilterOptions?.[0]
-  ), [countryFilterOptions, countryScope]);
+    countryFilterOptions?.find((option) => option.value === "all" ? isAllCountryScope : !isAllCountryScope && countryMatches(option.value, countryScope)) || countryFilterOptions?.[0]
+  ), [countryFilterOptions, countryScope, isAllCountryScope]);
 
   useEffect(() => {
     if (!countryMenuOpen) return;
@@ -119,7 +121,7 @@ export function FootballScopeFilter({
                   {countryMenuOpen ? (
                     <div className="football-country-menu" role="listbox">
                       {countryFilterOptions.map((option) => {
-                        const active = option.value === (countryScope || "all");
+                        const active = option.value === "all" ? isAllCountryScope : !isAllCountryScope && countryMatches(option.value, countryScope);
                         return (
                           <button
                             aria-selected={active}

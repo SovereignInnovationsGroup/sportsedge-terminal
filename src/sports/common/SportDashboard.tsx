@@ -8,7 +8,10 @@ import {
   FOOTBALL_HAS_MONEY_STATE_KEY,
   FOOTBALL_LIQUIDITY_THRESHOLD_OPTIONS,
   FOOTBALL_MIN_TOTAL_STATE_KEY,
+  countryMatches,
   countryFilterLabel,
+  countryOptionValue,
+  normalizeCountryName,
   readBooleanPreference,
   readMinLiquidityPreference,
   readStringPreference,
@@ -83,8 +86,9 @@ export function SportDashboard({
 
   const countryOptions = useMemo(() => {
     if (!isFootball) return [];
-    const countries = new Set(scopedEvents.map((event) => event.country || "").filter(Boolean));
-    if (countryScope !== "all") countries.add(countryScope);
+    const countries = new Set(scopedEvents.map((event) => countryOptionValue(event.country)).filter(Boolean));
+    const selectedCountry = normalizeCountryName(countryScope);
+    if (selectedCountry) countries.add(selectedCountry);
     return [
       { value: "all", label: "ALL COUNTRIES" },
       ...Array.from(countries)
@@ -94,7 +98,7 @@ export function SportDashboard({
   }, [isFootball, scopedEvents, countryScope]);
   const countryScopedEvents = useMemo(() => {
     if (!isFootball || countryScope === "all") return scopedEvents;
-    return scopedEvents.filter((event) => event.country === countryScope);
+    return scopedEvents.filter((event) => countryMatches(event.country, countryScope));
   }, [scopedEvents, isFootball, countryScope]);
   const liquidScopedEvents = useMemo(() => countryScopedEvents.filter((event) => Number(event.liquidity || 0) > 0), [countryScopedEvents]);
   const visibleEvents = useMemo(() => {
