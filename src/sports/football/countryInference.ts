@@ -112,7 +112,7 @@ const COUNTRY_HINTS: CountryHint[] = [
   { country: "Scotland", terms: ["scottish", "scotland"] },
   { country: "Spain", terms: ["spain", "spanish", "la liga"] },
   { country: "Italy", terms: ["italy", "italian", "serie a", "serie b"] },
-  { country: "France", terms: ["france", "french", "ligue 1", "ligue 2"] },
+  { country: "France", terms: ["france", "french", "ligue 1", "ligue 2", "sm caen", "caen", "paris 13 atletico", "paris 13 atl"] },
   { country: "Netherlands", terms: ["netherlands", "dutch", "eredivisie"] },
   { country: "Portugal", terms: ["portugal", "portuguese", "primeira liga", "sporting cp"] },
   { country: "Turkey", terms: ["turkey", "turkish", "besiktas", "fenerbahce"] },
