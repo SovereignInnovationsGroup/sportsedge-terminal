@@ -70,7 +70,7 @@ export function useSportDashboardData({
   isFootball: boolean;
   espnScopeKey: string;
 }) {
-  const snapshotKey = `sport-dashboard.${normalizedSport}.${espnScopeKey || "default"}`;
+  const snapshotKey = `sport-dashboard.v2.${normalizedSport}.${espnScopeKey || "default"}`;
   const cacheMaxAgeMs = isFootball ? 120_000 : 90_000;
   const refreshIntervalMs = isFootball ? 5_000 : 15_000;
   const fixtureDays = isFootball ? "2" : "0";

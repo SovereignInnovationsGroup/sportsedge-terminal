@@ -148,6 +148,8 @@ function rowMatchedValue(row: BackendPriceRow) {
 function normalizeEventName(value: string) {
   return value
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/&/g, " and ")
     .replace(/\bvs?\b/g, " v ")
     .replace(/\b(?:zhejiang fc|zhejiang professional|zhejiang zhiye|zhejiang greentown|hangzhou greentown)\b/g, "zhejiang")
@@ -204,6 +206,14 @@ function sameFixtureDay(a: SportEventRow, b: SportEventRow) {
   return smaller >= 2 && overlap / smaller >= 0.75;
 }
 
+function preferredFootballCountry(existing: string | null | undefined, incoming: string | null | undefined) {
+  const current = String(existing || "").trim();
+  const next = String(incoming || "").trim();
+  if (!current) return next || null;
+  if (next && isGenericFootballCountry(current) && !isGenericFootballCountry(next)) return next;
+  return current;
+}
+
 function exchangeOddsRowToEvent(row: BackendPriceRow, fallbackSport: string): SportEventRow | null {
   const matches = Object.entries(row.matches || {}).filter(([, match]) => Boolean(match)) as Array<[string, BackendExchangeMatch]>;
   const firstMatch = matches[0]?.[1];
@@ -253,7 +263,7 @@ export function mergeSportEvents(entries: SportEventRow[]) {
       existing.liquidityByExchange[exchange.key] = Number(existing.liquidityByExchange[exchange.key] || 0) + Number(entry.liquidityByExchange[exchange.key] || 0);
     });
     existing.exchanges = Array.from(new Set([...existing.exchanges, ...entry.exchanges]));
-    existing.country = existing.country || entry.country || null;
+    existing.country = preferredFootballCountry(existing.country, entry.country);
     existing.competition = existing.competition || entry.competition || null;
     if (isLiveSportEvent(entry) && !isLiveSportEvent(existing)) {
       existing.statusShort = entry.statusShort || "LIVE";
@@ -288,11 +298,19 @@ export function footballFixtureToEvent(fixture: FootballFixtureRow): SportEventR
   const away = fixture.away?.name;
   const startAt = fixture.kickoffAt || null;
   if (!home || !away || !startAt) return null;
+  const fixtureName = `${home} v ${away}`;
+  const inferredCountry = inferFootballCountry({
+    competition: fixture.leagueName,
+    fixture: fixtureName
+  });
+  const country = fixture.country && !isGenericFootballCountry(fixture.country)
+    ? fixture.country
+    : inferredCountry || fixture.country || null;
   return {
     id: String(fixture.id || fixture.providerFixtureId || `${home}-${away}-${startAt}`),
-    name: `${home} v ${away}`,
+    name: fixtureName,
     competition: fixture.leagueName || null,
-    country: fixture.country || null,
+    country,
     startAt,
     statusShort: fixture.statusShort || null,
     statusLong: fixture.statusLong || null,
