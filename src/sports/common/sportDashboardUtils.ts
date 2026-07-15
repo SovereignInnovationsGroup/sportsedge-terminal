@@ -229,15 +229,15 @@ function exchangeOddsRowToEvent(row: BackendPriceRow, fallbackSport: string): Sp
   const latestSeenAtMs = rowLatestObservedMs(row);
   const exchangeLive = Boolean(row.isLive) || matches.some(([, match]) => exchangeMatchIsLive(match));
   const startedAgeMs = eventStartAgeMs(startAt);
-  const isLive = exchangeLive && startedAgeMs <= FOOTBALL_EXCHANGE_ONLY_MAX_STARTED_MS;
+  const isExchangeInPlay = exchangeLive && startedAgeMs <= FOOTBALL_EXCHANGE_ONLY_MAX_STARTED_MS;
   return {
     id: row.id,
     name: row.name || firstMatch?.name || `${displayLabel(fallbackSport)} market`,
     competition: row.competitionName || firstMatch?.competitionName || null,
     country: exchangeRowCountry(row, matches) || null,
     startAt,
-    statusShort: isLive ? "LIVE" : null,
-    statusLong: isLive ? "Exchange in-play" : null,
+    statusShort: isExchangeInPlay ? "IP" : null,
+    statusLong: isExchangeInPlay ? "Exchange in-play" : null,
     clock: null,
     liquidity: rowMatchedValue(row),
     liquidityByExchange: Object.fromEntries(DASHBOARD_EXCHANGES.map((exchange) => [exchange.key, backendMatchLiquidity(row, exchange.key)])),
