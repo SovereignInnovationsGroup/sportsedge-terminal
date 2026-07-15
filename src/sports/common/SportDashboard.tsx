@@ -43,15 +43,27 @@ function feedLabel(feed: LiveScoreFeedStatus) {
   return feed.label || feed.provider.replace(/[-_]/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function feedProblem(feed: LiveScoreFeedStatus) {
+  return String(feed.lastError || "").toLowerCase();
+}
+
 function feedState(feed: LiveScoreFeedStatus) {
   if (!feed.enabled) return "Off";
   if (feed.connected) return "Live";
+  const problem = feedProblem(feed);
+  if (problem.includes("challenge")) return "Challenged";
+  if (problem.includes("browser network watching")) return "Watching";
+  if (problem.includes("key and secret") || problem.includes("not have access")) return "No access";
+  if (problem.includes("expired") || problem.includes("websocket")) return "Blocked";
+  if (problem.includes("quota") || problem.includes("stale")) return "Stale";
   return "Waiting";
 }
 
 function feedClass(feed: LiveScoreFeedStatus) {
   if (!feed.enabled) return "is-off";
   if (feed.connected) return "is-live";
+  const problem = feedProblem(feed);
+  if (problem.includes("challenge") || problem.includes("key and secret") || problem.includes("not have access") || problem.includes("expired") || problem.includes("websocket")) return "is-off";
   return "is-waiting";
 }
 

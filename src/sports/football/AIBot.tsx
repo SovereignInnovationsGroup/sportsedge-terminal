@@ -183,6 +183,18 @@ type LadderLevel = {
   observedAt?: string | null;
 };
 
+function liveFeedState(feed: NonNullable<BotStatus["liveScoreFeeds"]>[number] | NonNullable<BotStatus["liveScoreFeed"]>) {
+  if (!feed.enabled) return "Off";
+  if (feed.connected) return "Live";
+  const problem = String(feed.lastError || "").toLowerCase();
+  if (problem.includes("challenge")) return "Challenged";
+  if (problem.includes("browser network watching")) return "Watching";
+  if (problem.includes("key and secret") || problem.includes("not have access")) return "No access";
+  if (problem.includes("expired") || problem.includes("websocket")) return "Blocked";
+  if (problem.includes("quota") || problem.includes("stale")) return "Stale";
+  return "Waiting";
+}
+
 const AUDIO_MONITORS = [
   {
     id: "talksport",
@@ -634,7 +646,7 @@ export default function AIBot() {
           {(status?.liveScoreFeeds?.length ? status.liveScoreFeeds : status?.liveScoreFeed ? [status.liveScoreFeed] : []).map((feed) => (
             <article key={feed.provider}>
               <span>{feed.label || feed.provider}</span>
-              <strong className={feed.connected ? "positive" : ""}>{feed.connected ? "Live" : feed.enabled ? "Waiting" : "Off"}</strong>
+              <strong className={feed.connected ? "positive" : ""}>{liveFeedState(feed)}</strong>
               <small>{Number(feed.liveRows || 0)} rows / {feed.lastMessageAt ? `${fullTimestamp(feed.lastMessageAt)} tick` : feed.lastError || "-"}</small>
             </article>
           ))}
