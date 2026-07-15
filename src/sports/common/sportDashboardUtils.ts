@@ -50,6 +50,7 @@ export function fixtureStatusCode(event: Pick<SportEventRow, "statusShort">) {
 
 export function isLiveSportEvent(event: Pick<SportEventRow, "statusShort" | "statusLong">) {
   const code = fixtureStatusCode(event);
+  if (FINISHED_FOOTBALL_STATUS_CODES.has(code)) return false;
   if (LIVE_FOOTBALL_STATUS_CODES.has(code)) return true;
   const text = String(event.statusLong || "").toLowerCase();
   return text.includes("first half")
@@ -154,6 +155,8 @@ function normalizeEventName(value: string) {
     .replace(/\bvs?\b/g, " v ")
     .replace(/\b(?:zhejiang fc|zhejiang professional|zhejiang zhiye|zhejiang greentown|hangzhou greentown)\b/g, "zhejiang")
     .replace(/\b(?:qingdao hainiu|qingdao jonoon)\b/g, "qingdao")
+    .replace(/\b(?:cs u craiova|cs universitatea craiova|universitatea craiova|u craiova)\b/g, "craiova")
+    .replace(/\b(?:fc maxline vitebsk|maxline vitebsk|ml vitebsk)\b/g, "vitebsk")
     .replace(/\bafc\b|\bfc\b|\bcf\b|\bsc\b|\bunited\b|\butd\b|\bhotspur\b|\bwanderers\b|\bcounty\b|\balbion\b|\bhove\b/g, " ")
     .replace(/\bwolves\b/g, "wolverhampton")
     .replace(/\bbournemouth\b/g, "bourne mouth")
@@ -265,7 +268,17 @@ export function mergeSportEvents(entries: SportEventRow[]) {
     existing.exchanges = Array.from(new Set([...existing.exchanges, ...entry.exchanges]));
     existing.country = preferredFootballCountry(existing.country, entry.country);
     existing.competition = existing.competition || entry.competition || null;
-    if (isLiveSportEvent(entry) && !isLiveSportEvent(existing)) {
+    const existingFinished = isFinishedSportEvent(existing);
+    const entryFinished = isFinishedSportEvent(entry);
+    if (entryFinished) {
+      existing.statusShort = entry.statusShort || existing.statusShort || "FT";
+      existing.statusLong = entry.statusLong || existing.statusLong || "Match finished";
+      existing.elapsed = entry.elapsed ?? null;
+      existing.clock = entry.clock ?? fixtureStatusCode(entry) ?? null;
+    } else if (existingFinished) {
+      existing.statusShort = existing.statusShort || "FT";
+      existing.statusLong = existing.statusLong || "Match finished";
+    } else if (isLiveSportEvent(entry) && !isLiveSportEvent(existing)) {
       existing.statusShort = entry.statusShort || "LIVE";
       existing.statusLong = entry.statusLong || "Exchange in-play";
       existing.elapsed = entry.elapsed ?? existing.elapsed ?? null;
