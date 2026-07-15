@@ -26,7 +26,7 @@ import {
   SportStandingByBoard,
   StandingsPanel
 } from "./SportDashboardPanels";
-import { DASHBOARD_EXCHANGES, LiveScoreFeedStatus, SportEntitiesPayload, SportEntityRow, SportLocationFilter } from "./sportDashboardTypes";
+import { DASHBOARD_EXCHANGES, SportEntitiesPayload, SportEntityRow, SportLocationFilter } from "./sportDashboardTypes";
 import {
   apiSportValue,
   formatExchangeMoney,
@@ -38,56 +38,6 @@ import {
   newsHeadline
 } from "./sportDashboardUtils";
 import { useSportDashboardData } from "./useSportDashboardData";
-
-function feedLabel(feed: LiveScoreFeedStatus) {
-  return feed.label || feed.provider.replace(/[-_]/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function feedProblem(feed: LiveScoreFeedStatus) {
-  return String(feed.lastError || "").toLowerCase();
-}
-
-function feedState(feed: LiveScoreFeedStatus) {
-  if (!feed.enabled) return "Off";
-  if (feed.connected) return "Live";
-  const problem = feedProblem(feed);
-  if (problem.includes("challenge")) return "Challenged";
-  if (problem.includes("browser network watching")) return "Watching";
-  if (problem.includes("key and secret") || problem.includes("not have access")) return "No access";
-  if (problem.includes("expired") || problem.includes("websocket")) return "Blocked";
-  if (problem.includes("quota") || problem.includes("stale")) return "Stale";
-  return "Waiting";
-}
-
-function feedClass(feed: LiveScoreFeedStatus) {
-  if (!feed.enabled) return "is-off";
-  if (feed.connected) return "is-live";
-  const problem = feedProblem(feed);
-  if (problem.includes("challenge") || problem.includes("key and secret") || problem.includes("not have access") || problem.includes("expired") || problem.includes("websocket")) return "is-off";
-  return "is-waiting";
-}
-
-function feedDetail(feed: LiveScoreFeedStatus) {
-  if (feed.lastMessageAt) return `${localEventTime(feed.lastMessageAt)} tick`;
-  return feed.lastError || "No tick";
-}
-
-function FootballLiveScoreFeeds({ feeds }: { feeds: LiveScoreFeedStatus[] }) {
-  if (!feeds.length) return null;
-  return (
-    <section className="football-feed-strip" aria-label="Live score feeds">
-      {feeds.map((feed) => (
-        <article className={feedClass(feed)} key={feed.provider}>
-          <span>{feedLabel(feed)}</span>
-          <strong>{feedState(feed)}</strong>
-          <em>{Number(feed.liveRows || 0)} rows</em>
-          <small>{feedDetail(feed)}</small>
-          {Array.isArray(feed.sources) && feed.sources.length > 0 && <small>{feed.sources.slice(0, 4).join(" / ")}</small>}
-        </article>
-      ))}
-    </section>
-  );
-}
 
 export function SportDashboard({
   sport,
@@ -124,7 +74,6 @@ export function SportDashboard({
     events,
     news,
     standings,
-    liveScoreFeeds,
     loading,
     error
   } = useSportDashboardData({ normalizedSport, isFootball, espnScopeKey });
@@ -364,10 +313,7 @@ export function SportDashboard({
                 {showDemoHolding ? (
                   <SportStandingByBoard label={label} espnScopes={espnScopes} dataStatus={dataStatus} />
                 ) : isFootball ? (
-                  <>
-                    <FootballLiveScoreFeeds feeds={liveScoreFeeds} />
-                    <FixtureTable title="Fixtures" rows={timeOrderedEvents} loading={loading} />
-                  </>
+                  <FixtureTable title="Fixtures" rows={timeOrderedEvents} loading={loading} />
                 ) : (
                   <>
                     {showDefaultStandings && (
