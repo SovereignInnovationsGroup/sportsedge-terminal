@@ -173,7 +173,7 @@ export function countryNameFromCode(value: string | null | undefined) {
 
 export function isGenericFootballCountry(value: string | null | undefined) {
   const normalized = normalizeCountryText(value);
-  return normalized === "world" || normalized === "un" || normalized === "uefa" || normalized === "europe";
+  return !normalized || normalized === "unknown" || normalized === "na" || normalized === "world" || normalized === "un" || normalized === "uefa" || normalized === "europe";
 }
 
 export function inferFootballCountry({
