@@ -8,17 +8,11 @@ import { CountryFlag } from "./CountryFlag";
 import { FootballScopeFilter } from "./FootballScopeFilter";
 import { footballScopeBreadcrumb, footballScopeMatches } from "./filters";
 import {
-  FOOTBALL_COUNTRY_STATE_KEY,
   FOOTBALL_HAS_MONEY_STATE_KEY,
   FOOTBALL_LIQUIDITY_THRESHOLD_OPTIONS,
   FOOTBALL_MIN_TOTAL_STATE_KEY,
-  countryMatches,
-  countryFilterLabel,
-  countryOptionValue,
-  normalizeCountryName,
   readBooleanPreference,
   readMinLiquidityPreference,
-  readStringPreference,
   savePreference
 } from "./liquidityFilterOptions";
 import {
@@ -74,7 +68,6 @@ export default function Liquidity() {
   const [locationScope, setLocationScope] = useState("all");
   const [liquidityOnly, setLiquidityOnly] = useState(() => readBooleanPreference(FOOTBALL_HAS_MONEY_STATE_KEY, true));
   const [minLiquidity, setMinLiquidity] = useState(readMinLiquidityPreference);
-  const [countryScope, setCountryScope] = useState(() => readStringPreference(FOOTBALL_COUNTRY_STATE_KEY));
   const [socketStatus, setSocketStatus] = useState<"offline" | "connecting" | "live" | "waiting">("offline");
   const [hoverDetails, setHoverDetails] = useState<{ x: number; y: number; title: string; lines: string[] } | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
@@ -86,27 +79,12 @@ export default function Liquidity() {
   const groupedRows = useMemo(() => allRows.filter((row) => (
     footballScopeMatches(`${row.match} ${row.competition}`, row.country, row.startAt, dateScope, locationScope)
   )), [allRows, dateScope, locationScope]);
-  const countryOptions = useMemo(() => {
-    const countries = new Set(groupedRows.map((row) => countryOptionValue(row.country)).filter(Boolean));
-    const selectedCountry = normalizeCountryName(countryScope);
-    if (selectedCountry) countries.add(selectedCountry);
-    return [
-      { value: "all", label: "ALL COUNTRIES" },
-      ...Array.from(countries)
-        .sort((left, right) => left.localeCompare(right))
-        .map((country) => ({ value: country, label: countryFilterLabel(country) }))
-    ];
-  }, [groupedRows, countryScope]);
-  const countryFilteredRows = useMemo(() => {
-    if (countryScope === "all") return groupedRows;
-    return groupedRows.filter((row) => countryMatches(row.country, countryScope));
-  }, [groupedRows, countryScope]);
-  const moneyFilteredRows = useMemo(() => countryFilteredRows.filter((row) => {
+  const moneyFilteredRows = useMemo(() => groupedRows.filter((row) => {
     const total = Number(row.totalLiquidity || 0);
     if (liquidityOnly && total <= 0) return false;
     if (minLiquidity > 0 && total < minLiquidity) return false;
     return true;
-  }), [countryFilteredRows, liquidityOnly, minLiquidity]);
+  }), [groupedRows, liquidityOnly, minLiquidity]);
   const rows = useMemo(() => {
     const nextRows = filterAgTestRows(moneyFilteredRows, searchQuery);
     return [...nextRows].sort((left, right) => {
@@ -124,10 +102,6 @@ export default function Liquidity() {
   useEffect(() => {
     savePreference(FOOTBALL_MIN_TOTAL_STATE_KEY, String(minLiquidity));
   }, [minLiquidity]);
-
-  useEffect(() => {
-    savePreference(FOOTBALL_COUNTRY_STATE_KEY, countryScope);
-  }, [countryScope]);
 
   useEffect(() => {
     let cancelled = false;
@@ -377,8 +351,6 @@ export default function Liquidity() {
           liquidityOnly={liquidityOnly}
           minLiquidity={minLiquidity}
           liquidityThresholdOptions={FOOTBALL_LIQUIDITY_THRESHOLD_OPTIONS}
-          countryScope={countryScope}
-          countryFilterOptions={countryOptions}
           onDateScopeChange={setDateScope}
           onLocationScopeChange={setLocationScope}
           onLiquidityOnlyChange={setLiquidityOnly}
@@ -386,9 +358,8 @@ export default function Liquidity() {
             setMinLiquidity(value);
             if (value > 0) setLiquidityOnly(true);
           }}
-          onCountryScopeChange={setCountryScope}
           meta={[
-            `${rows.length}${searchQuery.trim() || dateScope !== "all" || locationScope !== "all" || minLiquidity > 0 || !liquidityOnly || countryScope !== "all" ? ` / ${allRows.length}` : ""} markets`,
+            `${rows.length}${searchQuery.trim() || dateScope !== "all" || locationScope !== "all" || minLiquidity > 0 || !liquidityOnly ? ` / ${allRows.length}` : ""} markets`,
             "Available money now",
             socketStatus === "live" ? "wss live" : loading ? "loading" : socketStatus
           ]}

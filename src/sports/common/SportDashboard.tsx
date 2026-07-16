@@ -4,17 +4,11 @@ import { eventHasPassed, localEventTime } from "../../core/format";
 import { FootballScopeFilter } from "../football/FootballScopeFilter";
 import { footballScopeMatches } from "../football/filters";
 import {
-  FOOTBALL_COUNTRY_STATE_KEY,
   FOOTBALL_HAS_MONEY_STATE_KEY,
   FOOTBALL_LIQUIDITY_THRESHOLD_OPTIONS,
   FOOTBALL_MIN_TOTAL_STATE_KEY,
-  countryMatches,
-  countryFilterLabel,
-  countryOptionValue,
-  normalizeCountryName,
   readBooleanPreference,
   readMinLiquidityPreference,
-  readStringPreference,
   savePreference
 } from "../football/liquidityFilterOptions";
 import {
@@ -64,7 +58,6 @@ export function SportDashboard({
   const [locationScope, setLocationScope] = useState("all");
   const [liquidityOnly, setLiquidityOnly] = useState(() => readBooleanPreference(FOOTBALL_HAS_MONEY_STATE_KEY, true));
   const [minLiquidity, setMinLiquidity] = useState(readMinLiquidityPreference);
-  const [countryScope, setCountryScope] = useState(() => readStringPreference(FOOTBALL_COUNTRY_STATE_KEY));
   const [query, setQuery] = useState("");
   const [entities, setEntities] = useState<SportEntityRow[]>([]);
   const [entitiesLoading, setEntitiesLoading] = useState(false);
@@ -85,35 +78,19 @@ export function SportDashboard({
     return events.filter((event) => footballScopeMatches(`${event.name} ${event.competition || ""}`, event.country, event.startAt, dateScope, locationScope));
   }, [events, isFootball, hasScopeFilter, dateScope, locationScope, locationFilters]);
 
-  const countryOptions = useMemo(() => {
-    if (!isFootball) return [];
-    const countries = new Set(scopedEvents.map((event) => countryOptionValue(event.country)).filter(Boolean));
-    const selectedCountry = normalizeCountryName(countryScope);
-    if (selectedCountry) countries.add(selectedCountry);
-    return [
-      { value: "all", label: "ALL COUNTRIES" },
-      ...Array.from(countries)
-        .sort((left, right) => left.localeCompare(right))
-        .map((country) => ({ value: country, label: countryFilterLabel(country) }))
-    ];
-  }, [isFootball, scopedEvents, countryScope]);
-  const countryScopedEvents = useMemo(() => {
-    if (!isFootball || countryScope === "all") return scopedEvents;
-    return scopedEvents.filter((event) => countryMatches(event.country, countryScope));
-  }, [scopedEvents, isFootball, countryScope]);
-  const liquidScopedEvents = useMemo(() => countryScopedEvents.filter((event) => (
+  const liquidScopedEvents = useMemo(() => scopedEvents.filter((event) => (
     Number(event.liquidity || 0) > 0 && (!isFootball || !isStaleFootballEvent(event))
-  )), [countryScopedEvents, isFootball]);
+  )), [scopedEvents, isFootball]);
   const visibleEvents = useMemo(() => {
     if (!isFootball) return scopedEvents;
-    return countryScopedEvents.filter((event) => {
+    return scopedEvents.filter((event) => {
       const liquidity = Number(event.liquidity || 0);
       if (isStaleFootballEvent(event)) return false;
       if (liquidityOnly && liquidity <= 0) return false;
       if (minLiquidity > 0 && liquidity < minLiquidity) return false;
       return true;
     });
-  }, [countryScopedEvents, isFootball, liquidityOnly, minLiquidity, scopedEvents]);
+  }, [isFootball, liquidityOnly, minLiquidity, scopedEvents]);
   const timeOrderedEvents = useMemo(() => {
     return [...visibleEvents].sort((left, right) => {
       const leftLiveRank = isLiveSportEvent(left) ? 0 : 1;
@@ -164,11 +141,6 @@ export function SportDashboard({
   }, [isFootball, minLiquidity]);
 
   useEffect(() => {
-    if (!isFootball) return;
-    savePreference(FOOTBALL_COUNTRY_STATE_KEY, countryScope);
-  }, [isFootball, countryScope]);
-
-  useEffect(() => {
     if (!isEntityPage) return;
     let cancelled = false;
     async function loadEntities() {
@@ -210,8 +182,6 @@ export function SportDashboard({
           liquidityOnly={liquidityOnly}
           minLiquidity={minLiquidity}
           liquidityThresholdOptions={FOOTBALL_LIQUIDITY_THRESHOLD_OPTIONS}
-          countryScope={countryScope}
-          countryFilterOptions={countryOptions}
           onDateScopeChange={setDateScope}
           onLocationScopeChange={setLocationScope}
           onLiquidityOnlyChange={setLiquidityOnly}
@@ -219,7 +189,6 @@ export function SportDashboard({
             setMinLiquidity(value);
             if (value > 0) setLiquidityOnly(true);
           }}
-          onCountryScopeChange={setCountryScope}
           meta={[`${timeOrderedEvents.length} visible`, `${liquidScopedEvents.length} with £`, `${events.length} fixtures`]}
           ariaLabel="Football dashboard filters"
         />
