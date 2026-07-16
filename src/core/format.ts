@@ -18,6 +18,7 @@ export function normalizeFixtureText(value: string) {
     .toLowerCase()
     .replace(/\b(vs?|versus|at)\b/g, " ")
     .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\bindependiente\s+(?:ecu|ec)\b/g, "independiente del valle")
     .replace(/\s+/g, " ")
     .trim();
 }
