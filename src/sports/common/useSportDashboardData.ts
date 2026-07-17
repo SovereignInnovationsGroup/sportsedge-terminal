@@ -104,7 +104,7 @@ export function useSportDashboardData({
         const oddsParams = new URLSearchParams({
           sport: normalizedSport,
           exchanges: DASHBOARD_EXCHANGES.map((exchange) => exchange.key).join(","),
-          limit: isFootball ? "600" : "400"
+          limit: isFootball ? "240" : "400"
         });
         if (isFootball) oddsParams.set("segment", "upcoming4");
         const newsParams = new URLSearchParams({
