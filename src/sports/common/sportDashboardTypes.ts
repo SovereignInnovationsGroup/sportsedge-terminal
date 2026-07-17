@@ -60,6 +60,8 @@ export type SportEventRow = {
   statusLong?: string | null;
   elapsed?: number | null;
   clock?: string | null;
+  clockSeconds?: number | null;
+  clockRunning?: boolean;
   clockSource?: string | null;
   clockUpdatedAt?: string | null;
   clockStatus?: string | null;
@@ -113,6 +115,8 @@ export type FootballFixtureRow = {
   statusLong?: string | null;
   elapsed?: number | null;
   clock?: string | null;
+  clockSeconds?: number | null;
+  clockRunning?: boolean;
   clockSource?: string | null;
   clockUpdatedAt?: string | null;
   clockStatus?: string | null;

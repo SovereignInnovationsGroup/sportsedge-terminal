@@ -71,10 +71,12 @@ const MoneyCell = memo(function MoneyCell({
 });
 
 const FixtureTableRow = memo(function FixtureTableRow({
+  clockNowMs,
   event,
   rowClass,
   rowKey
 }: {
+  clockNowMs: number;
   event: SportEventRow;
   rowClass: string;
   rowKey: string;
@@ -97,7 +99,7 @@ const FixtureTableRow = memo(function FixtureTableRow({
           {fixtureStatusLabel(event)}
         </span>
       </td>
-      <td className={clockClass} title={clockTitle}>{fixtureClockLabel(event)}</td>
+      <td className={clockClass} title={clockTitle}>{fixtureClockLabel(event, clockNowMs)}</td>
       <td className={isLiveSportEvent(event) ? "mono fixture-score is-live" : "mono fixture-score"}>{fixtureScoreLabel(event)}</td>
       <td><strong>{event.name || "Fixture pending"}</strong></td>
       <td>{event.competition || "Football"}</td>
@@ -119,6 +121,7 @@ const FixtureTableRow = memo(function FixtureTableRow({
   );
 }, (previous, next) => (
   previous.rowClass === next.rowClass
+  && (!previous.event.clockRunning || previous.clockNowMs === next.clockNowMs)
   && previous.rowKey === next.rowKey
   && previous.event.name === next.event.name
   && previous.event.competition === next.event.competition
@@ -128,6 +131,8 @@ const FixtureTableRow = memo(function FixtureTableRow({
   && previous.event.statusLong === next.event.statusLong
   && previous.event.elapsed === next.event.elapsed
   && previous.event.clock === next.event.clock
+  && previous.event.clockSeconds === next.event.clockSeconds
+  && previous.event.clockRunning === next.event.clockRunning
   && previous.event.clockSource === next.event.clockSource
   && previous.event.clockUpdatedAt === next.event.clockUpdatedAt
   && previous.event.clockStatus === next.event.clockStatus
@@ -151,7 +156,11 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
     return `${rows.length}:${first}:${last}`;
   }, [rows]);
   const [renderLimit, setRenderLimit] = useState(() => Math.min(rows.length, INITIAL_FIXTURE_RENDER_ROWS));
+  const [clockNowMs, setClockNowMs] = useState(() => Date.now());
   const renderedRows = rows.length > renderLimit ? rows.slice(0, renderLimit) : rows;
+  const hasRunningClocks = renderedRows.some((event) => (
+    Boolean(event.clockRunning && event.clockSeconds != null && isLiveSportEvent(event))
+  ));
 
   useEffect(() => {
     setRenderLimit(Math.min(rows.length, INITIAL_FIXTURE_RENDER_ROWS));
@@ -177,6 +186,12 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
       if (timer !== undefined) window.clearTimeout(timer);
     };
   }, [rows.length, rowsSignature]);
+
+  useEffect(() => {
+    if (!hasRunningClocks) return undefined;
+    const timer = window.setInterval(() => setClockNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [hasRunningClocks]);
 
   function eventRowClass(event: SportEventRow) {
     if (isLiveSportEvent(event)) return "is-live-event";
@@ -213,7 +228,7 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
         <tbody>
           {renderedRows.map((event) => {
             const rowKey = event.id;
-            return <FixtureTableRow event={event} key={rowKey} rowClass={eventRowClass(event)} rowKey={rowKey} />;
+            return <FixtureTableRow clockNowMs={clockNowMs} event={event} key={rowKey} rowClass={eventRowClass(event)} rowKey={rowKey} />;
           })}
           {!loading && rows.length === 0 && <tr><td className="empty" colSpan={15}>No fixtures match the current filter.</td></tr>}
           {loading && rows.length === 0 && <tr><td className="empty" colSpan={15}>Loading fixtures.</td></tr>}

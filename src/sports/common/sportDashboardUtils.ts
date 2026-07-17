@@ -82,14 +82,43 @@ export function fixtureStatusLabel(event: Pick<SportEventRow, "statusShort" | "s
   return code || "NS";
 }
 
-export function fixtureClockLabel(event: Pick<SportEventRow, "statusShort" | "statusLong" | "elapsed" | "clock" | "clockStatus" | "clockUncertain">) {
+function formatMatchClockSeconds(value: number) {
+  const totalSeconds = Math.max(0, Math.floor(value));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function minuteClockLabel(value: number | string | null | undefined) {
+  const text = String(value || "");
+  const stoppage = text.match(/(\d{1,3})\s*\+\s*(\d{1,2})/);
+  if (stoppage) return `${Number(stoppage[1])}+${Number(stoppage[2])}`;
+  const match = text.match(/(\d{1,3})/);
+  if (!match) return "";
+  return `${Number(match[1])}:--`;
+}
+
+export function fixtureClockLabel(
+  event: Pick<SportEventRow, "statusShort" | "statusLong" | "elapsed" | "clock" | "clockSeconds" | "clockRunning" | "clockUpdatedAt" | "clockStatus" | "clockUncertain">,
+  nowMs = Date.now()
+) {
   if (event.clockStatus === "stale") return "-";
+  if (event.clockSeconds != null && Number.isFinite(Number(event.clockSeconds))) {
+    const updatedAtMs = event.clockUpdatedAt ? new Date(event.clockUpdatedAt).getTime() : NaN;
+    const runningDeltaSeconds = event.clockRunning && Number.isFinite(updatedAtMs)
+      ? Math.max(0, (nowMs - updatedAtMs) / 1000)
+      : 0;
+    return formatMatchClockSeconds(Number(event.clockSeconds) + runningDeltaSeconds);
+  }
+  if (event.clock && /^\d{1,3}:\d{2}$/.test(event.clock)) return event.clock;
+  const minuteOnlyClock = minuteClockLabel(event.clock);
+  if (minuteOnlyClock) return minuteOnlyClock;
   if (event.clock) return event.clock;
   if (event.clockUncertain) return "UNC";
   const code = fixtureStatusCode(event);
   if (isLiveSportEvent(event)) {
     if (event.elapsed != null && Number.isFinite(Number(event.elapsed)) && !["HT", "BT", "P"].includes(code)) {
-      return `${Number(event.elapsed)}'`;
+      return minuteClockLabel(event.elapsed);
     }
     if (["HT", "BT", "P"].includes(code)) return code;
     return "-";
@@ -220,9 +249,18 @@ function preferredFootballCountry(existing: string | null | undefined, incoming:
 }
 
 function applyClockMetadata(target: SportEventRow, incoming: SportEventRow) {
-  if (!incoming.clockSource && !incoming.clockUpdatedAt && !incoming.clockStatus && !incoming.clockUncertain) return;
+  if (
+    !incoming.clockSource
+    && !incoming.clockUpdatedAt
+    && incoming.clockSeconds == null
+    && incoming.clockRunning == null
+    && !incoming.clockStatus
+    && !incoming.clockUncertain
+  ) return;
   target.clockSource = incoming.clockSource ?? target.clockSource ?? null;
   target.clockUpdatedAt = incoming.clockUpdatedAt ?? target.clockUpdatedAt ?? null;
+  target.clockSeconds = incoming.clockSeconds ?? target.clockSeconds ?? null;
+  target.clockRunning = incoming.clockRunning ?? target.clockRunning ?? false;
   target.clockStatus = incoming.clockStatus ?? target.clockStatus ?? null;
   target.clockUncertain = Boolean(target.clockUncertain || incoming.clockUncertain);
   target.clockConflictMinutes = incoming.clockConflictMinutes ?? target.clockConflictMinutes ?? null;
@@ -343,6 +381,8 @@ export function footballFixtureToEvent(fixture: FootballFixtureRow): SportEventR
     clock: fixture.clockStatus === "stale"
       ? null
       : fixture.clock || (fixture.elapsed != null && Number.isFinite(Number(fixture.elapsed)) ? `${Number(fixture.elapsed)}'` : null),
+    clockSeconds: fixture.clockSeconds ?? null,
+    clockRunning: Boolean(fixture.clockRunning),
     clockSource: fixture.clockSource || null,
     clockUpdatedAt: fixture.clockUpdatedAt || null,
     clockStatus: fixture.clockStatus || null,
