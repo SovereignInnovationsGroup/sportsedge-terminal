@@ -101,7 +101,15 @@ const FixtureTableRow = memo(function FixtureTableRow({
       </td>
       <td className={clockClass} title={clockTitle}>{fixtureClockLabel(event, clockNowMs)}</td>
       <td className={isLiveSportEvent(event) ? "mono fixture-score is-live" : "mono fixture-score"}>{fixtureScoreLabel(event)}</td>
-      <td><strong>{event.name || "Fixture pending"}</strong></td>
+      <td>
+        {event.polymarketUrl ? (
+          <a className="fixture-market-link" href={event.polymarketUrl} target="_blank" rel="noreferrer">
+            <strong>{event.name || "Fixture pending"}</strong>
+          </a>
+        ) : (
+          <strong>{event.name || "Fixture pending"}</strong>
+        )}
+      </td>
       <td>{event.competition || "Football"}</td>
       <td>
         <span className="fixture-country">
@@ -124,6 +132,7 @@ const FixtureTableRow = memo(function FixtureTableRow({
   && (!previous.event.clockRunning || previous.clockNowMs === next.clockNowMs)
   && previous.rowKey === next.rowKey
   && previous.event.name === next.event.name
+  && previous.event.polymarketUrl === next.event.polymarketUrl
   && previous.event.competition === next.event.competition
   && previous.event.country === next.event.country
   && previous.event.startAt === next.event.startAt

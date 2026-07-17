@@ -11209,6 +11209,18 @@ button {
   white-space: nowrap;
 }
 
+.fixture-market-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.fixture-market-link:hover,
+.fixture-market-link:focus-visible {
+  color: #a7f3d0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .country-flag {
   position: relative;
   display: inline-grid;

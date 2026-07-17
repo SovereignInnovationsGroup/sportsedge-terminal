@@ -221,6 +221,32 @@ function exchangeMatchIsLive(match: BackendExchangeMatch | undefined) {
   return status.includes("inplay") || status.includes("in-play") || status.includes("live");
 }
 
+function normalizePolymarketUrl(value: string | null | undefined) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  if (/^https:\/\/(?:www\.)?polymarket\.com\//i.test(text)) return text;
+  if (text.startsWith("/event/")) return `https://polymarket.com${text}`;
+  return null;
+}
+
+function polymarketSlugUrl(eventSlug: string | null | undefined) {
+  const slug = String(eventSlug || "").trim().replace(/^\/+|\/+$/g, "");
+  return slug ? `https://polymarket.com/event/${encodeURIComponent(slug)}` : null;
+}
+
+function polymarketUrlFromRow(row: BackendPriceRow, matches: Array<[string, BackendExchangeMatch]>) {
+  const polymarketMatch = (row.matches?.polymarket || matches.find(([key, match]) => (
+    key === "polymarket" || String(match.exchange || "").toLowerCase() === "polymarket"
+  ))?.[1]) as BackendExchangeMatch | undefined;
+  return normalizePolymarketUrl(row.polymarketUrl)
+    || normalizePolymarketUrl(polymarketMatch?.eventUrl)
+    || polymarketSlugUrl(polymarketMatch?.eventSlug)
+    || normalizePolymarketUrl(row.eventUrl)
+    || normalizePolymarketUrl(polymarketMatch?.marketUrl)
+    || normalizePolymarketUrl(row.marketUrl)
+    || null;
+}
+
 function eventKey(event: Pick<SportEventRow, "name" | "startAt">) {
   const date = String(event.startAt || "").slice(0, 10);
   return `${date}:${normalizeEventName(event.name)}`;
@@ -294,7 +320,8 @@ function exchangeOddsRowToEvent(row: BackendPriceRow, fallbackSport: string): Sp
     liquidity: rowMatchedValue(row),
     liquidityByExchange: Object.fromEntries(DASHBOARD_EXCHANGES.map((exchange) => [exchange.key, backendMatchLiquidity(row, exchange.key)])),
     latestSeenAt: latestSeenAtMs ? new Date(latestSeenAtMs).toISOString() : firstMatch?.observedAt || null,
-    exchanges: Array.from(new Set(exchanges))
+    exchanges: Array.from(new Set(exchanges)),
+    polymarketUrl: polymarketUrlFromRow(row, matches)
   };
 }
 
@@ -319,6 +346,7 @@ export function mergeSportEvents(entries: SportEventRow[]) {
       existing.liquidityByExchange[exchange.key] = Number(existing.liquidityByExchange[exchange.key] || 0) + Number(entry.liquidityByExchange[exchange.key] || 0);
     });
     existing.exchanges = Array.from(new Set([...existing.exchanges, ...entry.exchanges]));
+    existing.polymarketUrl = existing.polymarketUrl || entry.polymarketUrl || null;
     existing.country = preferredFootballCountry(existing.country, entry.country);
     existing.competition = existing.competition || entry.competition || null;
     const existingFinished = isFinishedSportEvent(existing);

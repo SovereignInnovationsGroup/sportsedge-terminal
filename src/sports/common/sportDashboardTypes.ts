@@ -10,6 +10,12 @@ export type BackendRunner = {
 
 export type BackendExchangeMatch = {
   exchange?: string;
+  eventId?: string;
+  marketId?: string;
+  eventSlug?: string | null;
+  marketSlug?: string | null;
+  eventUrl?: string | null;
+  marketUrl?: string | null;
   name?: string;
   sportName?: string;
   competitionName?: string | null;
@@ -36,6 +42,9 @@ export type BackendPriceRow = {
   status?: string | null;
   isLive?: boolean | null;
   startAt: string | null;
+  polymarketUrl?: string | null;
+  eventUrl?: string | null;
+  marketUrl?: string | null;
   matches?: Record<string, BackendExchangeMatch | undefined>;
   aggregateLiquidityByExchange?: Record<string, number>;
 };
@@ -73,6 +82,7 @@ export type SportEventRow = {
   liquidityByExchange: Record<string, number>;
   latestSeenAt: string | null;
   exchanges: string[];
+  polymarketUrl?: string | null;
 };
 
 export type LiveScoreFeedStatus = {

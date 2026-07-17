@@ -21,6 +21,10 @@ export type BackendExchangeMatch = {
   exchange: string;
   eventId: string;
   marketId: string;
+  eventSlug?: string | null;
+  marketSlug?: string | null;
+  eventUrl?: string | null;
+  marketUrl?: string | null;
   name: string;
   sportName?: string | null;
   competitionName?: string | null;
@@ -53,6 +57,9 @@ export type BackendPriceRow = {
   status?: string | null;
   isLive?: boolean | null;
   startAt: string | null;
+  polymarketUrl?: string | null;
+  eventUrl?: string | null;
+  marketUrl?: string | null;
   matches: Record<string, BackendExchangeMatch | undefined>;
   arbs?: Array<{ edgePct?: number; backExchange?: string; layExchange?: string; label?: string }>;
   marketCount?: number;
@@ -304,6 +311,7 @@ export function mergeDisplayPriceRows(rows: BackendPriceRow[]) {
     existing.marketCount = Number(existing.marketCount || 1) + 1;
     const incomingIsBetterDisplay = marketSortRank(row) < marketSortRank(existing);
     existing.matches = incomingIsBetterDisplay ? { ...existing.matches, ...row.matches } : { ...row.matches, ...existing.matches };
+    existing.polymarketUrl = existing.polymarketUrl || row.polymarketUrl || row.matches?.polymarket?.eventUrl || null;
     existing.arbs = [...(existing.arbs || []), ...(row.arbs || [])];
     if (backendRowStartTimeMs(row) < backendRowStartTimeMs(existing)) existing.startAt = row.startAt;
     if (row.name && (!existing.name || row.name.length < existing.name.length)) existing.name = row.name;
@@ -423,6 +431,7 @@ function marketStateRowsFromPayload(payload: unknown) {
       status: match.status,
       isLive: match.isLive,
       startAt: match.startAt,
+      polymarketUrl: match.exchange === "polymarket" ? match.eventUrl || match.marketUrl || null : null,
       matches: { [normalizeExchangeCode(match.exchange)]: match }
     }];
   }
