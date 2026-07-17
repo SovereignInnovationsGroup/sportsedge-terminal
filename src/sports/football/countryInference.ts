@@ -104,12 +104,12 @@ const COUNTRY_HINTS: CountryHint[] = [
   { country: "Armenia", terms: ["armenia", "armenian", "ararat armenia", "pyunik", "alashkert"] },
   { country: "Moldova", terms: ["moldova", "moldovan", "petrocub", "milsami", "orhei"] },
   { country: "Slovenia", terms: ["slovenia", "slovenian", "aluminij"] },
-  { country: "Norway", terms: ["norway", "norwegian", "valerenga", "aalesund"] },
+  { country: "Norway", terms: ["norway", "norwegian", "eliteserien", "bodo glimt", "fredrikstad", "hamarkameratene", "tromso", "valerenga", "aalesund"] },
   { country: "Faroe Islands", terms: ["faroe", "ki klaksvik", "klaksvik", "klaksvikar", "vikingur gota", "nsi runavik"] },
   { country: "Vietnam", terms: ["vietnam", "vietnamese"] },
   { country: "China", terms: ["china", "chinese", "super league"] },
   { country: "Australia", terms: ["australia", "australian", "a league", "npl"] },
-  { country: "England", terms: ["english", "england", "premier league", "championship", "league one", "league two", "fa cup", "efl cup", "bamber bridge", "preston", "woking", "portsmouth", "chippenham", "swindon", "halifax", "chesterfield", "rochdale"] },
+  { country: "England", terms: ["english", "england", "english premier league", "premier league england", "efl championship", "league one", "league two", "fa cup", "efl cup", "bamber bridge", "preston", "woking", "portsmouth", "chippenham", "swindon", "halifax", "chesterfield", "rochdale"] },
   { country: "Scotland", terms: ["scottish", "scotland"] },
   { country: "Spain", terms: ["spain", "spanish", "la liga"] },
   { country: "Italy", terms: ["italy", "italian", "italian serie a", "italian serie b"] },
@@ -143,6 +143,9 @@ function normalizeCountryText(value: string | null | undefined) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[øØ]/g, "o")
+    .replace(/[æÆ]/g, "ae")
+    .replace(/[åÅ]/g, "a")
     .replace(/&/g, " and ")
     .replace(/\bvs?\.?\b|\bversus\b/g, " ")
     .replace(/[^a-z0-9]+/g, " ")

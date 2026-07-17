@@ -474,6 +474,7 @@ function countryFromBackendRow(row: BackendPriceRow) {
     fixture: row.name,
     extra: Object.values(row.matches || {}).map((match) => `${match?.competitionName || ""} ${match?.name || ""}`).join(" ")
   });
+  if (inferredCountry && directCountry && !isGenericFootballCountry(directCountry) && inferredCountry !== directCountry) return inferredCountry;
   if (directCountry && !isGenericFootballCountry(directCountry)) return directCountry;
   if (inferredCountry) return inferredCountry;
   if (directCountry) return directCountry;
