@@ -100,6 +100,7 @@ const FixtureTableRow = memo(function FixtureTableRow({
       <td><ExchangeCoverageCell event={event} /></td>
       <MoneyCell value={event.liquidityByExchange.betfair} />
       <MoneyCell value={event.liquidityByExchange.matchbook} />
+      <MoneyCell value={event.liquidityByExchange.kalshi} currency="USD" />
       <MoneyCell value={event.liquidityByExchange.polymarket} currency="USD" />
       <MoneyCell value={event.liquidityByExchange.monaco} currency="USD" />
       <MoneyCell value={event.liquidityByExchange.sx} />
@@ -151,6 +152,7 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
             <th>Coverage</th>
             <th>BF £ Now</th>
             <th>MB £ Now</th>
+            <th>KS $ Now</th>
             <th>PY $ Now</th>
             <th>BX $ Now</th>
             <th>SX £ Now</th>
@@ -162,8 +164,8 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
             const rowKey = event.id;
             return <FixtureTableRow event={event} key={rowKey} rowClass={eventRowClass(event)} rowKey={rowKey} />;
           })}
-          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={14}>No fixtures match the current filter.</td></tr>}
-          {loading && rows.length === 0 && <tr><td className="empty" colSpan={14}>Loading fixtures.</td></tr>}
+          {!loading && rows.length === 0 && <tr><td className="empty" colSpan={15}>No fixtures match the current filter.</td></tr>}
+          {loading && rows.length === 0 && <tr><td className="empty" colSpan={15}>Loading fixtures.</td></tr>}
         </tbody>
       </table>
     </section>
@@ -266,7 +268,7 @@ export function SportStandingByBoard({
 }) {
   const demoRows = [
     ["Exchange Rows", "Standing by", "No live venue rows yet"],
-    ["Routing", "Ready", "BF / MB / PY / BX / SX slots"],
+    ["Routing", "Ready", "BF / MB / KS / PY / BX / SX slots"],
     ["News", "Live", "Rail remains real when sport news exists"]
   ];
   const demoTape = [

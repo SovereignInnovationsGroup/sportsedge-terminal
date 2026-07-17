@@ -11,6 +11,7 @@ import {
   FOOTBALL_HAS_MONEY_STATE_KEY,
   FOOTBALL_LIQUIDITY_THRESHOLD_OPTIONS,
   FOOTBALL_MIN_TOTAL_STATE_KEY,
+  FOOTBALL_PREDICTIVE_ONLY_STATE_KEY,
   readBooleanPreference,
   readMinLiquidityPreference,
   savePreference
@@ -68,6 +69,7 @@ export default function Liquidity() {
   const [locationScope, setLocationScope] = useState("all");
   const [liquidityOnly, setLiquidityOnly] = useState(() => readBooleanPreference(FOOTBALL_HAS_MONEY_STATE_KEY, true));
   const [minLiquidity, setMinLiquidity] = useState(readMinLiquidityPreference);
+  const [predictiveOnly, setPredictiveOnly] = useState(() => readBooleanPreference(FOOTBALL_PREDICTIVE_ONLY_STATE_KEY, false));
   const [socketStatus, setSocketStatus] = useState<"offline" | "connecting" | "live" | "waiting">("offline");
   const [hoverDetails, setHoverDetails] = useState<{ x: number; y: number; title: string; lines: string[] } | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
@@ -81,10 +83,12 @@ export default function Liquidity() {
   )), [allRows, dateScope, locationScope]);
   const moneyFilteredRows = useMemo(() => groupedRows.filter((row) => {
     const total = Number(row.totalLiquidity || 0);
+    const hasPredictiveMarket = Number(row.predictiveLiquidity || 0) > 0;
     if (liquidityOnly && total <= 0) return false;
     if (minLiquidity > 0 && total < minLiquidity) return false;
+    if (predictiveOnly && !hasPredictiveMarket) return false;
     return true;
-  }), [groupedRows, liquidityOnly, minLiquidity]);
+  }), [groupedRows, liquidityOnly, minLiquidity, predictiveOnly]);
   const rows = useMemo(() => {
     const nextRows = filterAgTestRows(moneyFilteredRows, searchQuery);
     return [...nextRows].sort((left, right) => {
@@ -102,6 +106,10 @@ export default function Liquidity() {
   useEffect(() => {
     savePreference(FOOTBALL_MIN_TOTAL_STATE_KEY, String(minLiquidity));
   }, [minLiquidity]);
+
+  useEffect(() => {
+    savePreference(FOOTBALL_PREDICTIVE_ONLY_STATE_KEY, String(predictiveOnly));
+  }, [predictiveOnly]);
 
   useEffect(() => {
     let cancelled = false;
@@ -127,8 +135,8 @@ export default function Liquidity() {
           try {
             const [fullOddsResponse, fixtureResponse] = await Promise.all([
               fetchMarketSnapshotRows(
-                "/api/markets/snapshot?sport=football&exchanges=betfair,matchbook,polymarket,monaco,sx&segment=upcoming4&limit=220",
-                "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,polymarket,monaco,sx&segment=upcoming4&limit=220"
+                "/api/markets/snapshot?sport=football&exchanges=betfair,matchbook,kalshi,polymarket,monaco,sx&segment=upcoming4&limit=220",
+                "/api/exchange-odds?sport=football&exchanges=betfair,matchbook,kalshi,polymarket,monaco,sx&segment=upcoming4&limit=220"
               ),
               fetch("/api/football/fixtures?days=4&limit=2000&timezone=Europe/London", { cache: "no-store" })
             ]);
@@ -294,12 +302,14 @@ export default function Liquidity() {
     { field: "outcomes", headerName: "Outcomes", minWidth: 150, flex: 0.55, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.outcomes} /> },
     { field: "betfair", headerName: "BF", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.betfair} className="ag-price-stack" /> },
     { field: "matchbook", headerName: "MB", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.matchbook} className="ag-price-stack" /> },
+    { field: "kalshi", headerName: "KS", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.kalshi} className="ag-price-stack" /> },
     { field: "polymarket", headerName: "PY", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.polymarket} className="ag-price-stack" /> },
     { field: "monaco", headerName: "BX", minWidth: 128, flex: 0.48, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.monaco} className="ag-price-stack" /> },
     { field: "sx", headerName: "SX", minWidth: 122, flex: 0.45, cellRenderer: ({ data }: { data?: AgTestRow }) => <AgStackCell values={data?.sx} className="ag-price-stack" /> },
     { field: "bias", headerName: "Bias", width: 92 },
     { field: "bfLiquidity", headerName: "BF ALL £", width: 92 },
     { field: "mbLiquidity", headerName: "MB ALL £", width: 92 },
+    { field: "ksLiquidity", headerName: "KS ALL $", width: 92 },
     { field: "pyLiquidity", headerName: "PY ALL $", width: 92 },
     { field: "bxLiquidity", headerName: "BX ALL $", width: 92 },
     { field: "sxLiquidity", headerName: "SX ALL £", width: 92 },
@@ -310,7 +320,7 @@ export default function Liquidity() {
     const pointerEvent = event.event as MouseEvent | undefined;
     const field = event.colDef?.field as keyof AgTestRow | undefined;
     if (!pointerEvent || !field || !event.data) return;
-    if (!["outcomes", "betfair", "matchbook", "polymarket", "monaco", "sx"].includes(String(field))) {
+    if (!["outcomes", "betfair", "matchbook", "kalshi", "polymarket", "monaco", "sx"].includes(String(field))) {
       setHoverDetails(null);
       return;
     }
@@ -324,6 +334,7 @@ export default function Liquidity() {
       outcomes: "Outcomes",
       betfair: "Betfair ladder",
       matchbook: "Matchbook ladder",
+      kalshi: "Kalshi book",
       polymarket: "Polymarket book",
       monaco: "BetDEX ladder",
       sx: "SX ladder"
@@ -350,23 +361,25 @@ export default function Liquidity() {
           locationScope={locationScope}
           liquidityOnly={liquidityOnly}
           minLiquidity={minLiquidity}
+          predictiveOnly={predictiveOnly}
           liquidityThresholdOptions={FOOTBALL_LIQUIDITY_THRESHOLD_OPTIONS}
           onDateScopeChange={setDateScope}
           onLocationScopeChange={setLocationScope}
           onLiquidityOnlyChange={setLiquidityOnly}
+          onPredictiveOnlyChange={setPredictiveOnly}
           onMinLiquidityChange={(value) => {
             setMinLiquidity(value);
             if (value > 0) setLiquidityOnly(true);
           }}
           meta={[
-            `${rows.length}${searchQuery.trim() || dateScope !== "all" || locationScope !== "all" || minLiquidity > 0 || !liquidityOnly ? ` / ${allRows.length}` : ""} markets`,
+            `${rows.length}${searchQuery.trim() || dateScope !== "all" || locationScope !== "all" || minLiquidity > 0 || !liquidityOnly || predictiveOnly ? ` / ${allRows.length}` : ""} markets`,
             "Available money now",
             socketStatus === "live" ? "wss live" : loading ? "loading" : socketStatus
           ]}
           ariaLabel="Football liquidity filters"
         />
         <section className="agtest-source-strip" aria-label="Liquidity source status">
-          <span>Available now: BF / MB / PY / BX / SX</span>
+          <span>Available now: BF / MB / KS / PY / BX / SX</span>
           {hasDemoRows && <span className="demo">Hybrid demo fills missing fixtures</span>}
         </section>
         <section className="agtest-grid-wrap ag-theme-quartz-dark">
@@ -400,7 +413,7 @@ export default function Liquidity() {
           {!initialSnapshotLoaded && rows.length === 0 && (
             <div className="agtest-empty-state">
               <strong>Loading liquidity</strong>
-              <span>Fetching BF / MB / PY / BX / SX exchange snapshot</span>
+              <span>Fetching BF / MB / KS / PY / BX / SX exchange snapshot</span>
             </div>
           )}
           {initialSnapshotLoaded && !loading && rows.length === 0 && (

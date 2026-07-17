@@ -130,7 +130,7 @@ export function backendMatchLiquidity(row: BackendPriceRow, exchangeKey: string)
   const match = row.matches?.[exchangeKey];
   if (!match) return 0;
   const sourceValue = Number(match.sourceLiquidity || match.marketLiquidity || 0);
-  if (exchangeKey === "polymarket" && Number.isFinite(sourceValue) && sourceValue > 0) return sourceValue;
+  if (["polymarket", "kalshi"].includes(exchangeKey) && Number.isFinite(sourceValue) && sourceValue > 0) return sourceValue;
   return match.runners.reduce((sum, runner) => {
     const back = runner.backLevels?.length
       ? runner.backLevels.reduce((levelSum, level) => levelSum + Number(level.amount || 0), 0)

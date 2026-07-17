@@ -174,6 +174,7 @@ export type SportEntitiesPayload = {
 export const DASHBOARD_EXCHANGES = [
   { key: "betfair", label: "Betfair", short: "BF" },
   { key: "matchbook", label: "Matchbook", short: "MB" },
+  { key: "kalshi", label: "Kalshi", short: "KS", currency: "USD" },
   { key: "polymarket", label: "Polymarket", short: "PY", currency: "USD" },
   { key: "monaco", label: "BetDEX", short: "BX", currency: "USD" },
   { key: "sx", label: "SX" }

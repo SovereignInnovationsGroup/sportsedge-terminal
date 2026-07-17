@@ -7,6 +7,7 @@ import {
   FOOTBALL_HAS_MONEY_STATE_KEY,
   FOOTBALL_LIQUIDITY_THRESHOLD_OPTIONS,
   FOOTBALL_MIN_TOTAL_STATE_KEY,
+  FOOTBALL_PREDICTIVE_ONLY_STATE_KEY,
   readBooleanPreference,
   readMinLiquidityPreference,
   savePreference
@@ -33,6 +34,16 @@ import {
 } from "./sportDashboardUtils";
 import { useSportDashboardData } from "./useSportDashboardData";
 
+const PREDICTIVE_MARKET_TERMS = ["polymarket", "poly", "py", "kalshi", "ks", "kx"];
+
+function eventHasPredictiveMarket(event: { liquidityByExchange: Record<string, number>; exchanges: string[] }) {
+  return PREDICTIVE_MARKET_TERMS.some((term) => Number(event.liquidityByExchange[term] || 0) > 0)
+    || event.exchanges.some((exchange) => {
+      const normalized = String(exchange || "").toLowerCase();
+      return PREDICTIVE_MARKET_TERMS.some((term) => normalized === term || normalized.includes(term));
+    });
+}
+
 export function SportDashboard({
   sport,
   label,
@@ -58,6 +69,7 @@ export function SportDashboard({
   const [locationScope, setLocationScope] = useState("all");
   const [liquidityOnly, setLiquidityOnly] = useState(() => readBooleanPreference(FOOTBALL_HAS_MONEY_STATE_KEY, true));
   const [minLiquidity, setMinLiquidity] = useState(readMinLiquidityPreference);
+  const [predictiveOnly, setPredictiveOnly] = useState(() => readBooleanPreference(FOOTBALL_PREDICTIVE_ONLY_STATE_KEY, false));
   const [query, setQuery] = useState("");
   const [entities, setEntities] = useState<SportEntityRow[]>([]);
   const [entitiesLoading, setEntitiesLoading] = useState(false);
@@ -81,6 +93,9 @@ export function SportDashboard({
   const liquidScopedEvents = useMemo(() => scopedEvents.filter((event) => (
     Number(event.liquidity || 0) > 0 && (!isFootball || !isStaleFootballEvent(event))
   )), [scopedEvents, isFootball]);
+  const predictiveScopedEvents = useMemo(() => scopedEvents.filter((event) => (
+    eventHasPredictiveMarket(event)
+  )), [scopedEvents]);
   const visibleEvents = useMemo(() => {
     if (!isFootball) return scopedEvents;
     return scopedEvents.filter((event) => {
@@ -88,9 +103,10 @@ export function SportDashboard({
       if (isStaleFootballEvent(event)) return false;
       if (liquidityOnly && liquidity <= 0) return false;
       if (minLiquidity > 0 && liquidity < minLiquidity) return false;
+      if (predictiveOnly && !eventHasPredictiveMarket(event)) return false;
       return true;
     });
-  }, [isFootball, liquidityOnly, minLiquidity, scopedEvents]);
+  }, [isFootball, liquidityOnly, minLiquidity, predictiveOnly, scopedEvents]);
   const timeOrderedEvents = useMemo(() => {
     return [...visibleEvents].sort((left, right) => {
       const leftLiveRank = isLiveSportEvent(left) ? 0 : 1;
@@ -141,6 +157,11 @@ export function SportDashboard({
   }, [isFootball, minLiquidity]);
 
   useEffect(() => {
+    if (!isFootball) return;
+    savePreference(FOOTBALL_PREDICTIVE_ONLY_STATE_KEY, String(predictiveOnly));
+  }, [isFootball, predictiveOnly]);
+
+  useEffect(() => {
     if (!isEntityPage) return;
     let cancelled = false;
     async function loadEntities() {
@@ -181,15 +202,17 @@ export function SportDashboard({
           locationScope={locationScope}
           liquidityOnly={liquidityOnly}
           minLiquidity={minLiquidity}
+          predictiveOnly={predictiveOnly}
           liquidityThresholdOptions={FOOTBALL_LIQUIDITY_THRESHOLD_OPTIONS}
           onDateScopeChange={setDateScope}
           onLocationScopeChange={setLocationScope}
           onLiquidityOnlyChange={setLiquidityOnly}
+          onPredictiveOnlyChange={setPredictiveOnly}
           onMinLiquidityChange={(value) => {
             setMinLiquidity(value);
             if (value > 0) setLiquidityOnly(true);
           }}
-          meta={[`${timeOrderedEvents.length} visible`, `${liquidScopedEvents.length} with £`, `${events.length} fixtures`]}
+          meta={[`${timeOrderedEvents.length} visible`, `${liquidScopedEvents.length} with £`, `${predictiveScopedEvents.length} predictive`, `${events.length} fixtures`]}
           ariaLabel="Football dashboard filters"
         />
       )}

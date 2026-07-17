@@ -1,6 +1,7 @@
 export const FOOTBALL_HAS_MONEY_STATE_KEY = "sportsedge.footballLiquidity.hasMoney.v1";
 export const FOOTBALL_MIN_TOTAL_STATE_KEY = "sportsedge.footballLiquidity.minTotal.v1";
 export const FOOTBALL_COUNTRY_STATE_KEY = "sportsedge.footballLiquidity.country.v1";
+export const FOOTBALL_PREDICTIVE_ONLY_STATE_KEY = "sportsedge.footballLiquidity.predictiveOnly.v1";
 
 export const FOOTBALL_LIQUIDITY_THRESHOLD_OPTIONS = [
   { value: 0, label: "ANY £" },

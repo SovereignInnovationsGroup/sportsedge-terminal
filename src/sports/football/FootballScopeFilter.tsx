@@ -9,11 +9,13 @@ export function FootballScopeFilter({
   locationScope,
   liquidityOnly,
   minLiquidity,
+  predictiveOnly,
   liquidityThresholdOptions,
   onDateScopeChange,
   onLocationScopeChange,
   onLiquidityOnlyChange,
   onMinLiquidityChange,
+  onPredictiveOnlyChange,
   meta,
   ariaLabel = "Football filters"
 }: {
@@ -21,11 +23,13 @@ export function FootballScopeFilter({
   locationScope: string;
   liquidityOnly?: boolean;
   minLiquidity?: number;
+  predictiveOnly?: boolean;
   liquidityThresholdOptions?: Array<{ value: number; label: string }>;
   onDateScopeChange: (value: string) => void;
   onLocationScopeChange: (value: string) => void;
   onLiquidityOnlyChange?: (value: boolean) => void;
   onMinLiquidityChange?: (value: number) => void;
+  onPredictiveOnlyChange?: (value: boolean) => void;
   meta?: string[];
   ariaLabel?: string;
 }) {
@@ -79,6 +83,17 @@ export function FootballScopeFilter({
                   ))}
                 </select>
               ) : null}
+              {onPredictiveOnlyChange && (
+                <button
+                  aria-pressed={Boolean(predictiveOnly)}
+                  className={predictiveOnly ? "active football-liquidity-toggle" : "football-liquidity-toggle"}
+                  type="button"
+                  onClick={() => onPredictiveOnlyChange(!predictiveOnly)}
+                  title={predictiveOnly ? "Showing only prediction-market backed football markets" : "Include all exchange-backed football markets"}
+                >
+                  PREDICTIVE
+                </button>
+              )}
             </>
           )}
         </nav>
