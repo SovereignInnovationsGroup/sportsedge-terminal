@@ -82,8 +82,10 @@ export function fixtureStatusLabel(event: Pick<SportEventRow, "statusShort" | "s
   return code || "NS";
 }
 
-export function fixtureClockLabel(event: Pick<SportEventRow, "statusShort" | "statusLong" | "elapsed" | "clock">) {
+export function fixtureClockLabel(event: Pick<SportEventRow, "statusShort" | "statusLong" | "elapsed" | "clock" | "clockStatus" | "clockUncertain">) {
+  if (event.clockStatus === "stale") return "-";
   if (event.clock) return event.clock;
+  if (event.clockUncertain) return "UNC";
   const code = fixtureStatusCode(event);
   if (isLiveSportEvent(event)) {
     if (event.elapsed != null && Number.isFinite(Number(event.elapsed)) && !["HT", "BT", "P"].includes(code)) {
@@ -217,6 +219,15 @@ function preferredFootballCountry(existing: string | null | undefined, incoming:
   return current;
 }
 
+function applyClockMetadata(target: SportEventRow, incoming: SportEventRow) {
+  if (!incoming.clockSource && !incoming.clockUpdatedAt && !incoming.clockStatus && !incoming.clockUncertain) return;
+  target.clockSource = incoming.clockSource ?? target.clockSource ?? null;
+  target.clockUpdatedAt = incoming.clockUpdatedAt ?? target.clockUpdatedAt ?? null;
+  target.clockStatus = incoming.clockStatus ?? target.clockStatus ?? null;
+  target.clockUncertain = Boolean(target.clockUncertain || incoming.clockUncertain);
+  target.clockConflictMinutes = incoming.clockConflictMinutes ?? target.clockConflictMinutes ?? null;
+}
+
 function exchangeOddsRowToEvent(row: BackendPriceRow, fallbackSport: string): SportEventRow | null {
   const matches = Object.entries(row.matches || {}).filter(([, match]) => Boolean(match)) as Array<[string, BackendExchangeMatch]>;
   const firstMatch = matches[0]?.[1];
@@ -261,6 +272,7 @@ export function mergeSportEvents(entries: SportEventRow[]) {
       merged.set(key, cloneEvent(entry));
       return;
     }
+    applyClockMetadata(existing, entry);
     existing.liquidity += entry.liquidity;
     DASHBOARD_EXCHANGES.forEach((exchange) => {
       existing.liquidityByExchange[exchange.key] = Number(existing.liquidityByExchange[exchange.key] || 0) + Number(entry.liquidityByExchange[exchange.key] || 0);
@@ -327,8 +339,15 @@ export function footballFixtureToEvent(fixture: FootballFixtureRow): SportEventR
     startAt,
     statusShort: fixture.statusShort || null,
     statusLong: fixture.statusLong || null,
-    elapsed: fixture.elapsed ?? null,
-    clock: fixture.clock || (fixture.elapsed != null && Number.isFinite(Number(fixture.elapsed)) ? `${Number(fixture.elapsed)}'` : null),
+    elapsed: fixture.clockUncertain || fixture.clockStatus === "stale" ? null : fixture.elapsed ?? null,
+    clock: fixture.clockStatus === "stale"
+      ? null
+      : fixture.clock || (fixture.elapsed != null && Number.isFinite(Number(fixture.elapsed)) ? `${Number(fixture.elapsed)}'` : null),
+    clockSource: fixture.clockSource || null,
+    clockUpdatedAt: fixture.clockUpdatedAt || null,
+    clockStatus: fixture.clockStatus || null,
+    clockUncertain: Boolean(fixture.clockUncertain),
+    clockConflictMinutes: fixture.clockConflictMinutes ?? null,
     scoreHome: fixture.goals?.home ?? null,
     scoreAway: fixture.goals?.away ?? null,
     liquidity: 0,

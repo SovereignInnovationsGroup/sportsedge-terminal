@@ -60,6 +60,11 @@ export type SportEventRow = {
   statusLong?: string | null;
   elapsed?: number | null;
   clock?: string | null;
+  clockSource?: string | null;
+  clockUpdatedAt?: string | null;
+  clockStatus?: string | null;
+  clockUncertain?: boolean;
+  clockConflictMinutes?: number | null;
   scoreHome?: number | null;
   scoreAway?: number | null;
   liquidity: number;
@@ -108,6 +113,11 @@ export type FootballFixtureRow = {
   statusLong?: string | null;
   elapsed?: number | null;
   clock?: string | null;
+  clockSource?: string | null;
+  clockUpdatedAt?: string | null;
+  clockStatus?: string | null;
+  clockUncertain?: boolean;
+  clockConflictMinutes?: number | null;
   goals?: { home?: number | null; away?: number | null };
   syncedAt?: string | null;
   updatedAt?: string | null;

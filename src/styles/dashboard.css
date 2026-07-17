@@ -11280,6 +11280,14 @@ button {
   color: #a7f3d0;
 }
 
+.fixture-clock.is-uncertain {
+  color: #fbbf24;
+}
+
+.fixture-clock.is-stale {
+  color: rgba(148, 163, 184, 0.72);
+}
+
 .sport-summary-coverage span {
   min-width: 28px;
   padding: 3px 5px;

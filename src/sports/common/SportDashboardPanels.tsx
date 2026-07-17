@@ -79,6 +79,16 @@ const FixtureTableRow = memo(function FixtureTableRow({
   rowClass: string;
   rowKey: string;
 }) {
+  const clockClass = [
+    "mono fixture-clock",
+    isLiveSportEvent(event) ? "is-live" : "",
+    event.clockUncertain ? "is-uncertain" : "",
+    event.clockStatus === "stale" ? "is-stale" : ""
+  ].filter(Boolean).join(" ");
+  const clockTitle = event.clockUncertain
+    ? `Clock sources disagree${event.clockConflictMinutes ? ` by ${event.clockConflictMinutes} minutes` : ""}`
+    : event.clockSource ? `Clock: ${event.clockSource}` : undefined;
+
   return (
     <tr className={rowClass} data-row-key={rowKey}>
       <td className="mono positive">{fullFixtureTime(event.startAt)}</td>
@@ -87,7 +97,7 @@ const FixtureTableRow = memo(function FixtureTableRow({
           {fixtureStatusLabel(event)}
         </span>
       </td>
-      <td className={isLiveSportEvent(event) ? "mono fixture-clock is-live" : "mono fixture-clock"}>{fixtureClockLabel(event)}</td>
+      <td className={clockClass} title={clockTitle}>{fixtureClockLabel(event)}</td>
       <td className={isLiveSportEvent(event) ? "mono fixture-score is-live" : "mono fixture-score"}>{fixtureScoreLabel(event)}</td>
       <td><strong>{event.name || "Fixture pending"}</strong></td>
       <td>{event.competition || "Football"}</td>
@@ -118,6 +128,11 @@ const FixtureTableRow = memo(function FixtureTableRow({
   && previous.event.statusLong === next.event.statusLong
   && previous.event.elapsed === next.event.elapsed
   && previous.event.clock === next.event.clock
+  && previous.event.clockSource === next.event.clockSource
+  && previous.event.clockUpdatedAt === next.event.clockUpdatedAt
+  && previous.event.clockStatus === next.event.clockStatus
+  && previous.event.clockUncertain === next.event.clockUncertain
+  && previous.event.clockConflictMinutes === next.event.clockConflictMinutes
   && previous.event.scoreHome === next.event.scoreHome
   && previous.event.scoreAway === next.event.scoreAway
   && previous.event.liquidity === next.event.liquidity
