@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { eventHasPassed, localEventTime } from "../../core/format";
 import { FootballScopeFilter } from "../football/FootballScopeFilter";
@@ -82,13 +82,19 @@ export function SportDashboard({
     loading,
     error
   } = useSportDashboardData({ normalizedSport, isFootball, espnScopeKey });
+  const deferredEvents = useDeferredValue(events);
+  const deferredDateScope = useDeferredValue(dateScope);
+  const deferredLocationScope = useDeferredValue(locationScope);
+  const deferredLiquidityOnly = useDeferredValue(liquidityOnly);
+  const deferredMinLiquidity = useDeferredValue(minLiquidity);
+  const deferredPredictiveOnly = useDeferredValue(predictiveOnly);
 
   const hasScopeFilter = locationFilters.length > 0;
   const scopedEvents = useMemo(() => {
-    if (!isFootball && hasScopeFilter) return events.filter((event) => genericScopeMatches(event, dateScope, locationScope, locationFilters));
-    if (!isFootball) return events;
-    return events.filter((event) => footballScopeMatches(`${event.name} ${event.competition || ""}`, event.country, event.startAt, dateScope, locationScope));
-  }, [events, isFootball, hasScopeFilter, dateScope, locationScope, locationFilters]);
+    if (!isFootball && hasScopeFilter) return deferredEvents.filter((event) => genericScopeMatches(event, deferredDateScope, deferredLocationScope, locationFilters));
+    if (!isFootball) return deferredEvents;
+    return deferredEvents.filter((event) => footballScopeMatches(`${event.name} ${event.competition || ""}`, event.country, event.startAt, deferredDateScope, deferredLocationScope));
+  }, [deferredEvents, isFootball, hasScopeFilter, deferredDateScope, deferredLocationScope, locationFilters]);
 
   const liquidScopedEvents = useMemo(() => scopedEvents.filter((event) => (
     Number(event.liquidity || 0) > 0 && (!isFootball || !isStaleFootballEvent(event))
@@ -101,12 +107,12 @@ export function SportDashboard({
     return scopedEvents.filter((event) => {
       const liquidity = Number(event.liquidity || 0);
       if (isStaleFootballEvent(event)) return false;
-      if (liquidityOnly && liquidity <= 0) return false;
-      if (minLiquidity > 0 && liquidity < minLiquidity) return false;
-      if (predictiveOnly && !eventHasPredictiveMarket(event)) return false;
+      if (deferredLiquidityOnly && liquidity <= 0) return false;
+      if (deferredMinLiquidity > 0 && liquidity < deferredMinLiquidity) return false;
+      if (deferredPredictiveOnly && !eventHasPredictiveMarket(event)) return false;
       return true;
     });
-  }, [isFootball, liquidityOnly, minLiquidity, predictiveOnly, scopedEvents]);
+  }, [isFootball, deferredLiquidityOnly, deferredMinLiquidity, deferredPredictiveOnly, scopedEvents]);
   const timeOrderedEvents = useMemo(() => {
     return [...visibleEvents].sort((left, right) => {
       const leftLiveRank = isLiveSportEvent(left) ? 0 : 1;

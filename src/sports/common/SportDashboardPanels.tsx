@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { eventHasPassed, localEventTime } from "../../core/format";
 import { CountryFlag } from "../football/CountryFlag";
 import {
@@ -126,7 +126,43 @@ const FixtureTableRow = memo(function FixtureTableRow({
   ))
 ));
 
+const INITIAL_FIXTURE_RENDER_ROWS = 120;
+const FIXTURE_RENDER_CHUNK_ROWS = 180;
+
 export function FixtureTable({ title, rows, loading }: { title: string; rows: SportEventRow[]; loading: boolean }) {
+  const rowsSignature = useMemo(() => {
+    const first = rows[0]?.id || "";
+    const last = rows[rows.length - 1]?.id || "";
+    return `${rows.length}:${first}:${last}`;
+  }, [rows]);
+  const [renderLimit, setRenderLimit] = useState(() => Math.min(rows.length, INITIAL_FIXTURE_RENDER_ROWS));
+  const renderedRows = rows.length > renderLimit ? rows.slice(0, renderLimit) : rows;
+
+  useEffect(() => {
+    setRenderLimit(Math.min(rows.length, INITIAL_FIXTURE_RENDER_ROWS));
+    if (rows.length <= INITIAL_FIXTURE_RENDER_ROWS) return undefined;
+
+    let cancelled = false;
+    let timer: number | undefined;
+
+    function queueNextChunk() {
+      timer = window.setTimeout(() => {
+        if (cancelled) return;
+        setRenderLimit((current) => {
+          const next = Math.min(rows.length, current + FIXTURE_RENDER_CHUNK_ROWS);
+          if (next < rows.length) queueNextChunk();
+          return next;
+        });
+      }, 16);
+    }
+
+    queueNextChunk();
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [rows.length, rowsSignature]);
+
   function eventRowClass(event: SportEventRow) {
     if (isLiveSportEvent(event)) return "is-live-event";
     if (!eventHasPassed(event.startAt)) return "";
@@ -160,7 +196,7 @@ export function FixtureTable({ title, rows, loading }: { title: string; rows: Sp
           </tr>
         </thead>
         <tbody>
-          {rows.map((event) => {
+          {renderedRows.map((event) => {
             const rowKey = event.id;
             return <FixtureTableRow event={event} key={rowKey} rowClass={eventRowClass(event)} rowKey={rowKey} />;
           })}
