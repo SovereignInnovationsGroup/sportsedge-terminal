@@ -269,7 +269,7 @@
 }
 
 .flow-grid-col-book {
-  width: 190px;
+  width: 350px;
 }
 
 .flow-grid-col-status {
@@ -360,30 +360,48 @@
 }
 
 .flow-grid-price-strip {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
+  width: 100%;
+}
+
+.flow-grid-price-chip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  min-height: 18px;
+  margin: 0;
+  border: 1px solid rgba(90, 168, 255, 0.34);
+  border-radius: 2px;
+  background: rgba(13, 42, 74, 0.52);
+  color: #d9ebff;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 850;
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
 }
 
-.flow-grid-price-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 18px;
-  margin: 0;
-  border: 1px solid rgba(90, 168, 255, 0.25);
-  border-radius: 2px;
-  background: rgba(13, 42, 74, 0.52);
-  color: #d9ebff;
-  padding: 0 4px;
-  font-size: 10px;
-  font-weight: 850;
-  max-width: 88px;
+.flow-grid-price-cell {
+  overflow: visible;
+}
+
+.flow-grid-price-name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.flow-grid-price-value {
+  color: #eef7ff;
+  font-variant-numeric: tabular-nums;
+  justify-self: end;
 }
 
 .flow-grid-leg-chip {

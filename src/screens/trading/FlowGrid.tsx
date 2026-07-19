@@ -1182,9 +1182,14 @@ export default function FlowGrid() {
                       </div>
                     </td>
                     <td>{money(event.liquidityUsd)}</td>
-                    <td>
-                      <div className="flow-grid-price-strip" title={event.legs.map(compactLegLabel).join(" / ")}>
-                        {event.legs.map((leg) => <span className="flow-grid-price-chip" key={`${leg.key}:${leg.tokenId}`}>{compactPriceLabel(leg)}</span>)}
+                    <td className="flow-grid-price-cell">
+                      <div className="flow-grid-price-strip" title={event.legs.map(compactPriceLabel).join(" / ")}>
+                        {event.legs.map((leg) => (
+                          <span className="flow-grid-price-chip" key={`${leg.key}:${leg.tokenId}`} title={compactPriceLabel(leg)}>
+                            <span className="flow-grid-price-name">{leg.label}</span>
+                            <span className="flow-grid-price-value">{centsLabel(legPriceCents(leg))}</span>
+                          </span>
+                        ))}
                       </div>
                     </td>
                     <td>{money(exposure.theoreticalFullGridUsd)}</td>
