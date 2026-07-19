@@ -1658,6 +1658,10 @@ export default function FlowGrid() {
                 const exposure = previewExposure(event, settings);
                 const session = sessionForEvent(sessions, event);
                 const inPlay = liveEventByGridKey.get(flowGridEventKey(event)) || null;
+                const pricedLegs = event.legs.map((leg) => ({
+                  leg,
+                  share: outcomeSharePercent(event, leg),
+                }));
                 return (
                   <tr
                     key={key}
@@ -1683,27 +1687,24 @@ export default function FlowGrid() {
                     </td>
                     <td>{timeLabel(event.startAt || event.endAt)}</td>
                     <td>{money(event.liquidityUsd)}</td>
-	                    <td className="flow-grid-price-cell">
-	                      <div
-	                        className="flow-grid-price-strip"
-	                        title={event.legs.map(compactPriceLabel).join(" / ")}
-	                      >
-	                        {event.legs.map((leg) => {
-	                          const share = outcomeSharePercent(event, leg);
-	                          return (
-	                            <span
-	                              className="flow-grid-price-chip"
-	                              key={`${leg.key}:${leg.tokenId}`}
-	                              style={{ flexBasis: `${share}%`, flexGrow: share, flexShrink: 1 }}
-	                              title={`${compactPriceLabel(leg)} / ${share.toFixed(1)}% of line`}
-	                            >
-	                              <span className="flow-grid-price-name">{leg.label}</span>
-	                              <span className="flow-grid-price-value">{centsLabel(legPriceCents(leg))}</span>
-	                            </span>
-	                          );
-	                        })}
-	                      </div>
-	                    </td>
+                    <td className="flow-grid-price-cell">
+                      <div
+                        className="flow-grid-price-strip"
+                        style={{ gridTemplateColumns: pricedLegs.map(({ share }) => `${share}fr`).join(" ") }}
+                        title={event.legs.map(compactPriceLabel).join(" / ")}
+                      >
+                        {pricedLegs.map(({ leg, share }) => (
+                          <span
+                            className="flow-grid-price-chip"
+                            key={`${leg.key}:${leg.tokenId}`}
+                            title={`${compactPriceLabel(leg)} / ${share.toFixed(1)}% of line`}
+                          >
+                            <span className="flow-grid-price-name">{leg.label}</span>
+                            <span className="flow-grid-price-value">{centsLabel(legPriceCents(leg))}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </td>
                     <td>{money(exposure.theoreticalFullGridUsd)}</td>
                     <td>{money(exposure.maxEventExposureUsd)}</td>
                     <td>{money(exposure.maxEpochExposureUsd)}</td>
