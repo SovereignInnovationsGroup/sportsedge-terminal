@@ -36,6 +36,7 @@ type FlowGridEvent = {
   exchange: string;
   sport: string;
   title: string;
+  marketFamily?: string;
   eventUrl: string;
   startAt: string | null;
   endAt: string | null;
@@ -143,6 +144,10 @@ function centsLabel(value: number | undefined | null) {
 
 function compactLegLabel(leg: FlowGridLeg) {
   return `${leg.label} ${centsLabel(leg.bidCents)}/${centsLabel(leg.askCents)}`;
+}
+
+function marketFamilyLabel(event: FlowGridEvent) {
+  return String(event.marketFamily || "").trim().toUpperCase();
 }
 
 function sportLabel(value: string | null | undefined) {
@@ -324,7 +329,7 @@ function EventDetail({
         <div>
           <span>{event.exchange.toUpperCase()} / {event.sport.toUpperCase()}</span>
           <strong>{event.title}</strong>
-          <small>{timeLabel(event.endAt || event.startAt)} / {event.outcomeCount} legs / spread {centsLabel(event.basketSpreadCents)}</small>
+          <small>{timeLabel(event.endAt || event.startAt)} / {marketFamilyLabel(event) || `${event.outcomeCount} legs`} / spread {centsLabel(event.basketSpreadCents)}</small>
         </div>
         <div className="flow-grid-detail-actions">
           {session && <StatusPill status={session.status} />}
@@ -654,7 +659,7 @@ export default function FlowGrid() {
             </colgroup>
             <thead>
               <tr>
-                <th>Enable</th><th>Sport</th><th>Event</th><th>Time</th><th>Legs</th><th>Liquidity</th><th>Book</th><th>Full Grid</th><th>Event Cap</th><th>Epoch</th><th>Status</th><th>Actions</th>
+                <th>Enable</th><th>Sport</th><th>Event</th><th>Time</th><th>Legs</th><th>Liquidity</th><th>Basket</th><th>Full Grid</th><th>Event Cap</th><th>Epoch</th><th>Status</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -680,7 +685,7 @@ export default function FlowGrid() {
                       </button>
                     </td>
                     <td><span className="flow-grid-sport-cell">{sportLabel(event.sport)}</span></td>
-                    <td><strong title={event.title}>{event.title}</strong></td>
+                    <td><strong title={event.title}>{event.title}</strong>{marketFamilyLabel(event) && <span className="flow-grid-market-kind">{marketFamilyLabel(event)}</span>}</td>
                     <td>{timeLabel(event.endAt || event.startAt)}</td>
                     <td>
                       <div className="flow-grid-leg-strip" title={event.legs.map(compactLegLabel).join(" / ")}>
@@ -688,7 +693,7 @@ export default function FlowGrid() {
                       </div>
                     </td>
                     <td>{money(event.liquidityUsd)}</td>
-                    <td>{centsLabel(event.bidSumCents)} / {centsLabel(event.askSumCents)} ({centsLabel(event.basketSpreadCents)})</td>
+                    <td>Bid {centsLabel(event.bidSumCents)} / Ask {centsLabel(event.askSumCents)} ({centsLabel(event.basketSpreadCents)})</td>
                     <td>{money(exposure.theoreticalFullGridUsd)}</td>
                     <td>{money(exposure.maxEventExposureUsd)}</td>
                     <td>{money(exposure.maxEpochExposureUsd)}</td>

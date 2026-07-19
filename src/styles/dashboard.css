@@ -314,12 +314,14 @@
 
 .flow-grid-table-panel td strong,
 .flow-grid-orders-panel td strong {
-  display: block;
+  display: inline-block;
+  max-width: 100%;
   color: #f0f5fb;
   font-weight: 850;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 .flow-grid-table-panel td small,
@@ -339,6 +341,22 @@
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
+}
+
+.flow-grid-market-kind {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  margin-left: 6px;
+  border: 1px solid rgba(243, 194, 77, 0.36);
+  border-radius: 2px;
+  background: rgba(243, 194, 77, 0.09);
+  color: #f4c45f;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  vertical-align: middle;
 }
 
 .flow-grid-leg-chip {
