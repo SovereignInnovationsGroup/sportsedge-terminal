@@ -20,8 +20,13 @@ type FlowGridLeg = {
   key: string;
   label: string;
   question: string;
+  marketId?: string;
+  conditionId?: string;
   marketSlug: string;
   tokenId: string;
+  noTokenId?: string;
+  bestBid?: number;
+  bestAsk?: number;
   bidCents: number;
   askCents: number;
   topBidSize?: number;
@@ -98,10 +103,14 @@ type FlowGridWallet = {
 type FlowGridSocketStatus = "waiting" | "connecting" | "live" | "offline";
 
 type FlowGridPricePatch = {
+  exchange?: string;
   sport?: string;
+  eventId?: string;
   eventSlug?: string;
+  marketId?: string;
   marketSlug?: string;
   tokenId?: string;
+  conditionId?: string;
   eventTitle?: string;
   outcome?: string;
   bidCents?: number;
@@ -136,6 +145,12 @@ const SPORTS = [
 ];
 
 const FLOW_GRID_WSS_SPORTS = SPORTS.filter((item) => item.value !== "all").map((item) => item.value);
+const FLOW_GRID_DIRECT_PRICE_CHANNELS = ["polymarket.price", "kalshi.price"];
+
+type FlowGridSocketSubscription = {
+  channel: string;
+  filters: Record<string, string>;
+};
 
 const DATE_FILTERS = [
   { label: "All", value: "all" },
@@ -197,6 +212,14 @@ function eventDate(event: FlowGridEvent) {
   if (!raw) return null;
   const date = new Date(raw);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function eventTimeMs(event: FlowGridEvent) {
+  return eventDate(event)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+}
+
+function flowGridEventKey(event: FlowGridEvent) {
+  return event.slug || event.id;
 }
 
 function dayKey(value: Date) {
@@ -269,6 +292,21 @@ function sessionForEvent(sessions: FlowGridSession[], event: FlowGridEvent) {
   return sessions.find((session) => session.event?.slug === event.slug || session.event?.id === event.id) || null;
 }
 
+function sortEventsForGrid(events: FlowGridEvent[], sessions: FlowGridSession[]) {
+  const openSessionKeys = new Set(sessions.map((session) => flowGridEventKey(session.event)).filter(Boolean));
+  return [...events].sort((left, right) => {
+    const leftOpen = openSessionKeys.has(flowGridEventKey(left));
+    const rightOpen = openSessionKeys.has(flowGridEventKey(right));
+    if (leftOpen !== rightOpen) return leftOpen ? -1 : 1;
+    const leftTime = eventTimeMs(left);
+    const rightTime = eventTimeMs(right);
+    if (leftTime !== rightTime) return leftTime - rightTime;
+    const sportOrder = sportLabel(left.sport).localeCompare(sportLabel(right.sport));
+    if (sportOrder) return sportOrder;
+    return left.title.localeCompare(right.title);
+  });
+}
+
 function previewExposure(event: FlowGridEvent, settings: FlowGridSettings) {
   const theoreticalFullGridUsd = event.outcomeCount * settings.virtualLevelsPerOutcome * settings.stakeUsdPerLevel;
   const maxEventExposureUsd = Math.min(settings.maxEventCostUsd, theoreticalFullGridUsd);
@@ -290,6 +328,22 @@ function gridLevels(leg: FlowGridLeg, settings: FlowGridSettings) {
 
 function selectedSocketSports(value: string) {
   return value === "all" ? FLOW_GRID_WSS_SPORTS : [value];
+}
+
+function socketSubscriptionsForSport(value: string): FlowGridSocketSubscription[] {
+  const sportSubscriptions = selectedSocketSports(value).map((item) => ({
+    channel: `markets.${item}`,
+    filters: { sport: item }
+  }));
+  const directFilters: Record<string, string> = {};
+  if (value !== "all") directFilters.sport = value;
+  return [
+    ...sportSubscriptions,
+    ...FLOW_GRID_DIRECT_PRICE_CHANNELS.map((channel) => ({
+      channel,
+      filters: directFilters
+    }))
+  ];
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -329,8 +383,17 @@ function marketPriceToCents(value: number | null, key = "") {
   return undefined;
 }
 
+function complementCents(value: number | undefined) {
+  if (value == null || !Number.isFinite(value)) return undefined;
+  return Math.round(Math.max(0, Math.min(100, 100 - value)) * 10) / 10;
+}
+
 function directPatchFromRecord(record: Record<string, unknown>, inherited: Partial<FlowGridPricePatch> = {}) {
-  const tokenId = textValue(record, ["tokenId", "token_id", "assetId", "asset_id", "token"]);
+  const exchange = textValue(record, ["exchange", "exchange_code", "exchangeCode", "source", "venue"]) || inherited.exchange || "";
+  const tokenId = textValue(record, ["tokenId", "token_id", "assetId", "asset_id", "exchangeRunnerId", "exchange_runner_id", "runnerId", "runner_id", "token"]) || inherited.tokenId || "";
+  const eventId = textValue(record, ["eventId", "event_id", "exchangeEventId", "exchange_event_id"]) || inherited.eventId || "";
+  const marketId = textValue(record, ["marketId", "market_id", "exchangeMarketId", "exchange_market_id"]) || inherited.marketId || "";
+  const conditionId = textValue(record, ["conditionId", "condition_id"]) || inherited.conditionId || "";
   const marketSlug = textValue(record, ["marketSlug", "market_slug", "market"]);
   const eventSlug = textValue(record, ["eventSlug", "event_slug", "slug"]);
   const eventTitle = textValue(record, ["eventName", "event_name", "fixture", "fixture_name", "name", "title", "event"]);
@@ -340,22 +403,47 @@ function directPatchFromRecord(record: Record<string, unknown>, inherited: Parti
   const bidRaw = numberValue(record, bidKeys);
   const askRaw = numberValue(record, askKeys);
   const priceRaw = numberValue(record, ["price", "lastPrice", "last_price"]);
-  const bidCents = marketPriceToCents(bidRaw, firstPresentKey(record, bidKeys));
-  const askCents = marketPriceToCents(askRaw, firstPresentKey(record, askKeys));
+  const oddsRaw = numberValue(record, ["odds", "decimalOdds", "decimal_odds"]);
+  const side = textValue(record, ["side", "orderSide", "order_side"]).toLowerCase();
+  const exchangeType = textValue(record, ["exchangeType", "exchange_type"]).toLowerCase();
+  const ladderLevel = numberValue(record, ["ladderLevel", "ladder_level"]);
+  let bidCents = marketPriceToCents(bidRaw, firstPresentKey(record, bidKeys));
+  let askCents = marketPriceToCents(askRaw, firstPresentKey(record, askKeys));
   const priceCents = marketPriceToCents(priceRaw, "price");
-  if (!tokenId && !marketSlug && !(eventTitle && outcome)) return null;
+  const oddsCents = marketPriceToCents(oddsRaw, "odds");
+  const predictiveClob = ["polymarket", "kalshi"].some((venue) => exchangeType.includes(venue) || exchange.toLowerCase() === venue);
+  const polymarketSyntheticBid = exchangeType.includes("polymarket:wss")
+    && side === "back"
+    && Number(ladderLevel || 0) > 1
+    && (exchangeType.includes("price_change") || exchangeType.includes("best_bid_ask"));
+
+  if (predictiveClob && side === "back" && polymarketSyntheticBid && bidCents == null) bidCents = complementCents(oddsCents ?? priceCents);
+  else if (predictiveClob && side === "back" && askCents == null) askCents = oddsCents ?? priceCents;
+  else if (predictiveClob && side === "lay" && bidCents == null) bidCents = complementCents(oddsCents ?? priceCents);
+  else if (side === "back" && bidCents == null) bidCents = oddsCents ?? priceCents;
+  else if (side === "lay" && askCents == null) askCents = oddsCents ?? priceCents;
+  if (!side && bidCents == null && askCents == null) {
+    bidCents = priceCents;
+    askCents = priceCents;
+  }
+  if (!tokenId && !marketId && !conditionId && !marketSlug && !(eventTitle && outcome)) return null;
   if (bidCents == null && askCents == null && priceCents == null) return null;
+  const availableAmount = numberValue(record, ["topBidSize", "top_bid_size", "bidSize", "bid_size", "availableAmount", "available_amount", "amount", "size"]);
   return {
     ...inherited,
-    tokenId: tokenId || inherited.tokenId,
+    exchange: exchange || inherited.exchange,
+    tokenId,
+    eventId,
+    marketId,
+    conditionId,
     marketSlug: marketSlug || inherited.marketSlug,
     eventSlug: eventSlug || inherited.eventSlug,
     eventTitle: eventTitle || inherited.eventTitle,
     outcome: outcome || inherited.outcome,
-    bidCents: bidCents ?? priceCents,
-    askCents: askCents ?? priceCents,
-    topBidSize: numberValue(record, ["topBidSize", "top_bid_size", "bidSize", "bid_size", "availableAmount", "available_amount", "amount", "size"]) ?? inherited.topBidSize,
-    topAskSize: numberValue(record, ["topAskSize", "top_ask_size", "askSize", "ask_size"]) ?? inherited.topAskSize,
+    bidCents: bidCents ?? (!side ? priceCents : undefined),
+    askCents: askCents ?? (!side ? priceCents : undefined),
+    topBidSize: (bidCents != null ? availableAmount : numberValue(record, ["topBidSize", "top_bid_size", "bidSize", "bid_size"])) ?? inherited.topBidSize,
+    topAskSize: (askCents != null ? availableAmount : numberValue(record, ["topAskSize", "top_ask_size", "askSize", "ask_size"])) ?? inherited.topAskSize,
     liquidityUsd: numberValue(record, ["liquidityUsd", "liquidity_usd", "liquidity", "liquidityNum"]) ?? inherited.liquidityUsd,
     volumeUsd: numberValue(record, ["volumeUsd", "volume_usd", "volume", "volumeNum"]) ?? inherited.volumeUsd
   };
@@ -363,9 +451,12 @@ function directPatchFromRecord(record: Record<string, unknown>, inherited: Parti
 
 function patchesFromMatch(match: Record<string, unknown>, inherited: Partial<FlowGridPricePatch>) {
   const eventTitle = textValue(match, ["eventName", "event_name", "fixture", "fixture_name", "name", "title"]) || inherited.eventTitle;
+  const eventId = textValue(match, ["eventId", "event_id", "exchangeEventId", "exchange_event_id"]) || inherited.eventId;
   const eventSlug = textValue(match, ["eventSlug", "event_slug", "slug"]) || inherited.eventSlug;
+  const marketId = textValue(match, ["marketId", "market_id", "exchangeMarketId", "exchange_market_id"]) || inherited.marketId;
   const marketSlug = textValue(match, ["marketSlug", "market_slug"]) || inherited.marketSlug;
   const sport = textValue(match, ["sportName", "sport_name", "sport"]) || inherited.sport;
+  const exchange = textValue(match, ["exchange", "exchange_code", "exchangeCode", "source", "venue"]) || inherited.exchange;
   const runners = Array.isArray(match.runners) ? match.runners : [];
   return runners.flatMap((runner) => {
     const record = asRecord(runner);
@@ -381,8 +472,11 @@ function patchesFromMatch(match: Record<string, unknown>, inherited: Partial<Flo
       lay ? "odds" : "askCents"
     );
     const patch = directPatchFromRecord(record, {
+      exchange,
       eventTitle,
+      eventId,
       eventSlug,
+      marketId,
       marketSlug,
       sport,
       outcome: textValue(record, ["name", "runnerName", "runner_name", "selection", "outcome"]),
@@ -403,9 +497,12 @@ function socketPricePatches(payload: unknown, channel: string): FlowGridPricePat
   if (record.row) return socketPricePatches(record.row, channel);
   const sport = textValue(record, ["sportName", "sport_name", "sport"]) || channel.replace(/^markets\./, "");
   const inherited = {
+    exchange: textValue(record, ["exchange", "exchange_code", "exchangeCode", "source", "venue"]),
     sport,
+    eventId: textValue(record, ["eventId", "event_id", "exchangeEventId", "exchange_event_id"]),
     eventSlug: textValue(record, ["eventSlug", "event_slug", "slug"]),
     eventTitle: textValue(record, ["eventName", "event_name", "fixture", "fixture_name", "name", "title", "event"]),
+    marketId: textValue(record, ["marketId", "market_id", "exchangeMarketId", "exchange_market_id"]),
     marketSlug: textValue(record, ["marketSlug", "market_slug"])
   };
   const matches = asRecord(record.matches);
@@ -414,7 +511,7 @@ function socketPricePatches(payload: unknown, channel: string): FlowGridPricePat
       const matchRecord = asRecord(match);
       if (!matchRecord) return [];
       const exchange = textValue(matchRecord, ["exchange", "source", "venue"]).toLowerCase();
-      if (exchange && exchange !== "polymarket") return [];
+      if (exchange && !["polymarket", "kalshi"].includes(exchange)) return [];
       return patchesFromMatch(matchRecord, inherited);
     });
   }
@@ -427,13 +524,23 @@ function socketPricePatches(payload: unknown, channel: string): FlowGridPricePat
 }
 
 function patchMatchesLeg(event: FlowGridEvent, leg: FlowGridLeg, patch: FlowGridPricePatch) {
+  if (patch.exchange && event.exchange && patch.exchange.toLowerCase() !== event.exchange.toLowerCase()) return false;
   if (patch.sport && patch.sport !== "all" && event.sport && sportKey(patch.sport) !== sportKey(event.sport)) return false;
   if (patch.tokenId && patch.tokenId === leg.tokenId) return true;
-  if (patch.marketSlug && patch.marketSlug === leg.marketSlug) return true;
+  const outcomeMatches = patch.outcome
+    ? normalizeFixtureText(patch.outcome) === normalizeFixtureText(leg.label)
+    : false;
+  if (patch.conditionId && leg.conditionId && patch.conditionId === leg.conditionId && outcomeMatches) return true;
+  if (patch.marketId && leg.marketId && patch.marketId === leg.marketId && outcomeMatches) return true;
+  if (patch.marketSlug && patch.marketSlug === leg.marketSlug && (!patch.outcome || outcomeMatches)) return true;
+  if (patch.eventId) {
+    const eventIds = [event.id, String(event.id || "").split(":")[0]].filter(Boolean);
+    if (!eventIds.includes(patch.eventId)) return false;
+  }
   if (patch.eventSlug && patch.eventSlug !== event.slug) return false;
   if (!patch.eventTitle || !patch.outcome) return false;
   return normalizeFixtureText(patch.eventTitle) === normalizeFixtureText(event.title)
-    && normalizeFixtureText(patch.outcome) === normalizeFixtureText(leg.label);
+    && outcomeMatches;
 }
 
 function applyFlowGridPricePatches(events: FlowGridEvent[], patches: FlowGridPricePatch[]) {
@@ -783,7 +890,8 @@ export default function FlowGrid() {
 
   useEffect(() => {
     const token = window.localStorage.getItem("sportsedge.auth.token");
-    const channels = selectedSocketSports(sport).map((item) => `markets.${item}`);
+    const subscriptions = socketSubscriptionsForSport(sport);
+    const channels = subscriptions.map((subscription) => subscription.channel);
     let closedByEffect = false;
 
     function clearReconnect() {
@@ -812,11 +920,11 @@ export default function FlowGrid() {
     }
 
     function subscribe(socket: WebSocket) {
-      channels.forEach((channel) => {
+      subscriptions.forEach((subscription) => {
         socket.send(JSON.stringify({
           type: "subscribe",
-          channel,
-          filters: { sport: channel.replace(/^markets\./, "") }
+          channel: subscription.channel,
+          filters: subscription.filters
         }));
       });
     }
@@ -872,8 +980,8 @@ export default function FlowGrid() {
   }, [sport]);
 
   const visibleEvents = useMemo(
-    () => events.filter((event) => matchesDateFilter(event, dateFilter)),
-    [events, dateFilter]
+    () => sortEventsForGrid(events.filter((event) => matchesDateFilter(event, dateFilter)), sessions),
+    [events, dateFilter, sessions]
   );
 
   const totals = visibleEvents.reduce((acc, event) => {
@@ -885,7 +993,7 @@ export default function FlowGrid() {
     }
     return acc;
   }, { liquidity: 0, enabledExposure: 0, enabledCount: 0 });
-  const socketSportsLabel = selectedSocketSports(sport).map(sportLabel).join(", ");
+  const socketSportsLabel = `${selectedSocketSports(sport).map(sportLabel).join(", ")} + direct predictive prices`;
 
   return (
     <div className="terminal-shell">
