@@ -64,6 +64,7 @@ type FlowGridSettings = {
   maxNewLevelsPerTick: number;
   maxEpochCostUsd: number;
   maxEventCostUsd: number;
+  takeProfitPct: number;
   takeProfitUsd: number;
   reloadCooldownMs: number;
   maxQuoteAgeMs: number;
@@ -174,6 +175,7 @@ const DEFAULT_SETTINGS: FlowGridSettings = {
   maxNewLevelsPerTick: 1,
   maxEpochCostUsd: 25,
   maxEventCostUsd: 75,
+  takeProfitPct: 2.5,
   takeProfitUsd: 0.125,
   reloadCooldownMs: 750,
   maxQuoteAgeMs: 500,
@@ -247,6 +249,42 @@ function signedMoney(value: number | undefined | null) {
   return amount > 0 ? `+${formatted}` : `-${formatted}`;
 }
 
+function roundedUsd(value: number) {
+  return Math.round(value * 10000) / 10000;
+}
+
+function takeProfitPercent(settings: Partial<FlowGridSettings>) {
+  const explicit = Number(settings.takeProfitPct);
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  const stake = Number(settings.stakeUsdPerLevel || DEFAULT_SETTINGS.stakeUsdPerLevel);
+  const usd = Number(settings.takeProfitUsd || DEFAULT_SETTINGS.takeProfitUsd);
+  if (!Number.isFinite(stake) || stake <= 0 || !Number.isFinite(usd) || usd <= 0) {
+    return DEFAULT_SETTINGS.takeProfitPct;
+  }
+  return roundedUsd((usd / stake) * 100);
+}
+
+function takeProfitUsdFor(stakeUsd: number, takeProfitPct: number) {
+  const stake = Number.isFinite(stakeUsd) && stakeUsd > 0 ? stakeUsd : DEFAULT_SETTINGS.stakeUsdPerLevel;
+  const pct = Number.isFinite(takeProfitPct) && takeProfitPct > 0 ? takeProfitPct : DEFAULT_SETTINGS.takeProfitPct;
+  return roundedUsd((stake * pct) / 100);
+}
+
+function withDerivedTakeProfit(settings: FlowGridSettings): FlowGridSettings {
+  const takeProfitPct = takeProfitPercent(settings);
+  return {
+    ...settings,
+    takeProfitPct,
+    takeProfitUsd: takeProfitUsdFor(settings.stakeUsdPerLevel, takeProfitPct)
+  };
+}
+
+function percentLabel(value: number | undefined | null) {
+  const amount = Number(value || 0);
+  if (!Number.isFinite(amount) || amount <= 0) return "-";
+  return `${Number.isInteger(amount) ? amount : amount.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")}%`;
+}
+
 function centsLabel(value: number | undefined | null) {
   const amount = Number(value || 0);
   if (!Number.isFinite(amount) || amount <= 0) return "-";
@@ -302,10 +340,10 @@ function entryWindowForEvent(event: FlowGridEvent) {
 }
 
 function startSettingsForEvent(event: FlowGridEvent, settings: FlowGridSettings): FlowGridSettings {
-  return {
+  return withDerivedTakeProfit({
     ...settings,
     ...entryWindowForEvent(event)
-  };
+  });
 }
 
 function entryWindowLabel(event: FlowGridEvent) {
@@ -950,7 +988,7 @@ function EventDetail({
   orders: FlowGridOrder[];
   onClose: () => void;
 }) {
-  const effectiveSettings = session?.settings || startSettingsForEvent(event, settings);
+  const effectiveSettings = withDerivedTakeProfit(session?.settings || startSettingsForEvent(event, settings));
   const exposure = previewExposure(event, effectiveSettings);
   const sessionExposure = session?.exposure || exposure;
   const sessionExecution = executionFromPayload(session?.executor?.payload as { execution?: FlowGridExecution; executionReady?: boolean; executionMode?: string; liveTradingEnabled?: boolean; detail?: string } | undefined);
@@ -985,7 +1023,7 @@ function EventDetail({
         <article><span>Event Cap</span><strong>{money(exposure.maxEventExposureUsd)}</strong></article>
         <article><span>Epoch Cap</span><strong>{money(exposure.maxEpochExposureUsd)}</strong></article>
         <article><span>Per Tick</span><strong>{money(exposure.maxNewFillUsdPerTick)}</strong></article>
-        <article><span>TP</span><strong>{money(effectiveSettings.takeProfitUsd)}</strong></article>
+        <article><span>TP</span><strong>{percentLabel(effectiveSettings.takeProfitPct)} / {money(effectiveSettings.takeProfitUsd)}</strong></article>
         <article><span>Entry Window</span><strong>{entryWindowLabel(event)}</strong></article>
         <article><span>Basket</span><strong>{centsLabel(event.bidSumCents)} / {centsLabel(event.askSumCents)}</strong></article>
       </section>
@@ -1549,12 +1587,18 @@ export default function FlowGrid() {
             <button type="button" onClick={() => refreshEvents(sport, dateFilter, { force: true })} disabled={busy === "refresh"}><RefreshCw size={14} /> Refresh</button>
           </div>
           <div className="flow-grid-control-group numeric">
-            <label>Stake <input type="number" min="1" value={settings.stakeUsdPerLevel} onChange={(event) => setSettings({ ...settings, stakeUsdPerLevel: Number(event.target.value) })} /></label>
+            <label>Stake <input type="number" min="1" value={settings.stakeUsdPerLevel} onChange={(event) => {
+              const stakeUsdPerLevel = Number(event.target.value);
+              setSettings((current) => withDerivedTakeProfit({ ...current, stakeUsdPerLevel }));
+            }} /></label>
             <label>Levels <input type="number" min="1" max="99" value={settings.virtualLevelsPerOutcome} onChange={(event) => setSettings({ ...settings, virtualLevelsPerOutcome: Number(event.target.value) })} /></label>
             <label>Spacing <input type="number" min="0.5" step="0.5" value={settings.levelSpacingCents} onChange={(event) => setSettings({ ...settings, levelSpacingCents: Number(event.target.value) })} /></label>
             <label>Epoch <input type="number" min="1" value={settings.maxEpochCostUsd} onChange={(event) => setSettings({ ...settings, maxEpochCostUsd: Number(event.target.value) })} /></label>
             <label>Event <input type="number" min="1" value={settings.maxEventCostUsd} onChange={(event) => setSettings({ ...settings, maxEventCostUsd: Number(event.target.value) })} /></label>
-            <label>TP <input type="number" min="0.01" step="0.01" value={settings.takeProfitUsd} onChange={(event) => setSettings({ ...settings, takeProfitUsd: Number(event.target.value) })} /></label>
+            <label>TP % <input type="number" min="0.1" step="0.1" value={settings.takeProfitPct} onChange={(event) => {
+              const takeProfitPct = Number(event.target.value);
+              setSettings((current) => withDerivedTakeProfit({ ...current, takeProfitPct }));
+            }} /></label>
           </div>
         </section>
 
