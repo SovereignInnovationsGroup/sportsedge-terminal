@@ -106,6 +106,7 @@ const DEFAULT_SETTINGS: FlowGridSettings = {
 };
 
 const SPORTS = [
+  { label: "All", value: "all" },
   { label: "Football", value: "football" },
   { label: "Tennis", value: "tennis" },
   { label: "Basketball", value: "basketball" },
@@ -142,6 +143,10 @@ function centsLabel(value: number | undefined | null) {
 
 function compactLegLabel(leg: FlowGridLeg) {
   return `${leg.label} ${centsLabel(leg.bidCents)}/${centsLabel(leg.askCents)}`;
+}
+
+function sportLabel(value: string | null | undefined) {
+  return String(value || "unknown").replace(/-/g, " ").toUpperCase();
 }
 
 function eventDate(event: FlowGridEvent) {
@@ -600,7 +605,7 @@ export default function FlowGrid() {
           </div>
           <table>
             <thead>
-              <tr><th>State</th><th>Event</th><th>Created</th><th>Event Cap</th><th>Epoch Cap</th><th>P&L</th><th>Executor</th><th>Actions</th></tr>
+              <tr><th>State</th><th>Sport</th><th>Event</th><th>Created</th><th>Event Cap</th><th>Epoch Cap</th><th>P&L</th><th>Executor</th><th>Actions</th></tr>
             </thead>
             <tbody>
               {sessions.map((session) => {
@@ -608,6 +613,7 @@ export default function FlowGrid() {
                 return (
                   <tr key={session.id} onDoubleClick={() => setDetailSlug(session.event?.slug || session.event?.id || "")}>
                     <td><StatusPill status={session.status} /></td>
+                    <td><span className="flow-grid-sport-cell">{sportLabel(session.event?.sport || session.sport)}</span></td>
                     <td><strong>{session.event?.title || session.id}</strong><small>{session.id}</small></td>
                     <td>{timeLabel(session.createdAt)}</td>
                     <td>{money(session.exposure?.maxEventExposureUsd)}</td>
@@ -621,7 +627,7 @@ export default function FlowGrid() {
                   </tr>
                 );
               })}
-              {!sessions.length && <tr><td colSpan={8}>No open grid orders.</td></tr>}
+              {!sessions.length && <tr><td colSpan={9}>No open grid orders.</td></tr>}
             </tbody>
           </table>
         </section>
@@ -634,6 +640,7 @@ export default function FlowGrid() {
           <table>
             <colgroup>
               <col className="flow-grid-col-enable" />
+              <col className="flow-grid-col-sport" />
               <col className="flow-grid-col-event" />
               <col className="flow-grid-col-time" />
               <col className="flow-grid-col-legs" />
@@ -647,7 +654,7 @@ export default function FlowGrid() {
             </colgroup>
             <thead>
               <tr>
-                <th>Enable</th><th>Event</th><th>Time</th><th>Legs</th><th>Liquidity</th><th>Book</th><th>Full Grid</th><th>Event Cap</th><th>Epoch</th><th>Status</th><th>Actions</th>
+                <th>Enable</th><th>Sport</th><th>Event</th><th>Time</th><th>Legs</th><th>Liquidity</th><th>Book</th><th>Full Grid</th><th>Event Cap</th><th>Epoch</th><th>Status</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -672,6 +679,7 @@ export default function FlowGrid() {
                         {checked ? `On ${money(exposure.maxEventExposureUsd)}` : "Enable"}
                       </button>
                     </td>
+                    <td><span className="flow-grid-sport-cell">{sportLabel(event.sport)}</span></td>
                     <td><strong title={event.title}>{event.title}</strong></td>
                     <td>{timeLabel(event.endAt || event.startAt)}</td>
                     <td>
@@ -693,7 +701,7 @@ export default function FlowGrid() {
                   </tr>
                 );
               })}
-              {!visibleEvents.length && <tr><td colSpan={11}>No supported events match this filter.</td></tr>}
+              {!visibleEvents.length && <tr><td colSpan={12}>No supported events match this filter.</td></tr>}
             </tbody>
           </table>
         </section>

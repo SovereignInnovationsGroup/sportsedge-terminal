@@ -241,15 +241,19 @@
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  min-width: 1380px;
+  min-width: 1470px;
 }
 
 .flow-grid-col-enable {
   width: 92px;
 }
 
+.flow-grid-col-sport {
+  width: 86px;
+}
+
 .flow-grid-col-event {
-  width: 300px;
+  width: 286px;
 }
 
 .flow-grid-col-time {
@@ -353,6 +357,22 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.flow-grid-sport-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  min-height: 20px;
+  border: 1px solid rgba(117, 139, 163, 0.34);
+  border-radius: 2px;
+  background: rgba(13, 23, 36, 0.74);
+  color: #b8c9dd;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .flow-grid-enable-button {
