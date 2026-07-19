@@ -67,6 +67,8 @@ type FlowGridSettings = {
   takeProfitUsd: number;
   reloadCooldownMs: number;
   maxQuoteAgeMs: number;
+  entryStartOffsetMinutes: number;
+  entryCutoffMinutesAfterStart: number;
 };
 
 type FlowGridSession = {
@@ -174,7 +176,9 @@ const DEFAULT_SETTINGS: FlowGridSettings = {
   maxEventCostUsd: 75,
   takeProfitUsd: 0.125,
   reloadCooldownMs: 750,
-  maxQuoteAgeMs: 500
+  maxQuoteAgeMs: 500,
+  entryStartOffsetMinutes: 0,
+  entryCutoffMinutesAfterStart: 180
 };
 
 const SPORTS = [
@@ -184,12 +188,34 @@ const SPORTS = [
   { label: "Basketball", value: "basketball" },
   { label: "Baseball", value: "baseball" },
   { label: "Hockey", value: "hockey" },
-  { label: "Cricket", value: "cricket" }
+  { label: "Cricket", value: "cricket" },
+  { label: "Esports", value: "esports" },
+  { label: "Am Football", value: "american-football" },
+  { label: "Volleyball", value: "volleyball" },
+  { label: "Lacrosse", value: "lacrosse" },
+  { label: "Pickleball", value: "pickleball" },
+  { label: "Combat", value: "combat" },
+  { label: "Motorsport", value: "motorsport" }
 ];
 
 const FLOW_GRID_WSS_SPORTS = SPORTS.filter((item) => item.value !== "all").map((item) => item.value);
 const FLOW_GRID_DIRECT_PRICE_CHANNELS = ["polymarket.price", "kalshi.price"];
 const IN_PLAY_MARKET_WINDOW_MS = 12 * 60 * 60 * 1000;
+const ENTRY_WINDOW_BY_SPORT: Record<string, Pick<FlowGridSettings, "entryStartOffsetMinutes" | "entryCutoffMinutesAfterStart">> = {
+  football: { entryStartOffsetMinutes: 0, entryCutoffMinutesAfterStart: 75 },
+  tennis: { entryStartOffsetMinutes: 0, entryCutoffMinutesAfterStart: 180 },
+  basketball: { entryStartOffsetMinutes: 0, entryCutoffMinutesAfterStart: 120 },
+  baseball: { entryStartOffsetMinutes: 0, entryCutoffMinutesAfterStart: 180 },
+  hockey: { entryStartOffsetMinutes: 0, entryCutoffMinutesAfterStart: 150 },
+  cricket: { entryStartOffsetMinutes: 0, entryCutoffMinutesAfterStart: 360 },
+  esports: { entryStartOffsetMinutes: 0, entryCutoffMinutesAfterStart: 180 },
+  "american-football": { entryStartOffsetMinutes: 0, entryCutoffMinutesAfterStart: 180 },
+  volleyball: { entryStartOffsetMinutes: 0, entryCutoffMinutesAfterStart: 120 },
+  lacrosse: { entryStartOffsetMinutes: 0, entryCutoffMinutesAfterStart: 120 },
+  pickleball: { entryStartOffsetMinutes: 0, entryCutoffMinutesAfterStart: 90 },
+  combat: { entryStartOffsetMinutes: 0, entryCutoffMinutesAfterStart: 180 },
+  motorsport: { entryStartOffsetMinutes: 0, entryCutoffMinutesAfterStart: 240 }
+};
 
 type FlowGridSocketSubscription = {
   channel: string;
@@ -250,6 +276,35 @@ function sportKey(value: string | null | undefined) {
   const normalized = normalizeFixtureText(value || "").replace(/\s+/g, "-");
   if (normalized === "soccer") return "football";
   return normalized;
+}
+
+function isWinOnlyGridEvent(event: FlowGridEvent) {
+  if (Number(event.outcomeCount || event.legs.length) !== 2 || event.legs.length !== 2) return false;
+  return !event.legs.some((leg) => {
+    const text = normalizeFixtureText(`${leg.key} ${leg.label} ${leg.question || ""}`);
+    return text.split(" ").includes("draw");
+  });
+}
+
+function entryWindowForEvent(event: FlowGridEvent) {
+  return ENTRY_WINDOW_BY_SPORT[sportKey(event.sport)] || {
+    entryStartOffsetMinutes: DEFAULT_SETTINGS.entryStartOffsetMinutes,
+    entryCutoffMinutesAfterStart: DEFAULT_SETTINGS.entryCutoffMinutesAfterStart
+  };
+}
+
+function startSettingsForEvent(event: FlowGridEvent, settings: FlowGridSettings): FlowGridSettings {
+  return {
+    ...settings,
+    ...entryWindowForEvent(event)
+  };
+}
+
+function entryWindowLabel(event: FlowGridEvent) {
+  const window = entryWindowForEvent(event);
+  const starts = window.entryStartOffsetMinutes;
+  const cutoff = window.entryCutoffMinutesAfterStart;
+  return starts < 0 ? `${Math.abs(starts)}m before start to +${cutoff}m` : `start to +${cutoff}m`;
 }
 
 function eventDate(event: FlowGridEvent) {
@@ -795,7 +850,7 @@ async function loadEvents(sport: string, dateFilter: DateFilter, signal?: AbortS
     `/api/flow-grid/events?sport=${encodeURIComponent(sport)}&limit=${limit}&books=0&date=${encodeURIComponent(dateFilter)}${eventRangeQuery(dateFilter)}`,
     { signal }
   );
-  return (payload.events || []).filter((event) => isGridStartCandidate(event));
+  return (payload.events || []).filter((event) => isWinOnlyGridEvent(event) && isGridStartCandidate(event));
 }
 
 async function loadLiveSports(signal?: AbortSignal) {
@@ -836,6 +891,7 @@ async function loadGridOrders(sessionId: string, signal?: AbortSignal) {
 }
 
 async function startGrid(event: FlowGridEvent, settings: FlowGridSettings) {
+  const eventSettings = startSettingsForEvent(event, settings);
   return jsonFetch<{ session: FlowGridSession }>("/api/flow-grid/grids/start", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -845,7 +901,7 @@ async function startGrid(event: FlowGridEvent, settings: FlowGridSettings) {
       sport: event.sport,
       exchange: event.exchange,
       event,
-      settings
+      settings: eventSettings
     })
   });
 }
@@ -886,7 +942,8 @@ function EventDetail({
   orders: FlowGridOrder[];
   onClose: () => void;
 }) {
-  const exposure = previewExposure(event, settings);
+  const effectiveSettings = session?.settings || startSettingsForEvent(event, settings);
+  const exposure = previewExposure(event, effectiveSettings);
   const sessionExposure = session?.exposure || exposure;
   const sessionExecution = executionFromPayload(session?.executor?.payload as { execution?: FlowGridExecution; executionReady?: boolean; executionMode?: string; liveTradingEnabled?: boolean; detail?: string } | undefined);
   const executorText = session ? executionLabel(sessionExecution, Boolean(session.executor?.ok)) : "No session";
@@ -920,7 +977,8 @@ function EventDetail({
         <article><span>Event Cap</span><strong>{money(exposure.maxEventExposureUsd)}</strong></article>
         <article><span>Epoch Cap</span><strong>{money(exposure.maxEpochExposureUsd)}</strong></article>
         <article><span>Per Tick</span><strong>{money(exposure.maxNewFillUsdPerTick)}</strong></article>
-        <article><span>TP</span><strong>{money(settings.takeProfitUsd)}</strong></article>
+        <article><span>TP</span><strong>{money(effectiveSettings.takeProfitUsd)}</strong></article>
+        <article><span>Entry Window</span><strong>{entryWindowLabel(event)}</strong></article>
         <article><span>Basket</span><strong>{centsLabel(event.bidSumCents)} / {centsLabel(event.askSumCents)}</strong></article>
       </section>
 
@@ -928,7 +986,7 @@ function EventDetail({
         <div className="flow-grid-detail-levels-panel">
           <div className="flow-grid-section-head">
             <span>Outcome Grid</span>
-            <strong>{settings.virtualLevelsPerOutcome} levels / {centsLabel(settings.levelSpacingCents)} spacing / {money(settings.stakeUsdPerLevel)} stake</strong>
+            <strong>{effectiveSettings.virtualLevelsPerOutcome} levels / {centsLabel(effectiveSettings.levelSpacingCents)} spacing / {money(effectiveSettings.stakeUsdPerLevel)} stake</strong>
           </div>
           <table className="flow-grid-level-table">
             <thead>
@@ -942,7 +1000,7 @@ function EventDetail({
             </thead>
             <tbody>
               {event.legs.map((leg) => {
-                const levels = gridLevels(leg, settings);
+                const levels = gridLevels(leg, effectiveSettings);
                 const preview = levels.slice(0, 14);
                 const firstLevel = levels[0];
                 const lastLevel = levels[levels.length - 1];
@@ -1195,6 +1253,9 @@ export default function FlowGrid() {
     setBusy("manual");
     try {
       const event = await resolveEvent(manualEvent.trim(), sport);
+      if (!isWinOnlyGridEvent(event)) {
+        throw new Error("Flow Grid only supports win-only two-outcome markets. Draw/90m moneyline markets are blocked.");
+      }
       setEvents((current) => [event, ...current.filter((item) => item.slug !== event.slug)]);
       setSelectedSlug(event.slug || event.id);
       setError("");
@@ -1401,7 +1462,7 @@ export default function FlowGrid() {
 
   const visibleEvents = useMemo(
     () => sortEventsForGrid(
-      events.filter((event) => isGridStartCandidate(event) && matchesDateFilter(event, dateFilter) && matchesSportFilter(event, sport)),
+      events.filter((event) => isWinOnlyGridEvent(event) && isGridStartCandidate(event) && matchesDateFilter(event, dateFilter) && matchesSportFilter(event, sport)),
       sessions
     ),
     [events, dateFilter, sport, sessions]
@@ -1610,6 +1671,7 @@ export default function FlowGrid() {
                       <strong title={event.title}>{event.title}</strong>
                       {inPlay && <span className="flow-grid-live-badge" title={liveSourceLabel(inPlay)}>IN PLAY {liveClockLabel(inPlay)} {liveScoreLabel(inPlay)}</span>}
                       {marketFamilyLabel(event) && <span className="flow-grid-market-kind">{marketFamilyLabel(event)}</span>}
+                      <span className="flow-grid-entry-window">Entry {entryWindowLabel(event)}</span>
                     </td>
                     <td>{timeLabel(event.startAt || event.endAt)}</td>
                     <td>{money(event.liquidityUsd)}</td>
