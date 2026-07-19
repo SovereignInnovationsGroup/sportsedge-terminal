@@ -172,7 +172,7 @@ const DEFAULT_SETTINGS: FlowGridSettings = {
   maxNewLevelsPerTick: 1,
   maxEpochCostUsd: 25,
   maxEventCostUsd: 75,
-  takeProfitUsd: 0.25,
+  takeProfitUsd: 0.125,
   reloadCooldownMs: 750,
   maxQuoteAgeMs: 500
 };
