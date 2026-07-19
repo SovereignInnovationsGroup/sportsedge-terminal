@@ -108,6 +108,24 @@ type FlowGridExecution = {
   missing?: string[];
 };
 
+type FlowGridLiveEvent = {
+  id: string;
+  sport: string;
+  name: string;
+  startAt: string | null;
+  statusShort?: string | null;
+  statusLong?: string | null;
+  statusGroup?: string | null;
+  clock?: string | null;
+  clockSeconds?: number | null;
+  clockRunning?: boolean;
+  clockSource?: string | null;
+  liveScoreSource?: string | null;
+  home?: { name?: string; score?: string | number | null } | null;
+  away?: { name?: string; score?: string | number | null } | null;
+  updatedAt?: string | null;
+};
+
 type FlowGridSocketStatus = "waiting" | "connecting" | "live" | "offline";
 
 type FlowGridPricePatch = {
@@ -263,6 +281,71 @@ function matchesDateFilter(event: FlowGridEvent, filter: DateFilter, now = new D
 
 function matchesSportFilter(event: FlowGridEvent, filter: string) {
   return filter === "all" || sportKey(event.sport) === sportKey(filter);
+}
+
+function liveStatusCode(event: FlowGridLiveEvent | null | undefined) {
+  return String(event?.statusShort || event?.statusLong || event?.statusGroup || "").trim().toUpperCase();
+}
+
+function isInPlayLiveEvent(event: FlowGridLiveEvent | null | undefined) {
+  if (!event) return false;
+  if (String(event.statusGroup || "").toLowerCase() === "live") return true;
+  const code = liveStatusCode(event);
+  return ["1H", "2H", "HT", "ET", "P", "LIVE", "IN"].includes(code) || /^\d{1,3}(?::\d{2})?'?$/.test(code);
+}
+
+function flowGridLiveName(event: FlowGridLiveEvent) {
+  return event.name || [event.home?.name, event.away?.name].filter(Boolean).join(" v ");
+}
+
+function flowGridNameTokens(value: string) {
+  return normalizeFixtureText(value)
+    .split(" ")
+    .filter((token) => token.length >= 3 && !["win", "draw", "will", "end", "date"].includes(token));
+}
+
+function liveMatchScore(event: FlowGridEvent, liveEvent: FlowGridLiveEvent) {
+  if (sportKey(event.sport) !== sportKey(liveEvent.sport)) return 0;
+  const eventMs = eventTimeMs(event);
+  const liveMs = liveEvent.startAt ? new Date(liveEvent.startAt).getTime() : NaN;
+  if (Number.isFinite(eventMs) && Number.isFinite(liveMs) && Math.abs(eventMs - liveMs) > 8 * 60 * 60 * 1000) return 0;
+  const eventName = normalizeFixtureText(event.title);
+  const liveName = normalizeFixtureText(flowGridLiveName(liveEvent));
+  if (!eventName || !liveName) return 0;
+  if (eventName === liveName) return 100;
+  if (eventName.includes(liveName) || liveName.includes(eventName)) return 92;
+  const eventTokens = new Set(flowGridNameTokens(event.title));
+  const liveTokens = new Set(flowGridNameTokens(flowGridLiveName(liveEvent)));
+  if (!eventTokens.size || !liveTokens.size) return 0;
+  let overlap = 0;
+  eventTokens.forEach((token) => {
+    if (liveTokens.has(token)) overlap += 1;
+  });
+  const ratio = overlap / Math.max(1, Math.min(eventTokens.size, liveTokens.size));
+  return overlap >= 2 && ratio >= 0.67 ? Math.round(70 + ratio * 20) : 0;
+}
+
+function liveEventForGrid(event: FlowGridEvent, liveEvents: FlowGridLiveEvent[]) {
+  return liveEvents
+    .filter(isInPlayLiveEvent)
+    .map((liveEvent) => ({ liveEvent, score: liveMatchScore(event, liveEvent) }))
+    .filter((item) => item.score >= 70)
+    .sort((left, right) => right.score - left.score)[0]?.liveEvent || null;
+}
+
+function liveScoreLabel(event: FlowGridLiveEvent) {
+  const home = event.home?.score;
+  const away = event.away?.score;
+  if (home == null || away == null || home === "" || away === "") return "";
+  return `${home}-${away}`;
+}
+
+function liveClockLabel(event: FlowGridLiveEvent) {
+  return String(event.clock || event.statusShort || event.statusGroup || "LIVE").toUpperCase();
+}
+
+function liveSourceLabel(event: FlowGridLiveEvent) {
+  return event.liveScoreSource || event.clockSource || event.statusLong || "live results";
 }
 
 function eventRangeQuery(filter: DateFilter) {
@@ -647,6 +730,15 @@ async function loadEvents(sport: string, dateFilter: DateFilter, signal?: AbortS
   return (payload.events || []).filter((event) => isGridStartCandidate(event));
 }
 
+async function loadLiveSports(signal?: AbortSignal) {
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London";
+  const payload = await jsonFetch<{ items?: FlowGridLiveEvent[] }>(
+    `/api/sports/events?limit=5000&timezone=${encodeURIComponent(timezone)}`,
+    { signal }
+  );
+  return (payload.items || []).filter(isInPlayLiveEvent);
+}
+
 async function resolveEvent(input: string, sport: string) {
   const payload = await jsonFetch<{ event: FlowGridEvent }>(`/api/flow-grid/events/resolve?id=${encodeURIComponent(input)}&sport=${encodeURIComponent(sport)}&idType=slug`);
   return payload.event;
@@ -707,11 +799,13 @@ function EventDetail({
   event,
   settings,
   session,
+  liveEvent,
   onClose
 }: {
   event: FlowGridEvent;
   settings: FlowGridSettings;
   session: FlowGridSession | null;
+  liveEvent: FlowGridLiveEvent | null;
   onClose: () => void;
 }) {
   const exposure = previewExposure(event, settings);
@@ -727,6 +821,7 @@ function EventDetail({
           <strong>{event.title}</strong>
           <div className="flow-grid-detail-meta">
             <span>{timeLabel(event.startAt || event.endAt)}</span>
+            {liveEvent && <span className="live">IN PLAY {liveClockLabel(liveEvent)} {liveScoreLabel(liveEvent)}</span>}
             <span>{marketFamilyLabel(event) || `${event.outcomeCount} legs`}</span>
             <span>Spread {centsLabel(event.basketSpreadCents)}</span>
             <span>{event.slug}</span>
@@ -843,6 +938,8 @@ export default function FlowGrid() {
   const [sport, setSport] = useState("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [events, setEvents] = useState<FlowGridEvent[]>([]);
+  const [liveEvents, setLiveEvents] = useState<FlowGridLiveEvent[]>([]);
+  const [liveEventsUpdatedAt, setLiveEventsUpdatedAt] = useState("");
   const [sessions, setSessions] = useState<FlowGridSession[]>([]);
   const [wallet, setWallet] = useState<FlowGridWallet | null>(null);
   const [walletError, setWalletError] = useState("");
@@ -868,6 +965,9 @@ export default function FlowGrid() {
     || sessions.find((session) => session.event?.slug === detailSlug || session.event?.id === detailSlug)?.event
     || null
   ), [events, sessions, detailSlug]);
+  const detailLiveEvent = useMemo(() => (
+    detailEvent ? liveEventForGrid(detailEvent, liveEvents) : null
+  ), [detailEvent, liveEvents]);
 
   async function refreshEvents(nextSport = sport, nextDateFilter = dateFilter, options: RefreshEventsOptions = {}) {
     const requestId = eventsRequestRef.current + 1;
@@ -907,6 +1007,16 @@ export default function FlowGrid() {
     } catch {
       setSessions([]);
       setExecutorState(null);
+    }
+  }
+
+  async function refreshLiveSports(signal?: AbortSignal) {
+    try {
+      const next = await loadLiveSports(signal);
+      setLiveEvents(next);
+      setLiveEventsUpdatedAt(new Date().toISOString());
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
     }
   }
 
@@ -1012,6 +1122,24 @@ export default function FlowGrid() {
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    const refresh = async (signal?: AbortSignal) => {
+      if (!active) return;
+      await refreshLiveSports(signal);
+    };
+    void refresh(controller.signal);
+    const timer = window.setInterval(() => {
+      void refresh();
+    }, 5000);
+    return () => {
+      active = false;
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
     const token = window.localStorage.getItem("sportsedge.auth.token");
     const subscriptions = socketSubscriptionsForSport(sport);
     const channels = subscriptions.map((subscription) => subscription.channel);
@@ -1109,6 +1237,14 @@ export default function FlowGrid() {
     ),
     [events, dateFilter, sport, sessions]
   );
+  const liveEventByGridKey = useMemo(() => {
+    const matches = new Map<string, FlowGridLiveEvent>();
+    visibleEvents.forEach((event) => {
+      const liveEvent = liveEventForGrid(event, liveEvents);
+      if (liveEvent) matches.set(flowGridEventKey(event), liveEvent);
+    });
+    return matches;
+  }, [visibleEvents, liveEvents]);
 
   const totals = visibleEvents.reduce((acc, event) => {
     const exposure = previewExposure(event, settings);
@@ -1132,6 +1268,7 @@ export default function FlowGrid() {
           <article><span>Executor</span><strong className={executorReady ? "positive" : "warning"}>{executorLabel}</strong><small>{executorDetail || (executorConfigured ? "Awaiting Ireland state" : "FLOW_GRID_EXECUTOR_URL missing")}</small></article>
           <article><span>Wallet</span><strong className={wallet?.balance != null ? "positive" : "warning"}>{wallet?.balance != null ? money(wallet.balance) : "Unavailable"}</strong><small>{wallet?.openOrders != null ? `${wallet.openOrders} exchange orders` : walletError || "No wallet feed"}</small></article>
           <article><span>Events</span><strong>{visibleEvents.length}</strong><small>{events.length} loaded</small></article>
+          <article><span>In Play</span><strong className={liveEventByGridKey.size ? "positive" : ""}>{liveEventByGridKey.size}</strong><small>{liveEvents.length} live results / {liveEventsUpdatedAt ? timeLabel(liveEventsUpdatedAt) : "waiting"}</small></article>
           <article><span>Price WSS</span><strong className={socketStatus === "live" ? "positive" : "warning"}>{socketStatus}</strong><small>{socketSportsLabel}</small></article>
           <article><span>Enabled exposure</span><strong>{money(totals.enabledExposure)}</strong><small>{totals.enabledCount} enabled</small></article>
           <article><span>Visible liquidity</span><strong>{money(totals.liquidity)}</strong></article>
@@ -1198,11 +1335,16 @@ export default function FlowGrid() {
               {sessions.map((session) => {
                 const pnl = sessionPnl(session);
                 const sessionExecution = executionFromPayload(session.executor?.payload as { execution?: FlowGridExecution; executionReady?: boolean; executionMode?: string; liveTradingEnabled?: boolean; detail?: string } | undefined);
+                const inPlay = session.event ? liveEventForGrid(session.event, liveEvents) : null;
                 return (
                   <tr key={session.id} onDoubleClick={() => setDetailSlug(session.event?.slug || session.event?.id || "")}>
                     <td><StatusPill status={session.status} /></td>
                     <td><span className="flow-grid-sport-cell">{sportLabel(session.event?.sport || session.sport)}</span></td>
-                    <td><strong>{session.event?.title || session.id}</strong><small>{session.id}</small></td>
+                    <td>
+                      <strong>{session.event?.title || session.id}</strong>
+                      {inPlay && <span className="flow-grid-live-badge" title={liveSourceLabel(inPlay)}>IN PLAY {liveClockLabel(inPlay)} {liveScoreLabel(inPlay)}</span>}
+                      <small>{session.id}</small>
+                    </td>
                     <td>{timeLabel(session.createdAt)}</td>
                     <td>{money(session.exposure?.maxEventExposureUsd)}</td>
                     <td>{money(session.exposure?.maxEpochExposureUsd)}</td>
@@ -1251,10 +1393,11 @@ export default function FlowGrid() {
                 const checked = enabled.has(key);
                 const exposure = previewExposure(event, settings);
                 const session = sessionForEvent(sessions, event);
+                const inPlay = liveEventByGridKey.get(flowGridEventKey(event)) || null;
                 return (
                   <tr
                     key={key}
-                    className={selectedSlug === key ? "selected" : ""}
+                    className={[selectedSlug === key ? "selected" : "", inPlay ? "in-play" : ""].filter(Boolean).join(" ")}
                     onClick={() => setSelectedSlug(key)}
                     onDoubleClick={() => { void openDetail(event); }}
                   >
@@ -1268,7 +1411,11 @@ export default function FlowGrid() {
                       </button>
                     </td>
                     <td><span className="flow-grid-sport-cell">{sportLabel(event.sport)}</span></td>
-                    <td><strong title={event.title}>{event.title}</strong>{marketFamilyLabel(event) && <span className="flow-grid-market-kind">{marketFamilyLabel(event)}</span>}</td>
+                    <td>
+                      <strong title={event.title}>{event.title}</strong>
+                      {inPlay && <span className="flow-grid-live-badge" title={liveSourceLabel(inPlay)}>IN PLAY {liveClockLabel(inPlay)} {liveScoreLabel(inPlay)}</span>}
+                      {marketFamilyLabel(event) && <span className="flow-grid-market-kind">{marketFamilyLabel(event)}</span>}
+                    </td>
                     <td>{timeLabel(event.startAt || event.endAt)}</td>
                     <td>
                       <div className="flow-grid-leg-strip" title={event.legs.map(compactLegLabel).join(" / ")}>
@@ -1308,6 +1455,7 @@ export default function FlowGrid() {
           event={detailEvent}
           settings={settings}
           session={sessionForEvent(sessions, detailEvent)}
+          liveEvent={detailLiveEvent}
           onClose={() => setDetailSlug("")}
         />
       )}

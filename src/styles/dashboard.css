@@ -327,6 +327,24 @@
   background: rgba(72, 141, 215, 0.09);
 }
 
+.flow-grid-table-panel tbody tr.in-play {
+  background: rgba(0, 111, 80, 0.18);
+}
+
+.flow-grid-table-panel tbody tr.in-play:hover,
+.flow-grid-table-panel tbody tr.in-play.selected {
+  background: rgba(0, 111, 80, 0.26);
+}
+
+.flow-grid-table-panel tbody tr.in-play td:last-child {
+  background: #061b18;
+}
+
+.flow-grid-table-panel tbody tr.in-play:hover td:last-child,
+.flow-grid-table-panel tbody tr.in-play.selected td:last-child {
+  background: #08231d;
+}
+
 .flow-grid-table-panel td strong,
 .flow-grid-orders-panel td strong {
   display: inline-block;
@@ -372,6 +390,26 @@
   font-weight: 900;
   text-transform: uppercase;
   vertical-align: middle;
+}
+
+.flow-grid-live-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  max-width: 170px;
+  margin-left: 6px;
+  border: 1px solid rgba(0, 209, 139, 0.58);
+  border-radius: 2px;
+  background: rgba(0, 111, 80, 0.28);
+  color: #8effbd;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 950;
+  text-transform: uppercase;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .flow-grid-price-strip {
@@ -603,6 +641,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.flow-grid-detail-meta span.live {
+  border-color: rgba(0, 209, 139, 0.58);
+  background: rgba(0, 111, 80, 0.28);
+  color: #8effbd;
 }
 
 .flow-grid-detail-actions {
