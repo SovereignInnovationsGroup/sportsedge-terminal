@@ -591,8 +591,9 @@ async function jsonFetch<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 async function loadEvents(sport: string, dateFilter: DateFilter, signal?: AbortSignal) {
+  const limit = sport === "all" ? 150 : 100;
   const payload = await jsonFetch<{ events: FlowGridEvent[] }>(
-    `/api/flow-grid/events?sport=${encodeURIComponent(sport)}&limit=50&books=1&date=${encodeURIComponent(dateFilter)}${eventRangeQuery(dateFilter)}`,
+    `/api/flow-grid/events?sport=${encodeURIComponent(sport)}&limit=${limit}&books=1&date=${encodeURIComponent(dateFilter)}${eventRangeQuery(dateFilter)}`,
     { signal }
   );
   return payload.events || [];
