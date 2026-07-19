@@ -85,6 +85,8 @@ type FlowGridSession = {
   createdAt: string;
   updatedAt: string;
   executor?: { ok?: boolean; detail?: string; payload?: Record<string, unknown> } | null;
+  executorState?: { raw?: Record<string, unknown> } | null;
+  raw?: Record<string, unknown>;
   pnlUsd?: number;
   openPnlUsd?: number;
   realizedPnlUsd?: number;
@@ -370,6 +372,10 @@ function numericValue(value: unknown) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function recordValue(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
 function sessionPnl(session: FlowGridSession) {
   const source = session as FlowGridSession & {
     raw?: Record<string, unknown>;
@@ -381,6 +387,17 @@ function sessionPnl(session: FlowGridSession) {
     ?? numericValue(source.raw?.pnlUsd)
     ?? numericValue(source.executor?.payload?.pnlUsd)
     ?? 0;
+}
+
+function sessionRuntime(session: FlowGridSession) {
+  const rawRuntime = recordValue(recordValue(session.raw)?.runtime);
+  const executorRuntime = recordValue(recordValue(session.executorState?.raw)?.runtime);
+  const runtime = rawRuntime || executorRuntime;
+  if (!runtime) return null;
+  const openScalps = numericValue(runtime.openScalps);
+  const spentUsd = numericValue(runtime.spentUsd);
+  if (openScalps == null && spentUsd == null) return null;
+  return { openScalps: openScalps ?? 0, spentUsd: spentUsd ?? 0 };
 }
 
 function executionFromPayload(payload: { execution?: FlowGridExecution; executionReady?: boolean; executionMode?: string; liveTradingEnabled?: boolean; detail?: string } | null | undefined): FlowGridExecution | null {
@@ -816,6 +833,7 @@ function EventDetail({
   const sessionExecution = executionFromPayload(session?.executor?.payload as { execution?: FlowGridExecution; executionReady?: boolean; executionMode?: string; liveTradingEnabled?: boolean; detail?: string } | undefined);
   const executorText = session ? executionLabel(sessionExecution, Boolean(session.executor?.ok)) : "No session";
   const sessionStatus = session?.status || "IDLE";
+  const runtime = session ? sessionRuntime(session) : null;
   return (
     <div className="flow-grid-detail" role="dialog" aria-label={`${event.title} flow grid detail`}>
       <header>
@@ -929,6 +947,14 @@ function EventDetail({
             <article>
               <span>Epoch Cap</span>
               <strong>{money(sessionExposure.maxEpochExposureUsd)}</strong>
+            </article>
+            <article>
+              <span>Open Trades</span>
+              <strong>{runtime ? runtime.openScalps : "-"}</strong>
+            </article>
+            <article>
+              <span>Spent</span>
+              <strong>{runtime ? money(runtime.spentUsd) : "-"}</strong>
             </article>
           </div>
         </aside>
@@ -1348,6 +1374,7 @@ export default function FlowGrid() {
             <tbody>
               {sessions.map((session) => {
                 const pnl = sessionPnl(session);
+                const runtime = sessionRuntime(session);
                 const sessionExecution = executionFromPayload(session.executor?.payload as { execution?: FlowGridExecution; executionReady?: boolean; executionMode?: string; liveTradingEnabled?: boolean; detail?: string } | undefined);
                 const inPlay = session.event ? liveEventForGrid(session.event, liveEvents) : null;
                 return (
@@ -1358,6 +1385,7 @@ export default function FlowGrid() {
                       <strong>{session.event?.title || session.id}</strong>
                       {inPlay && <span className="flow-grid-live-badge" title={liveSourceLabel(inPlay)}>IN PLAY {liveClockLabel(inPlay)} {liveScoreLabel(inPlay)}</span>}
                       <small>{session.id}</small>
+                      {runtime && <small className="flow-grid-trade-summary">{runtime.openScalps} open / {money(runtime.spentUsd)} spent</small>}
                     </td>
                     <td>{timeLabel(session.createdAt)}</td>
                     <td>{money(session.exposure?.maxEventExposureUsd)}</td>
