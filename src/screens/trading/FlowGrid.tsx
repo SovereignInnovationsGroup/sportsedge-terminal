@@ -92,6 +92,22 @@ type FlowGridSession = {
   realizedPnlUsd?: number;
 };
 
+type FlowGridOrder = {
+  id: string;
+  sessionId: string;
+  epoch: number;
+  legKey: string;
+  tokenId: string;
+  side: "BUY" | "SELL" | string;
+  price: number;
+  size: number;
+  notionalUsd: number;
+  status: string;
+  raw?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type FlowGridWallet = {
   at?: string;
   balance?: number;
@@ -396,8 +412,19 @@ function sessionRuntime(session: FlowGridSession) {
   if (!runtime) return null;
   const openScalps = numericValue(runtime.openScalps);
   const spentUsd = numericValue(runtime.spentUsd);
-  if (openScalps == null && spentUsd == null) return null;
-  return { openScalps: openScalps ?? 0, spentUsd: spentUsd ?? 0 };
+  const committedUsd = numericValue(runtime.committedUsd);
+  const realizedPnlUsd = numericValue(runtime.realizedPnlUsd);
+  const pendingEntries = numericValue(runtime.pendingEntries);
+  const pendingExits = numericValue(runtime.pendingExits);
+  if (openScalps == null && spentUsd == null && committedUsd == null && realizedPnlUsd == null) return null;
+  return {
+    openScalps: openScalps ?? 0,
+    spentUsd: spentUsd ?? 0,
+    committedUsd: committedUsd ?? spentUsd ?? 0,
+    realizedPnlUsd: realizedPnlUsd ?? 0,
+    pendingEntries: pendingEntries ?? 0,
+    pendingExits: pendingExits ?? 0
+  };
 }
 
 function executionFromPayload(payload: { execution?: FlowGridExecution; executionReady?: boolean; executionMode?: string; liveTradingEnabled?: boolean; detail?: string } | null | undefined): FlowGridExecution | null {
@@ -780,6 +807,10 @@ async function loadWallet() {
   }>("/api/flow-grid/wallet");
 }
 
+async function loadGridOrders(sessionId: string, signal?: AbortSignal) {
+  return jsonFetch<{ orders: FlowGridOrder[] }>(`/api/flow-grid/grids/${encodeURIComponent(sessionId)}/orders`, { signal });
+}
+
 async function startGrid(event: FlowGridEvent, settings: FlowGridSettings) {
   return jsonFetch<{ session: FlowGridSession }>("/api/flow-grid/grids/start", {
     method: "POST",
@@ -820,12 +851,14 @@ function EventDetail({
   settings,
   session,
   liveEvent,
+  orders,
   onClose
 }: {
   event: FlowGridEvent;
   settings: FlowGridSettings;
   session: FlowGridSession | null;
   liveEvent: FlowGridLiveEvent | null;
+  orders: FlowGridOrder[];
   onClose: () => void;
 }) {
   const exposure = previewExposure(event, settings);
@@ -834,6 +867,8 @@ function EventDetail({
   const executorText = session ? executionLabel(sessionExecution, Boolean(session.executor?.ok)) : "No session";
   const sessionStatus = session?.status || "IDLE";
   const runtime = session ? sessionRuntime(session) : null;
+  const legLabels = new Map(event.legs.map((leg) => [leg.key, leg.label]));
+  const recentOrders = orders.slice(0, 40);
   return (
     <div className="flow-grid-detail" role="dialog" aria-label={`${event.title} flow grid detail`}>
       <header>
@@ -953,11 +988,62 @@ function EventDetail({
               <strong>{runtime ? runtime.openScalps : "-"}</strong>
             </article>
             <article>
+              <span>Pending</span>
+              <strong>{runtime ? `${runtime.pendingEntries} in / ${runtime.pendingExits} out` : "-"}</strong>
+            </article>
+            <article>
               <span>Spent</span>
               <strong>{runtime ? money(runtime.spentUsd) : "-"}</strong>
             </article>
+            <article>
+              <span>Committed</span>
+              <strong>{runtime ? money(runtime.committedUsd) : "-"}</strong>
+            </article>
+            <article>
+              <span>Realized</span>
+              <strong className={runtime && runtime.realizedPnlUsd < 0 ? "negative" : "positive"}>{runtime ? signedMoney(runtime.realizedPnlUsd) : "-"}</strong>
+            </article>
           </div>
         </aside>
+      </section>
+
+      <section className="flow-grid-orders-panel">
+        <div className="flow-grid-section-head">
+          <span>Executor Orders</span>
+          <strong>{session ? `${recentOrders.length} latest rows` : "No session"}</strong>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Side</th>
+              <th>Outcome</th>
+              <th>Price</th>
+              <th>Size</th>
+              <th>Notional</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentOrders.map((order) => (
+              <tr key={`${order.id}:${order.status}:${order.updatedAt}`}>
+                <td>{timeLabel(order.createdAt)}</td>
+                <td><strong className={order.side === "SELL" ? "positive" : ""}>{order.side}</strong></td>
+                <td>
+                  <strong>{legLabels.get(order.legKey) || order.legKey}</strong>
+                  <small>{order.tokenId}</small>
+                </td>
+                <td>{centsLabel(Number(order.price || 0) * 100)}</td>
+                <td>{Number(order.size || 0).toFixed(2)}</td>
+                <td>{money(order.notionalUsd || Number(order.price || 0) * Number(order.size || 0))}</td>
+                <td><StatusPill status={order.status} /></td>
+              </tr>
+            ))}
+            {!recentOrders.length && (
+              <tr><td colSpan={7}>{session ? "No executor orders for this grid yet." : "Start or open a grid session to see orders."}</td></tr>
+            )}
+          </tbody>
+        </table>
       </section>
     </div>
   );
@@ -976,6 +1062,7 @@ export default function FlowGrid() {
   const [executorState, setExecutorState] = useState<FlowGridExecution | null>(null);
   const [settings, setSettings] = useState<FlowGridSettings>(DEFAULT_SETTINGS);
   const [enabled, setEnabled] = useState<Set<string>>(() => new Set());
+  const [ordersBySession, setOrdersBySession] = useState<Record<string, FlowGridOrder[]>>({});
   const [selectedSlug, setSelectedSlug] = useState("");
   const [detailSlug, setDetailSlug] = useState("");
   const [manualEvent, setManualEvent] = useState("");
@@ -997,6 +1084,9 @@ export default function FlowGrid() {
   const detailLiveEvent = useMemo(() => (
     detailEvent ? liveEventForGrid(detailEvent, liveEvents) : null
   ), [detailEvent, liveEvents]);
+  const detailSession = useMemo(() => (
+    detailEvent ? sessionForEvent(sessions, detailEvent) : null
+  ), [detailEvent, sessions]);
 
   async function refreshEvents(nextSport = sport, nextDateFilter = dateFilter, options: RefreshEventsOptions = {}) {
     const requestId = eventsRequestRef.current + 1;
@@ -1060,6 +1150,18 @@ export default function FlowGrid() {
     } catch (err) {
       setWallet(null);
       setWalletError(err instanceof Error ? err.message : "Wallet unavailable");
+    }
+  }
+
+  async function refreshGridOrders(sessionId: string, signal?: AbortSignal) {
+    try {
+      const payload = await loadGridOrders(sessionId, signal);
+      setOrdersBySession((current) => ({
+        ...current,
+        [sessionId]: payload.orders || []
+      }));
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
     }
   }
 
@@ -1258,6 +1360,19 @@ export default function FlowGrid() {
       socketRef.current = null;
     };
   }, [sport]);
+
+  useEffect(() => {
+    if (!detailSession?.id) return;
+    const controller = new AbortController();
+    void refreshGridOrders(detailSession.id, controller.signal);
+    const timer = window.setInterval(() => {
+      void refreshGridOrders(detailSession.id);
+    }, 1500);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, [detailSession?.id]);
 
   const visibleEvents = useMemo(
     () => sortEventsForGrid(
@@ -1490,8 +1605,9 @@ export default function FlowGrid() {
         <EventDetail
           event={detailEvent}
           settings={settings}
-          session={sessionForEvent(sessions, detailEvent)}
+          session={detailSession}
           liveEvent={detailLiveEvent}
+          orders={detailSession ? ordersBySession[detailSession.id] || [] : []}
           onClose={() => setDetailSlug("")}
         />
       )}

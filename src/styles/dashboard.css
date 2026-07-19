@@ -587,12 +587,22 @@
   color: #ff746c;
 }
 
+.flow-grid-detail .positive,
+.flow-grid-orders-panel .positive {
+  color: #72e6a2;
+}
+
+.flow-grid-detail .negative,
+.flow-grid-orders-panel .negative {
+  color: #ff746c;
+}
+
 .flow-grid-detail {
   position: fixed;
   inset: 58px 0 0 0;
   z-index: 80;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) minmax(170px, 30vh);
   gap: 0;
   padding: 0;
   background: #03080d;
@@ -956,6 +966,25 @@
 
 .flow-grid-orders-panel {
   overflow: hidden;
+}
+
+.flow-grid-detail > .flow-grid-orders-panel {
+  min-height: 0;
+  overflow: auto;
+  border-width: 1px 0 0;
+}
+
+.flow-grid-detail > .flow-grid-orders-panel table {
+  min-width: 920px;
+}
+
+.flow-grid-orders-panel td small {
+  display: block;
+  margin-top: 2px;
+  color: #6f8399;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 980px) {
