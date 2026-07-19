@@ -169,7 +169,7 @@ const DEFAULT_SETTINGS: FlowGridSettings = {
   stakeUsdPerLevel: 5,
   levelSpacingCents: 1,
   virtualLevelsPerOutcome: 40,
-  maxNewLevelsPerTick: 2,
+  maxNewLevelsPerTick: 1,
   maxEpochCostUsd: 25,
   maxEventCostUsd: 75,
   takeProfitUsd: 0.25,
