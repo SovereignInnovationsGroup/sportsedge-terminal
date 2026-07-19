@@ -277,7 +277,7 @@
 }
 
 .flow-grid-col-actions {
-  width: 150px;
+  width: 230px;
 }
 
 .flow-grid-table-panel th,
@@ -293,6 +293,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.flow-grid-table-panel th:last-child,
+.flow-grid-table-panel td:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  overflow: visible;
+  background: #071019;
+  box-shadow: -1px 0 0 rgba(117, 139, 163, 0.2);
+}
+
+.flow-grid-table-panel tbody tr:hover td:last-child,
+.flow-grid-table-panel tbody tr.selected td:last-child {
+  background: #0b1825;
 }
 
 .flow-grid-table-panel th,
@@ -498,8 +513,20 @@
 
 .flow-grid-row-actions {
   display: flex;
-  gap: 3px;
+  gap: 5px;
   flex-wrap: nowrap;
+  align-items: center;
+  min-width: 0;
+}
+
+.flow-grid-row-actions button {
+  flex: 0 0 66px;
+  min-width: 66px;
+  padding: 0 6px;
+}
+
+.flow-grid-row-actions button svg {
+  flex: 0 0 auto;
 }
 
 .flow-grid-table-panel .negative {
