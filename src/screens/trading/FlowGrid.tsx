@@ -166,8 +166,7 @@ const SPORTS = [
   { label: "Basketball", value: "basketball" },
   { label: "Baseball", value: "baseball" },
   { label: "Hockey", value: "hockey" },
-  { label: "Cricket", value: "cricket" },
-  { label: "Golf", value: "golf" }
+  { label: "Cricket", value: "cricket" }
 ];
 
 const FLOW_GRID_WSS_SPORTS = SPORTS.filter((item) => item.value !== "all").map((item) => item.value);
@@ -741,7 +740,10 @@ async function loadLiveSports(signal?: AbortSignal) {
     `/api/sports/events?state=live&limit=600&timezone=${encodeURIComponent(timezone)}`,
     { signal }
   );
-  return (payload.items || []).filter(isInPlayLiveEvent);
+  const supportedSports = new Set(FLOW_GRID_WSS_SPORTS.map(sportKey));
+  return (payload.items || [])
+    .filter((event) => supportedSports.has(sportKey(event.sport)))
+    .filter(isInPlayLiveEvent);
 }
 
 async function resolveEvent(input: string, sport: string) {
