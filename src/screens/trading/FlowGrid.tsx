@@ -1476,6 +1476,7 @@ export default function FlowGrid() {
               <col className="flow-grid-session-col-state" />
               <col className="flow-grid-session-col-sport" />
               <col className="flow-grid-session-col-event" />
+              <col className="flow-grid-session-col-open" />
               <col className="flow-grid-session-col-created" />
               <col className="flow-grid-session-col-money" />
               <col className="flow-grid-session-col-money" />
@@ -1484,7 +1485,7 @@ export default function FlowGrid() {
               <col className="flow-grid-session-col-actions" />
             </colgroup>
             <thead>
-              <tr><th>State</th><th>Sport</th><th>Event</th><th>Created</th><th>Event Cap</th><th>Epoch Cap</th><th>P&L</th><th>Executor</th><th>Actions</th></tr>
+              <tr><th>State</th><th>Sport</th><th>Event</th><th>Open Trade</th><th>Created</th><th>Event Cap</th><th>Epoch Cap</th><th>P&L</th><th>Executor</th><th>Actions</th></tr>
             </thead>
             <tbody>
               {sessions.map((session) => {
@@ -1500,7 +1501,20 @@ export default function FlowGrid() {
                       <strong>{session.event?.title || session.id}</strong>
                       {inPlay && <span className="flow-grid-live-badge" title={liveSourceLabel(inPlay)}>IN PLAY {liveClockLabel(inPlay)} {liveScoreLabel(inPlay)}</span>}
                       <small>{session.id}</small>
-                      {runtime && <small className="flow-grid-trade-summary">{runtime.openScalps} open / {money(runtime.spentUsd)} spent</small>}
+                    </td>
+                    <td className="flow-grid-open-trade-cell">
+                      {runtime ? (
+                        <>
+                          <span className={`flow-grid-trade-summary ${runtime.openScalps > 0 ? "active" : ""}`}>
+                            {runtime.openScalps} open / {money(runtime.committedUsd)}
+                          </span>
+                          {(runtime.pendingEntries > 0 || runtime.pendingExits > 0) && (
+                            <small>{runtime.pendingEntries} in / {runtime.pendingExits} out pending</small>
+                          )}
+                        </>
+                      ) : (
+                        <span className="flow-grid-empty-cell">-</span>
+                      )}
                     </td>
                     <td>{timeLabel(session.createdAt)}</td>
                     <td>{money(session.exposure?.maxEventExposureUsd)}</td>
@@ -1514,7 +1528,7 @@ export default function FlowGrid() {
                   </tr>
                 );
               })}
-              {!sessions.length && <tr><td colSpan={9}>No local grid sessions.</td></tr>}
+              {!sessions.length && <tr><td colSpan={10}>No local grid sessions.</td></tr>}
             </tbody>
           </table>
         </section>
