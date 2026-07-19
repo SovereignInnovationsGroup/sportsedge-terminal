@@ -411,7 +411,7 @@ function EventDetail({
 }
 
 export default function FlowGrid() {
-  const [sport, setSport] = useState("football");
+  const [sport, setSport] = useState("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [events, setEvents] = useState<FlowGridEvent[]>([]);
   const [sessions, setSessions] = useState<FlowGridSession[]>([]);
@@ -518,7 +518,7 @@ export default function FlowGrid() {
   }
 
   useEffect(() => {
-    refreshEvents("football", "all");
+    refreshEvents("all", "all");
     refreshSessions();
     refreshWallet();
     const timer = window.setInterval(() => {
