@@ -100,6 +100,14 @@ type FlowGridWallet = {
   error?: string;
 };
 
+type FlowGridExecution = {
+  liveTradingEnabled?: boolean;
+  executionReady?: boolean;
+  executionMode?: string;
+  detail?: string;
+  missing?: string[];
+};
+
 type FlowGridSocketStatus = "waiting" | "connecting" | "live" | "offline";
 
 type FlowGridPricePatch = {
@@ -290,6 +298,31 @@ function sessionPnl(session: FlowGridSession) {
     ?? numericValue(source.raw?.pnlUsd)
     ?? numericValue(source.executor?.payload?.pnlUsd)
     ?? 0;
+}
+
+function executionFromPayload(payload: { execution?: FlowGridExecution; executionReady?: boolean; executionMode?: string; liveTradingEnabled?: boolean; detail?: string } | null | undefined): FlowGridExecution | null {
+  if (!payload) return null;
+  return payload.execution || {
+    executionReady: payload.executionReady,
+    executionMode: payload.executionMode,
+    liveTradingEnabled: payload.liveTradingEnabled,
+    detail: payload.detail
+  };
+}
+
+function executionLabel(execution: FlowGridExecution | null, configured: boolean) {
+  if (!configured) return "Control only";
+  if (!execution) return "Ireland linked";
+  if (execution.executionReady) return "Ireland live";
+  if (execution.liveTradingEnabled) return "Ireland blocked";
+  return "Ireland dry";
+}
+
+function executionDetail(execution: FlowGridExecution | null) {
+  if (!execution) return "";
+  if (execution.detail) return execution.detail;
+  if (execution.missing?.length) return `Missing ${execution.missing.join(", ")}`;
+  return execution.executionMode || "";
 }
 
 function timeLabel(value: string | null | undefined) {
@@ -620,11 +653,19 @@ async function resolveEvent(input: string, sport: string) {
 }
 
 async function loadSessions() {
-  return jsonFetch<{ executorConfigured: boolean; sessions: FlowGridSession[] }>("/api/flow-grid/sessions");
+  return jsonFetch<{
+    executorConfigured: boolean;
+    executor?: { ok?: boolean; detail?: string; payload?: { execution?: FlowGridExecution; executionReady?: boolean; executionMode?: string; liveTradingEnabled?: boolean; detail?: string } } | null;
+    sessions: FlowGridSession[];
+  }>("/api/flow-grid/sessions");
 }
 
 async function loadWallet() {
-  return jsonFetch<{ executorConfigured: boolean; wallet: FlowGridWallet | null; executor?: { detail?: string } | null }>("/api/flow-grid/wallet");
+  return jsonFetch<{
+    executorConfigured: boolean;
+    wallet: FlowGridWallet | null;
+    executor?: { detail?: string; payload?: { execution?: FlowGridExecution; executionReady?: boolean; executionMode?: string; liveTradingEnabled?: boolean; detail?: string } } | null;
+  }>("/api/flow-grid/wallet");
 }
 
 async function startGrid(event: FlowGridEvent, settings: FlowGridSettings) {
@@ -650,11 +691,12 @@ async function gridAction(sessionId: string, action: "pause" | "stop" | "flatten
 
 function StatusPill({ status }: { status: string }) {
   const normalized = status.toLowerCase();
+  const warning = normalized.includes("control") || normalized.includes("request") || normalized.includes("dry") || normalized.includes("not_ready") || normalized.includes("blocked");
   return (
     <span className={[
       "flow-grid-pill",
-      normalized.includes("armed") || normalized.includes("trading") || normalized.includes("arming") ? "live" : "",
-      normalized.includes("control") || normalized.includes("request") ? "warn" : ""
+      !warning && (normalized.includes("armed") || normalized.includes("trading") || normalized.includes("arming")) ? "live" : "",
+      warning ? "warn" : ""
     ].filter(Boolean).join(" ")}>
       {status || "idle"}
     </span>
@@ -674,7 +716,8 @@ function EventDetail({
 }) {
   const exposure = previewExposure(event, settings);
   const sessionExposure = session?.exposure || exposure;
-  const executorText = session?.executor?.ok ? "Ireland accepted" : session?.executor?.detail || "pending";
+  const sessionExecution = executionFromPayload(session?.executor?.payload as { execution?: FlowGridExecution; executionReady?: boolean; executionMode?: string; liveTradingEnabled?: boolean; detail?: string } | undefined);
+  const executorText = session ? executionLabel(sessionExecution, Boolean(session.executor?.ok)) : "No session";
   const sessionStatus = session?.status || "IDLE";
   return (
     <div className="flow-grid-detail" role="dialog" aria-label={`${event.title} flow grid detail`}>
@@ -804,6 +847,7 @@ export default function FlowGrid() {
   const [wallet, setWallet] = useState<FlowGridWallet | null>(null);
   const [walletError, setWalletError] = useState("");
   const [executorConfigured, setExecutorConfigured] = useState(false);
+  const [executorState, setExecutorState] = useState<FlowGridExecution | null>(null);
   const [settings, setSettings] = useState<FlowGridSettings>(DEFAULT_SETTINGS);
   const [enabled, setEnabled] = useState<Set<string>>(() => new Set());
   const [selectedSlug, setSelectedSlug] = useState("");
@@ -859,8 +903,10 @@ export default function FlowGrid() {
       const payload = await loadSessions();
       setSessions(payload.sessions || []);
       setExecutorConfigured(Boolean(payload.executorConfigured));
+      setExecutorState(executionFromPayload(payload.executor?.payload));
     } catch {
       setSessions([]);
+      setExecutorState(null);
     }
   }
 
@@ -870,6 +916,8 @@ export default function FlowGrid() {
       setWallet(payload.wallet || null);
       setWalletError(payload.executor?.detail || "");
       if (payload.executorConfigured) setExecutorConfigured(true);
+      const nextExecution = executionFromPayload(payload.executor?.payload);
+      if (nextExecution) setExecutorState(nextExecution);
     } catch (err) {
       setWallet(null);
       setWalletError(err instanceof Error ? err.message : "Wallet unavailable");
@@ -1072,13 +1120,16 @@ export default function FlowGrid() {
     return acc;
   }, { liquidity: 0, enabledExposure: 0, enabledCount: 0 });
   const socketSportsLabel = `${selectedSocketSports(sport).map(sportLabel).join(", ")} + direct predictive prices`;
+  const executorLabel = executionLabel(executorState, executorConfigured);
+  const executorDetail = executionDetail(executorState);
+  const executorReady = Boolean(executorState?.executionReady);
 
   return (
     <div className="terminal-shell">
       <TerminalTopbar active="flow-grid" searchPlaceholder="Flow Grid: event, sport, market..." />
       <main className="terminal-content flow-grid-screen">
         <section className="flow-grid-summary">
-          <article><span>Executor</span><strong className={executorConfigured ? "positive" : "warning"}>{executorConfigured ? "Ireland linked" : "Control only"}</strong></article>
+          <article><span>Executor</span><strong className={executorReady ? "positive" : "warning"}>{executorLabel}</strong><small>{executorDetail || (executorConfigured ? "Awaiting Ireland state" : "FLOW_GRID_EXECUTOR_URL missing")}</small></article>
           <article><span>Wallet</span><strong className={wallet?.balance != null ? "positive" : "warning"}>{wallet?.balance != null ? money(wallet.balance) : "Unavailable"}</strong><small>{wallet?.openOrders != null ? `${wallet.openOrders} exchange orders` : walletError || "No wallet feed"}</small></article>
           <article><span>Events</span><strong>{visibleEvents.length}</strong><small>{events.length} loaded</small></article>
           <article><span>Price WSS</span><strong className={socketStatus === "live" ? "positive" : "warning"}>{socketStatus}</strong><small>{socketSportsLabel}</small></article>
@@ -1146,6 +1197,7 @@ export default function FlowGrid() {
             <tbody>
               {sessions.map((session) => {
                 const pnl = sessionPnl(session);
+                const sessionExecution = executionFromPayload(session.executor?.payload as { execution?: FlowGridExecution; executionReady?: boolean; executionMode?: string; liveTradingEnabled?: boolean; detail?: string } | undefined);
                 return (
                   <tr key={session.id} onDoubleClick={() => setDetailSlug(session.event?.slug || session.event?.id || "")}>
                     <td><StatusPill status={session.status} /></td>
@@ -1155,7 +1207,7 @@ export default function FlowGrid() {
                     <td>{money(session.exposure?.maxEventExposureUsd)}</td>
                     <td>{money(session.exposure?.maxEpochExposureUsd)}</td>
                     <td className={pnl >= 0 ? "positive" : "negative"}>{signedMoney(pnl)}</td>
-                    <td>{session.executor?.ok ? "Ireland accepted" : session.executor?.detail || "pending"}</td>
+                    <td>{executionLabel(sessionExecution, Boolean(session.executor?.ok || executorConfigured))}<small>{executionDetail(sessionExecution) || session.executor?.detail || ""}</small></td>
                     <td className="flow-grid-row-actions">
                       <button type="button" onClick={() => sendAction(session, "flatten")}><Square size={13} /> Flat</button>
                       <button type="button" onClick={() => sendAction(session, "stop")}><X size={13} /> Stop</button>
