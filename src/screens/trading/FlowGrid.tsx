@@ -146,6 +146,7 @@ const SPORTS = [
 
 const FLOW_GRID_WSS_SPORTS = SPORTS.filter((item) => item.value !== "all").map((item) => item.value);
 const FLOW_GRID_DIRECT_PRICE_CHANNELS = ["polymarket.price", "kalshi.price"];
+const GRID_EVENT_START_GRACE_MS = 5 * 60 * 1000;
 
 type FlowGridSocketSubscription = {
   channel: string;
@@ -221,6 +222,12 @@ function eventDate(event: FlowGridEvent) {
 
 function eventTimeMs(event: FlowGridEvent) {
   return eventDate(event)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+}
+
+function isGridStartCandidate(event: FlowGridEvent, now = new Date()) {
+  const date = eventDate(event);
+  if (!date) return false;
+  return date.getTime() >= now.getTime() - GRID_EVENT_START_GRACE_MS;
 }
 
 function flowGridEventKey(event: FlowGridEvent) {
@@ -605,7 +612,7 @@ async function loadEvents(sport: string, dateFilter: DateFilter, signal?: AbortS
     `/api/flow-grid/events?sport=${encodeURIComponent(sport)}&limit=${limit}&books=0&date=${encodeURIComponent(dateFilter)}${eventRangeQuery(dateFilter)}`,
     { signal }
   );
-  return payload.events || [];
+  return (payload.events || []).filter((event) => isGridStartCandidate(event));
 }
 
 async function resolveEvent(input: string, sport: string) {
@@ -1014,7 +1021,7 @@ export default function FlowGrid() {
 
   const visibleEvents = useMemo(
     () => sortEventsForGrid(
-      events.filter((event) => matchesDateFilter(event, dateFilter) && matchesSportFilter(event, sport)),
+      events.filter((event) => isGridStartCandidate(event) && matchesDateFilter(event, dateFilter) && matchesSportFilter(event, sport)),
       sessions
     ),
     [events, dateFilter, sport, sessions]
