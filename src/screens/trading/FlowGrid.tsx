@@ -734,7 +734,7 @@ function EventDetail({
 
       <section className="flow-grid-orders-panel">
         <div className="flow-grid-section-head">
-          <span>Orders / epochs</span>
+          <span>Local levels / epochs</span>
           <strong>{session?.id || "No active session"}</strong>
         </div>
         <table>
@@ -1044,7 +1044,7 @@ export default function FlowGrid() {
       <main className="terminal-content flow-grid-screen">
         <section className="flow-grid-summary">
           <article><span>Executor</span><strong className={executorConfigured ? "positive" : "warning"}>{executorConfigured ? "Ireland linked" : "Control only"}</strong></article>
-          <article><span>Wallet</span><strong className={wallet?.balance != null ? "positive" : "warning"}>{wallet?.balance != null ? money(wallet.balance) : "Unavailable"}</strong><small>{wallet?.openOrders != null ? `${wallet.openOrders} open orders` : walletError || "No wallet feed"}</small></article>
+          <article><span>Wallet</span><strong className={wallet?.balance != null ? "positive" : "warning"}>{wallet?.balance != null ? money(wallet.balance) : "Unavailable"}</strong><small>{wallet?.openOrders != null ? `${wallet.openOrders} exchange orders` : walletError || "No wallet feed"}</small></article>
           <article><span>Events</span><strong>{visibleEvents.length}</strong><small>{events.length} loaded</small></article>
           <article><span>Price WSS</span><strong className={socketStatus === "live" ? "positive" : "warning"}>{socketStatus}</strong><small>{socketSportsLabel}</small></article>
           <article><span>Enabled exposure</span><strong>{money(totals.enabledExposure)}</strong><small>{totals.enabledCount} enabled</small></article>
@@ -1101,8 +1101,8 @@ export default function FlowGrid() {
 
         <section className="flow-grid-table-panel sessions">
           <div className="flow-grid-section-head">
-            <span>Open orders / grids</span>
-            <strong>{sessions.length} tracked / P&L live when executor reports fills</strong>
+            <span>Local grids / sessions</span>
+            <strong>{sessions.length} tracked / virtual levels trigger execution locally</strong>
           </div>
           <table>
             <thead>
@@ -1128,7 +1128,7 @@ export default function FlowGrid() {
                   </tr>
                 );
               })}
-              {!sessions.length && <tr><td colSpan={9}>No open grid orders.</td></tr>}
+              {!sessions.length && <tr><td colSpan={9}>No local grid sessions.</td></tr>}
             </tbody>
           </table>
         </section>
