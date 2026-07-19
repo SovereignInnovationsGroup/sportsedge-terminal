@@ -482,6 +482,25 @@ function sortEventsForGrid(events: FlowGridEvent[], sessions: FlowGridSession[])
   });
 }
 
+function mergeFlowGridEvents(current: FlowGridEvent[], incoming: FlowGridEvent[]) {
+  if (!incoming.length) return current;
+  const byKey = new Map<string, FlowGridEvent>();
+  current.forEach((event) => {
+    byKey.set(flowGridEventKey(event), event);
+  });
+  incoming.forEach((event) => {
+    byKey.set(flowGridEventKey(event), event);
+  });
+  return [...byKey.values()].sort((left, right) => {
+    const leftTime = eventTimeMs(left);
+    const rightTime = eventTimeMs(right);
+    if (leftTime !== rightTime) return leftTime - rightTime;
+    const sportOrder = sportLabel(left.sport).localeCompare(sportLabel(right.sport));
+    if (sportOrder) return sportOrder;
+    return left.title.localeCompare(right.title);
+  });
+}
+
 function previewExposure(event: FlowGridEvent, settings: FlowGridSettings) {
   const theoreticalFullGridUsd = event.outcomeCount * settings.virtualLevelsPerOutcome * settings.stakeUsdPerLevel;
   const maxEventExposureUsd = Math.min(settings.maxEventCostUsd, theoreticalFullGridUsd);
@@ -820,6 +839,7 @@ async function startGrid(event: FlowGridEvent, settings: FlowGridSettings) {
       idType: event.slug ? "slug" : "id",
       sport: event.sport,
       exchange: event.exchange,
+      event,
       settings
     })
   });
@@ -1096,14 +1116,14 @@ export default function FlowGrid() {
     eventsAbortRef.current = controller;
     const cacheKey = `${nextSport}:${nextDateFilter}`;
     const cached = eventsCacheRef.current.get(cacheKey);
-    if (cached) setEvents(cached);
+    if (cached) setEvents((current) => mergeFlowGridEvents(current, cached));
     if (cached && !options.force) return;
     if (!options.background) setBusy("refresh");
     try {
       const next = await loadEvents(nextSport, nextDateFilter, controller.signal);
       if (eventsRequestRef.current !== requestId) return;
       eventsCacheRef.current.set(cacheKey, next);
-      setEvents(next);
+      setEvents((current) => mergeFlowGridEvents(current, next));
       setError("");
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
@@ -1272,7 +1292,7 @@ export default function FlowGrid() {
 
   useEffect(() => {
     const token = window.localStorage.getItem("sportsedge.auth.token");
-    const subscriptions = socketSubscriptionsForSport(sport);
+    const subscriptions = socketSubscriptionsForSport("all");
     const channels = subscriptions.map((subscription) => subscription.channel);
     let closedByEffect = false;
 
@@ -1359,7 +1379,7 @@ export default function FlowGrid() {
       socketRef.current?.close();
       socketRef.current = null;
     };
-  }, [sport]);
+  }, []);
 
   useEffect(() => {
     if (!detailSession?.id) return;
@@ -1399,7 +1419,7 @@ export default function FlowGrid() {
     }
     return acc;
   }, { liquidity: 0, enabledExposure: 0, enabledCount: 0 });
-  const socketSportsLabel = `${selectedSocketSports(sport).map(sportLabel).join(", ")} + direct predictive prices`;
+  const socketSportsLabel = "All grid sports + direct predictive prices";
   const executorLabel = executionLabel(executorState, executorConfigured);
   const executorDetail = executionDetail(executorState);
   const executorReady = Boolean(executorState?.executionReady);
