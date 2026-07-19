@@ -189,6 +189,7 @@ const SPORTS = [
 
 const FLOW_GRID_WSS_SPORTS = SPORTS.filter((item) => item.value !== "all").map((item) => item.value);
 const FLOW_GRID_DIRECT_PRICE_CHANNELS = ["polymarket.price", "kalshi.price"];
+const IN_PLAY_MARKET_WINDOW_MS = 12 * 60 * 60 * 1000;
 
 type FlowGridSocketSubscription = {
   channel: string;
@@ -265,7 +266,10 @@ function eventTimeMs(event: FlowGridEvent) {
 function isGridStartCandidate(event: FlowGridEvent, now = new Date()) {
   const date = eventDate(event);
   if (!date) return false;
-  return date.getTime() >= now.getTime();
+  const timestamp = date.getTime();
+  if (timestamp >= now.getTime()) return true;
+  return Boolean(event.active && !event.closed)
+    && timestamp >= now.getTime() - IN_PLAY_MARKET_WINDOW_MS;
 }
 
 function flowGridEventKey(event: FlowGridEvent) {
@@ -289,7 +293,8 @@ function matchesDateFilter(event: FlowGridEvent, filter: DateFilter, now = new D
   if (filter === "tomorrow") return eventKey === tomorrow;
   const sevenDays = new Date(now);
   sevenDays.setDate(sevenDays.getDate() + 7);
-  return date.getTime() >= now.getTime() && date.getTime() <= sevenDays.getTime();
+  const timestamp = date.getTime();
+  return timestamp >= now.getTime() - IN_PLAY_MARKET_WINDOW_MS && timestamp <= sevenDays.getTime();
 }
 
 function matchesSportFilter(event: FlowGridEvent, filter: string) {
