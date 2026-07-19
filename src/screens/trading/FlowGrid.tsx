@@ -264,6 +264,21 @@ function compactPriceLabel(leg: FlowGridLeg) {
   return `${leg.label} ${centsLabel(legPriceCents(leg))}`;
 }
 
+function outcomeSharePercent(event: FlowGridEvent, leg: FlowGridLeg) {
+  const prices = event.legs.map(legPriceCents).filter((price) => Number.isFinite(price) && price > 0);
+  const total = prices.reduce((sum, price) => sum + price, 0);
+  const price = legPriceCents(leg);
+  if (!total || !price) return 100 / Math.max(1, event.legs.length);
+  return Math.max(4, Math.min(96, (price / total) * 100));
+}
+
+function outcomeGridTemplate(event: FlowGridEvent) {
+  if (!event.legs.length) return undefined;
+  return event.legs
+    .map((leg) => `minmax(58px, ${outcomeSharePercent(event, leg).toFixed(1)}fr)`)
+    .join(" ");
+}
+
 function marketFamilyLabel(event: FlowGridEvent) {
   return String(event.marketFamily || "").trim().toUpperCase();
 }
@@ -1675,10 +1690,14 @@ export default function FlowGrid() {
                     </td>
                     <td>{timeLabel(event.startAt || event.endAt)}</td>
                     <td>{money(event.liquidityUsd)}</td>
-                    <td className="flow-grid-price-cell">
-                      <div className="flow-grid-price-strip" title={event.legs.map(compactPriceLabel).join(" / ")}>
-                        {event.legs.map((leg) => (
-                          <span className="flow-grid-price-chip" key={`${leg.key}:${leg.tokenId}`} title={compactPriceLabel(leg)}>
+	                    <td className="flow-grid-price-cell">
+	                      <div
+	                        className="flow-grid-price-strip"
+	                        style={{ gridTemplateColumns: outcomeGridTemplate(event) }}
+	                        title={event.legs.map(compactPriceLabel).join(" / ")}
+	                      >
+	                        {event.legs.map((leg) => (
+	                          <span className="flow-grid-price-chip" key={`${leg.key}:${leg.tokenId}`} title={compactPriceLabel(leg)}>
                             <span className="flow-grid-price-name">{leg.label}</span>
                             <span className="flow-grid-price-value">{centsLabel(legPriceCents(leg))}</span>
                           </span>
