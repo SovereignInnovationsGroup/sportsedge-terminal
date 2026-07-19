@@ -341,7 +341,12 @@ function liveScoreLabel(event: FlowGridLiveEvent) {
 }
 
 function liveClockLabel(event: FlowGridLiveEvent) {
-  return String(event.clock || event.statusShort || event.statusGroup || "LIVE").toUpperCase();
+  const label = String(event.clock || event.statusShort || event.statusGroup || "LIVE")
+    .replace(/^STATUS_/i, "")
+    .replace(/_/g, " ")
+    .trim()
+    .toUpperCase();
+  return label === "IN PROGRESS" ? "LIVE" : label;
 }
 
 function liveSourceLabel(event: FlowGridLiveEvent) {
