@@ -269,7 +269,7 @@
 }
 
 .flow-grid-col-book {
-  width: 126px;
+  width: 190px;
 }
 
 .flow-grid-col-status {
@@ -357,6 +357,33 @@
   font-weight: 900;
   text-transform: uppercase;
   vertical-align: middle;
+}
+
+.flow-grid-price-strip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.flow-grid-price-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  margin: 0;
+  border: 1px solid rgba(90, 168, 255, 0.25);
+  border-radius: 2px;
+  background: rgba(13, 42, 74, 0.52);
+  color: #d9ebff;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 850;
+  max-width: 88px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .flow-grid-leg-chip {

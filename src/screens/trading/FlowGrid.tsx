@@ -1,5 +1,5 @@
 import { Activity, Pause, Play, RefreshCw, Square, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
 import { formatExchangeMoney, localEventTime } from "../../core/format";
 
@@ -146,6 +146,17 @@ function compactLegLabel(leg: FlowGridLeg) {
   return `${leg.label} ${centsLabel(leg.bidCents)}/${centsLabel(leg.askCents)}`;
 }
 
+function legPriceCents(leg: FlowGridLeg) {
+  const bid = Number(leg.bidCents || 0);
+  const ask = Number(leg.askCents || 0);
+  if (bid > 0 && ask > 0) return Math.round(((bid + ask) / 2) * 10) / 10;
+  return Math.round((ask || bid) * 10) / 10;
+}
+
+function compactPriceLabel(leg: FlowGridLeg) {
+  return `${leg.label} ${centsLabel(legPriceCents(leg))}`;
+}
+
 function marketFamilyLabel(event: FlowGridEvent) {
   return String(event.marketFamily || "").trim().toUpperCase();
 }
@@ -257,9 +268,10 @@ async function jsonFetch<T>(url: string, options?: RequestInit): Promise<T> {
   return payload as T;
 }
 
-async function loadEvents(sport: string, dateFilter: DateFilter) {
+async function loadEvents(sport: string, dateFilter: DateFilter, signal?: AbortSignal) {
   const payload = await jsonFetch<{ events: FlowGridEvent[] }>(
-    `/api/flow-grid/events?sport=${encodeURIComponent(sport)}&limit=50&books=1&date=${encodeURIComponent(dateFilter)}${eventRangeQuery(dateFilter)}`
+    `/api/flow-grid/events?sport=${encodeURIComponent(sport)}&limit=50&books=1&date=${encodeURIComponent(dateFilter)}${eventRangeQuery(dateFilter)}`,
+    { signal }
   );
   return payload.events || [];
 }
@@ -425,6 +437,9 @@ export default function FlowGrid() {
   const [manualEvent, setManualEvent] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const eventsRequestRef = useRef(0);
+  const eventsAbortRef = useRef<AbortController | null>(null);
+  const eventsCacheRef = useRef<Map<string, FlowGridEvent[]>>(new Map());
   const detailEvent = useMemo(() => (
     events.find((event) => event.slug === detailSlug || event.id === detailSlug)
     || sessions.find((session) => session.event?.slug === detailSlug || session.event?.id === detailSlug)?.event
@@ -432,15 +447,30 @@ export default function FlowGrid() {
   ), [events, sessions, detailSlug]);
 
   async function refreshEvents(nextSport = sport, nextDateFilter = dateFilter) {
+    const requestId = eventsRequestRef.current + 1;
+    eventsRequestRef.current = requestId;
+    eventsAbortRef.current?.abort();
+    const controller = new AbortController();
+    eventsAbortRef.current = controller;
+    const cacheKey = `${nextSport}:${nextDateFilter}`;
+    const cached = eventsCacheRef.current.get(cacheKey);
+    if (cached) setEvents(cached);
     setBusy("refresh");
     try {
-      const next = await loadEvents(nextSport, nextDateFilter);
+      const next = await loadEvents(nextSport, nextDateFilter, controller.signal);
+      if (eventsRequestRef.current !== requestId) return;
+      eventsCacheRef.current.set(cacheKey, next);
       setEvents(next);
       setError("");
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      if (eventsRequestRef.current !== requestId) return;
       setError(err instanceof Error ? err.message : "Flow Grid events failed");
     } finally {
-      setBusy("");
+      if (eventsRequestRef.current === requestId) {
+        setBusy("");
+        if (eventsAbortRef.current === controller) eventsAbortRef.current = null;
+      }
     }
   }
 
@@ -525,7 +555,10 @@ export default function FlowGrid() {
       refreshSessions();
       refreshWallet();
     }, 3000);
-    return () => window.clearInterval(timer);
+    return () => {
+      eventsAbortRef.current?.abort();
+      window.clearInterval(timer);
+    };
   }, []);
 
   const visibleEvents = useMemo(
@@ -659,7 +692,7 @@ export default function FlowGrid() {
             </colgroup>
             <thead>
               <tr>
-                <th>Enable</th><th>Sport</th><th>Event</th><th>Time</th><th>Legs</th><th>Liquidity</th><th>Basket</th><th>Full Grid</th><th>Event Cap</th><th>Epoch</th><th>Status</th><th>Actions</th>
+                <th>Enable</th><th>Sport</th><th>Event</th><th>Time</th><th>Legs</th><th>Liquidity</th><th>Prices</th><th>Full Grid</th><th>Event Cap</th><th>Epoch</th><th>Status</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -693,7 +726,11 @@ export default function FlowGrid() {
                       </div>
                     </td>
                     <td>{money(event.liquidityUsd)}</td>
-                    <td>Bid {centsLabel(event.bidSumCents)} / Ask {centsLabel(event.askSumCents)} ({centsLabel(event.basketSpreadCents)})</td>
+                    <td>
+                      <div className="flow-grid-price-strip" title={event.legs.map(compactLegLabel).join(" / ")}>
+                        {event.legs.map((leg) => <span className="flow-grid-price-chip" key={`${leg.key}:${leg.tokenId}`}>{compactPriceLabel(leg)}</span>)}
+                      </div>
+                    </td>
                     <td>{money(exposure.theoreticalFullGridUsd)}</td>
                     <td>{money(exposure.maxEventExposureUsd)}</td>
                     <td>{money(exposure.maxEpochExposureUsd)}</td>
