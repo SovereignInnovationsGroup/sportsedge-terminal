@@ -78,6 +78,19 @@ type FlowGridSession = {
   createdAt: string;
   updatedAt: string;
   executor?: { ok?: boolean; detail?: string; payload?: Record<string, unknown> } | null;
+  pnlUsd?: number;
+  openPnlUsd?: number;
+  realizedPnlUsd?: number;
+};
+
+type FlowGridWallet = {
+  at?: string;
+  balance?: number;
+  allowance?: number;
+  openOrders?: number;
+  signer?: string;
+  funder?: string;
+  error?: string;
 };
 
 const DEFAULT_SETTINGS: FlowGridSettings = {
@@ -91,6 +104,24 @@ const DEFAULT_SETTINGS: FlowGridSettings = {
   reloadCooldownMs: 750,
   maxQuoteAgeMs: 500
 };
+
+const SPORTS = [
+  { label: "Football", value: "football" },
+  { label: "Tennis", value: "tennis" },
+  { label: "Basketball", value: "basketball" },
+  { label: "Baseball", value: "baseball" },
+  { label: "Hockey", value: "hockey" },
+  { label: "Cricket", value: "cricket" }
+];
+
+const DATE_FILTERS = [
+  { label: "All", value: "all" },
+  { label: "Today", value: "today" },
+  { label: "Tomorrow", value: "tomorrow" },
+  { label: "Next 7 Days", value: "next7" }
+] as const;
+
+type DateFilter = typeof DATE_FILTERS[number]["value"];
 
 function money(value: number | undefined | null) {
   return formatExchangeMoney(Number(value || 0), "USD");
@@ -107,6 +138,55 @@ function centsLabel(value: number | undefined | null) {
   const amount = Number(value || 0);
   if (!Number.isFinite(amount) || amount <= 0) return "-";
   return `${Number.isInteger(amount) ? amount : amount.toFixed(1)}c`;
+}
+
+function compactLegLabel(leg: FlowGridLeg) {
+  return `${leg.label} ${centsLabel(leg.bidCents)}/${centsLabel(leg.askCents)}`;
+}
+
+function eventDate(event: FlowGridEvent) {
+  const raw = event.endAt || event.startAt;
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function dayKey(value: Date) {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+}
+
+function matchesDateFilter(event: FlowGridEvent, filter: DateFilter, now = new Date()) {
+  if (filter === "all") return true;
+  const date = eventDate(event);
+  if (!date) return false;
+  const today = dayKey(now);
+  const tomorrowDate = new Date(now);
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrow = dayKey(tomorrowDate);
+  const eventKey = dayKey(date);
+  if (filter === "today") return eventKey === today;
+  if (filter === "tomorrow") return eventKey === tomorrow;
+  const sevenDays = new Date(now);
+  sevenDays.setDate(sevenDays.getDate() + 7);
+  return date.getTime() >= now.getTime() && date.getTime() <= sevenDays.getTime();
+}
+
+function numericValue(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function sessionPnl(session: FlowGridSession) {
+  const source = session as FlowGridSession & {
+    raw?: Record<string, unknown>;
+    executor?: { payload?: Record<string, unknown> } | null;
+  };
+  return numericValue(source.pnlUsd)
+    ?? numericValue(source.openPnlUsd)
+    ?? numericValue(source.realizedPnlUsd)
+    ?? numericValue(source.raw?.pnlUsd)
+    ?? numericValue(source.executor?.payload?.pnlUsd)
+    ?? 0;
 }
 
 function timeLabel(value: string | null | undefined) {
@@ -151,7 +231,7 @@ async function jsonFetch<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 async function loadEvents(sport: string) {
-  const payload = await jsonFetch<{ events: FlowGridEvent[] }>(`/api/flow-grid/events?sport=${encodeURIComponent(sport)}&limit=30&books=1`);
+  const payload = await jsonFetch<{ events: FlowGridEvent[] }>(`/api/flow-grid/events?sport=${encodeURIComponent(sport)}&limit=50&books=1`);
   return payload.events || [];
 }
 
@@ -162,6 +242,10 @@ async function resolveEvent(input: string, sport: string) {
 
 async function loadSessions() {
   return jsonFetch<{ executorConfigured: boolean; sessions: FlowGridSession[] }>("/api/flow-grid/sessions");
+}
+
+async function loadWallet() {
+  return jsonFetch<{ executorConfigured: boolean; wallet: FlowGridWallet | null; executor?: { detail?: string } | null }>("/api/flow-grid/wallet");
 }
 
 async function startGrid(event: FlowGridEvent, settings: FlowGridSettings) {
@@ -299,8 +383,11 @@ function EventDetail({
 
 export default function FlowGrid() {
   const [sport, setSport] = useState("football");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [events, setEvents] = useState<FlowGridEvent[]>([]);
   const [sessions, setSessions] = useState<FlowGridSession[]>([]);
+  const [wallet, setWallet] = useState<FlowGridWallet | null>(null);
+  const [walletError, setWalletError] = useState("");
   const [executorConfigured, setExecutorConfigured] = useState(false);
   const [settings, setSettings] = useState<FlowGridSettings>(DEFAULT_SETTINGS);
   const [enabled, setEnabled] = useState<Set<string>>(() => new Set());
@@ -309,8 +396,11 @@ export default function FlowGrid() {
   const [manualEvent, setManualEvent] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
-  const selectedEvent = useMemo(() => events.find((event) => event.slug === selectedSlug || event.id === selectedSlug) || null, [events, selectedSlug]);
-  const detailEvent = useMemo(() => events.find((event) => event.slug === detailSlug || event.id === detailSlug) || null, [events, detailSlug]);
+  const detailEvent = useMemo(() => (
+    events.find((event) => event.slug === detailSlug || event.id === detailSlug)
+    || sessions.find((session) => session.event?.slug === detailSlug || session.event?.id === detailSlug)?.event
+    || null
+  ), [events, sessions, detailSlug]);
 
   async function refreshEvents(nextSport = sport) {
     setBusy("refresh");
@@ -332,6 +422,18 @@ export default function FlowGrid() {
       setExecutorConfigured(Boolean(payload.executorConfigured));
     } catch {
       setSessions([]);
+    }
+  }
+
+  async function refreshWallet() {
+    try {
+      const payload = await loadWallet();
+      setWallet(payload.wallet || null);
+      setWalletError(payload.executor?.detail || "");
+      if (payload.executorConfigured) setExecutorConfigured(true);
+    } catch (err) {
+      setWallet(null);
+      setWalletError(err instanceof Error ? err.message : "Wallet unavailable");
     }
   }
 
@@ -377,19 +479,40 @@ export default function FlowGrid() {
     }
   }
 
+  function toggleEvent(key: string) {
+    setEnabled((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   useEffect(() => {
     refreshEvents("football");
     refreshSessions();
-    const timer = window.setInterval(refreshSessions, 3000);
+    refreshWallet();
+    const timer = window.setInterval(() => {
+      refreshSessions();
+      refreshWallet();
+    }, 3000);
     return () => window.clearInterval(timer);
   }, []);
 
-  const totals = events.reduce((acc, event) => {
+  const visibleEvents = useMemo(
+    () => events.filter((event) => matchesDateFilter(event, dateFilter)),
+    [events, dateFilter]
+  );
+
+  const totals = visibleEvents.reduce((acc, event) => {
     const exposure = previewExposure(event, settings);
     acc.liquidity += Number(event.liquidityUsd || 0);
-    if (enabled.has(event.slug || event.id)) acc.enabledExposure += exposure.maxEventExposureUsd;
+    if (enabled.has(event.slug || event.id)) {
+      acc.enabledExposure += exposure.maxEventExposureUsd;
+      acc.enabledCount += 1;
+    }
     return acc;
-  }, { liquidity: 0, enabledExposure: 0 });
+  }, { liquidity: 0, enabledExposure: 0, enabledCount: 0 });
 
   return (
     <div className="terminal-shell">
@@ -397,24 +520,42 @@ export default function FlowGrid() {
       <main className="terminal-content flow-grid-screen">
         <section className="flow-grid-summary">
           <article><span>Executor</span><strong className={executorConfigured ? "positive" : "warning"}>{executorConfigured ? "Ireland linked" : "Control only"}</strong></article>
-          <article><span>Events</span><strong>{events.length}</strong></article>
-          <article><span>Enabled exposure</span><strong>{money(totals.enabledExposure)}</strong></article>
+          <article><span>Wallet</span><strong className={wallet?.balance != null ? "positive" : "warning"}>{wallet?.balance != null ? money(wallet.balance) : "Unavailable"}</strong><small>{wallet?.openOrders != null ? `${wallet.openOrders} open orders` : walletError || "No wallet feed"}</small></article>
+          <article><span>Events</span><strong>{visibleEvents.length}</strong><small>{events.length} loaded</small></article>
+          <article><span>Enabled exposure</span><strong>{money(totals.enabledExposure)}</strong><small>{totals.enabledCount} enabled</small></article>
           <article><span>Visible liquidity</span><strong>{money(totals.liquidity)}</strong></article>
           <article><span>Open grids</span><strong>{sessions.length}</strong></article>
         </section>
 
         <section className="flow-grid-controls">
+          <div className="flow-grid-filterbar">
+            <nav aria-label="Flow grid sport filter">
+              {SPORTS.map((item) => (
+                <button
+                  type="button"
+                  key={item.value}
+                  className={sport === item.value ? "active" : ""}
+                  onClick={() => { setSport(item.value); refreshEvents(item.value); }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+            <span>/</span>
+            <nav aria-label="Flow grid date filter">
+              {DATE_FILTERS.map((item) => (
+                <button
+                  type="button"
+                  key={item.value}
+                  className={dateFilter === item.value ? "active" : ""}
+                  onClick={() => setDateFilter(item.value)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+          </div>
           <div className="flow-grid-control-group">
-            <label>Sport
-              <select value={sport} onChange={(event) => { setSport(event.target.value); refreshEvents(event.target.value); }}>
-                <option value="football">Football</option>
-                <option value="tennis">Tennis</option>
-                <option value="basketball">Basketball</option>
-                <option value="baseball">Baseball</option>
-                <option value="hockey">Hockey</option>
-                <option value="cricket">Cricket</option>
-              </select>
-            </label>
             <label>Event slug
               <input value={manualEvent} onChange={(event) => setManualEvent(event.target.value)} placeholder="event slug or market URL" />
             </label>
@@ -433,19 +574,65 @@ export default function FlowGrid() {
 
         {error && <section className="flow-grid-error">{error}</section>}
 
+        <section className="flow-grid-table-panel sessions">
+          <div className="flow-grid-section-head">
+            <span>Open orders / grids</span>
+            <strong>{sessions.length} tracked / P&L live when executor reports fills</strong>
+          </div>
+          <table>
+            <thead>
+              <tr><th>State</th><th>Event</th><th>Created</th><th>Event Cap</th><th>Epoch Cap</th><th>P&L</th><th>Executor</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              {sessions.map((session) => {
+                const pnl = sessionPnl(session);
+                return (
+                  <tr key={session.id} onDoubleClick={() => setDetailSlug(session.event?.slug || session.event?.id || "")}>
+                    <td><StatusPill status={session.status} /></td>
+                    <td><strong>{session.event?.title || session.id}</strong><small>{session.id}</small></td>
+                    <td>{timeLabel(session.createdAt)}</td>
+                    <td>{money(session.exposure?.maxEventExposureUsd)}</td>
+                    <td>{money(session.exposure?.maxEpochExposureUsd)}</td>
+                    <td className={pnl >= 0 ? "positive" : "negative"}>{signedMoney(pnl)}</td>
+                    <td>{session.executor?.ok ? "Ireland accepted" : session.executor?.detail || "pending"}</td>
+                    <td className="flow-grid-row-actions">
+                      <button type="button" onClick={() => sendAction(session, "flatten")}><Square size={13} /> Flat</button>
+                      <button type="button" onClick={() => sendAction(session, "stop")}><X size={13} /> Stop</button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {!sessions.length && <tr><td colSpan={8}>No open grid orders.</td></tr>}
+            </tbody>
+          </table>
+        </section>
+
         <section className="flow-grid-table-panel">
           <div className="flow-grid-section-head">
             <span>Supported events</span>
             <strong>{sport.toUpperCase()} / PREDICTIVE VENUES</strong>
           </div>
           <table>
+            <colgroup>
+              <col className="flow-grid-col-enable" />
+              <col className="flow-grid-col-event" />
+              <col className="flow-grid-col-time" />
+              <col className="flow-grid-col-legs" />
+              <col className="flow-grid-col-money" />
+              <col className="flow-grid-col-book" />
+              <col className="flow-grid-col-money" />
+              <col className="flow-grid-col-money" />
+              <col className="flow-grid-col-money" />
+              <col className="flow-grid-col-status" />
+              <col className="flow-grid-col-actions" />
+            </colgroup>
             <thead>
               <tr>
                 <th>Enable</th><th>Event</th><th>Time</th><th>Legs</th><th>Liquidity</th><th>Book</th><th>Full Grid</th><th>Event Cap</th><th>Epoch</th><th>Status</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {events.map((event) => {
+              {visibleEvents.map((event) => {
                 const key = event.slug || event.id;
                 const checked = enabled.has(key);
                 const exposure = previewExposure(event, settings);
@@ -458,28 +645,27 @@ export default function FlowGrid() {
                     onDoubleClick={() => { setSelectedSlug(key); setDetailSlug(key); }}
                   >
                     <td>
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(change) => {
-                          setEnabled((current) => {
-                            const next = new Set(current);
-                            if (change.target.checked) next.add(key);
-                            else next.delete(key);
-                            return next;
-                          });
-                        }}
-                      />
+                      <button
+                        type="button"
+                        className={`flow-grid-enable-button ${checked ? "active" : ""}`}
+                        onClick={(click) => { click.stopPropagation(); toggleEvent(key); }}
+                      >
+                        {checked ? `On ${money(exposure.maxEventExposureUsd)}` : "Enable"}
+                      </button>
                     </td>
-                    <td><strong>{event.title}</strong><small>{event.slug}</small></td>
+                    <td><strong title={event.title}>{event.title}</strong></td>
                     <td>{timeLabel(event.endAt || event.startAt)}</td>
-                    <td>{event.legs.map((leg) => <span className="flow-grid-leg-chip" key={leg.key}>{leg.label} {centsLabel(leg.bidCents)}/{centsLabel(leg.askCents)}</span>)}</td>
+                    <td>
+                      <div className="flow-grid-leg-strip" title={event.legs.map(compactLegLabel).join(" / ")}>
+                        {event.legs.map((leg) => <span className="flow-grid-leg-chip" key={leg.key}>{compactLegLabel(leg)}</span>)}
+                      </div>
+                    </td>
                     <td>{money(event.liquidityUsd)}</td>
-                    <td>{centsLabel(event.bidSumCents)} / {centsLabel(event.askSumCents)} <small>{centsLabel(event.basketSpreadCents)} spread</small></td>
+                    <td>{centsLabel(event.bidSumCents)} / {centsLabel(event.askSumCents)} ({centsLabel(event.basketSpreadCents)})</td>
                     <td>{money(exposure.theoreticalFullGridUsd)}</td>
                     <td>{money(exposure.maxEventExposureUsd)}</td>
                     <td>{money(exposure.maxEpochExposureUsd)}</td>
-                    <td>{session ? <StatusPill status={session.status} /> : <StatusPill status={checked ? "enabled" : "idle"} />}</td>
+                    <td>{session ? <StatusPill status={session.status} /> : checked ? <span className="flow-grid-exposure-note">Cost {money(exposure.maxEventExposureUsd)} / epoch {money(exposure.maxEpochExposureUsd)}</span> : <StatusPill status="idle" />}</td>
                     <td className="flow-grid-row-actions">
                       <button type="button" disabled={!checked || busy === `start:${key}`} onClick={(click) => { click.stopPropagation(); startEvent(event); }}><Play size={13} /> Start</button>
                       {session && <button type="button" onClick={(click) => { click.stopPropagation(); sendAction(session, "pause"); }}><Pause size={13} /> Pause</button>}
@@ -488,36 +674,7 @@ export default function FlowGrid() {
                   </tr>
                 );
               })}
-              {!events.length && <tr><td colSpan={11}>No supported events returned for this sport.</td></tr>}
-            </tbody>
-          </table>
-        </section>
-
-        <section className="flow-grid-table-panel sessions">
-          <div className="flow-grid-section-head">
-            <span>Grid sessions</span>
-            <strong>{sessions.length} tracked</strong>
-          </div>
-          <table>
-            <thead>
-              <tr><th>State</th><th>Event</th><th>Created</th><th>Event Cap</th><th>Epoch Cap</th><th>Executor</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-              {sessions.map((session) => (
-                <tr key={session.id}>
-                  <td><StatusPill status={session.status} /></td>
-                  <td><strong>{session.event?.title || session.id}</strong><small>{session.id}</small></td>
-                  <td>{timeLabel(session.createdAt)}</td>
-                  <td>{money(session.exposure?.maxEventExposureUsd)}</td>
-                  <td>{money(session.exposure?.maxEpochExposureUsd)}</td>
-                  <td>{session.executor?.ok ? "Ireland accepted" : session.executor?.detail || "pending"}</td>
-                  <td className="flow-grid-row-actions">
-                    <button type="button" onClick={() => sendAction(session, "flatten")}><Square size={13} /> Flat</button>
-                    <button type="button" onClick={() => sendAction(session, "stop")}><X size={13} /> Stop</button>
-                  </td>
-                </tr>
-              ))}
-              {!sessions.length && <tr><td colSpan={7}>No grid sessions.</td></tr>}
+              {!visibleEvents.length && <tr><td colSpan={11}>No supported events match this filter.</td></tr>}
             </tbody>
           </table>
         </section>
