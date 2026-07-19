@@ -16,6 +16,7 @@ const TOP_NAV = [
   { label: "Rugby", value: "rugby", route: "#rugby" },
   { label: "Cricket", value: "cricket", route: "#cricket" },
   { label: "|", value: "global-divider", route: "", divider: true },
+  { label: "Flow Grid", value: "flow-grid", route: "#flow-grid" },
   { label: "Arbs", value: "arbs", route: "#arbs" },
   { label: "XPoly", value: "xpoly", route: "#xpoly" },
   { label: "News", value: "news", route: "#news" }

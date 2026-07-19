@@ -36,6 +36,7 @@ const StandaloneNews = lazy(() => import("../screens/news/StandaloneNews"));
 const AdminConsole = lazy(() => import("../screens/admin/AdminConsole"));
 const AdminNewsSources = lazy(() => import("../screens/admin/AdminNewsSources"));
 const OddsApiDiagnostics = lazy(() => import("../screens/diagnostics/OddsApiDiagnostics"));
+const FlowGrid = lazy(() => import("../screens/trading/FlowGrid"));
 const FootballLiquidity = lazy(() => import("../sports/football/Liquidity"));
 const FootballLiquidityCompactDemo = lazy(() => import("../sports/football/LiquidityCompactDemo"));
 const FootballSignalDemo = lazy(() => import("../sports/football/SignalDemo"));
@@ -127,6 +128,7 @@ function screenForHash(hash: string, isMobile = false) {
   if (hash === "#admin") return requireSession(<AdminConsole />);
   if (hash === "#admin-news-sources") return requireSession(<AdminNewsSources />);
   if (hash === "#oddsapi") return requireSession(<OddsApiDiagnostics />);
+  if (hash === "#flow-grid") return requireSession(<FlowGrid />);
   if (hash === "#football") return isMobile ? <MobileFootball /> : <FootballDashboard />;
   if (hash === "#tennis") return <TennisDashboard />;
   if (hash === "#tennis-dashboard") return requireSession(<TennisDashboard active="tennis-dashboard" />);

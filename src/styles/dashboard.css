@@ -22,6 +22,434 @@
   --brand-logo-width: 430px;
 }
 
+.flow-grid-screen {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px 28px;
+  color: #d7e2ef;
+}
+
+.flow-grid-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.flow-grid-summary article,
+.flow-grid-controls,
+.flow-grid-table-panel,
+.flow-grid-orders-panel {
+  border: 1px solid rgba(117, 139, 163, 0.24);
+  background: #071019;
+  border-radius: 6px;
+}
+
+.flow-grid-summary article {
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  min-width: 0;
+}
+
+.flow-grid-summary span,
+.flow-grid-section-head span,
+.flow-grid-control-group label,
+.flow-grid-detail header span,
+.flow-grid-detail-kpis span {
+  color: #8fa0b4;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.flow-grid-summary strong,
+.flow-grid-detail-kpis strong {
+  color: #f3f7fb;
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.flow-grid-summary .positive,
+.flow-grid-table-panel .positive {
+  color: #72e6a2;
+}
+
+.flow-grid-summary .warning {
+  color: #ffd76a;
+}
+
+.flow-grid-controls {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+}
+
+.flow-grid-control-group {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.flow-grid-control-group.numeric {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(76px, 1fr));
+}
+
+.flow-grid-control-group label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.flow-grid-control-group input,
+.flow-grid-control-group select {
+  width: 100%;
+  height: 34px;
+  border: 1px solid rgba(117, 139, 163, 0.34);
+  border-radius: 5px;
+  background: #0a1320;
+  color: #eaf0f6;
+  padding: 0 9px;
+  font: inherit;
+  min-width: 0;
+}
+
+.flow-grid-control-group button,
+.flow-grid-row-actions button,
+.flow-grid-detail-actions a,
+.flow-grid-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  border: 1px solid rgba(117, 139, 163, 0.34);
+  border-radius: 5px;
+  background: #0d1724;
+  color: #dbe7f4;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.flow-grid-control-group button:hover,
+.flow-grid-row-actions button:hover,
+.flow-grid-detail-actions a:hover,
+.flow-grid-icon-button:hover {
+  border-color: rgba(114, 230, 162, 0.7);
+  color: #ffffff;
+}
+
+.flow-grid-control-group button:disabled,
+.flow-grid-row-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.flow-grid-error {
+  border: 1px solid rgba(255, 99, 99, 0.35);
+  border-radius: 5px;
+  background: rgba(100, 18, 18, 0.32);
+  color: #ffd0d0;
+  padding: 9px 11px;
+  font-weight: 750;
+}
+
+.flow-grid-table-panel {
+  overflow: hidden;
+}
+
+.flow-grid-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 37px;
+  padding: 0 10px;
+  border-bottom: 1px solid rgba(117, 139, 163, 0.18);
+}
+
+.flow-grid-section-head strong {
+  color: #b6c7dc;
+  font-size: 11px;
+}
+
+.flow-grid-table-panel table,
+.flow-grid-orders-panel table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.flow-grid-table-panel th,
+.flow-grid-table-panel td,
+.flow-grid-orders-panel th,
+.flow-grid-orders-panel td {
+  border-bottom: 1px solid rgba(117, 139, 163, 0.14);
+  padding: 7px 8px;
+  text-align: left;
+  vertical-align: middle;
+  font-size: 12px;
+}
+
+.flow-grid-table-panel th,
+.flow-grid-orders-panel th {
+  color: #8fa0b4;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.flow-grid-table-panel tbody tr {
+  cursor: pointer;
+}
+
+.flow-grid-table-panel tbody tr:hover,
+.flow-grid-table-panel tbody tr.selected {
+  background: rgba(72, 141, 215, 0.09);
+}
+
+.flow-grid-table-panel td strong,
+.flow-grid-orders-panel td strong {
+  display: block;
+  color: #f0f5fb;
+  font-weight: 850;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-grid-table-panel td small,
+.flow-grid-orders-panel td small {
+  display: block;
+  color: #7d8fa4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flow-grid-leg-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  margin: 1px 4px 1px 0;
+  border: 1px solid rgba(114, 230, 162, 0.25);
+  border-radius: 4px;
+  background: rgba(9, 38, 29, 0.55);
+  color: #c7f7dd;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.flow-grid-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 76px;
+  min-height: 23px;
+  border: 1px solid rgba(117, 139, 163, 0.34);
+  border-radius: 4px;
+  background: #101827;
+  color: #aebdd1;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.flow-grid-pill.live {
+  border-color: rgba(0, 209, 139, 0.75);
+  background: rgba(0, 111, 80, 0.32);
+  color: #87f5bb;
+}
+
+.flow-grid-pill.warn {
+  border-color: rgba(255, 215, 106, 0.65);
+  background: rgba(96, 70, 7, 0.28);
+  color: #ffe08a;
+}
+
+.flow-grid-row-actions {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.flow-grid-detail {
+  position: fixed;
+  inset: 58px 0 0 0;
+  z-index: 80;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 13px;
+  background: #03080d;
+  color: #dce7f5;
+  overflow: auto;
+}
+
+.flow-grid-detail header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid rgba(117, 139, 163, 0.22);
+  border-radius: 6px;
+  background: #071019;
+  padding: 11px 12px;
+}
+
+.flow-grid-detail header strong {
+  display: block;
+  color: #ffffff;
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.flow-grid-detail header small {
+  display: block;
+  color: #8fa0b4;
+  margin-top: 4px;
+  font-weight: 750;
+}
+
+.flow-grid-detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.flow-grid-icon-button {
+  width: 34px;
+  padding: 0;
+}
+
+.flow-grid-detail-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.flow-grid-detail-kpis article {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(117, 139, 163, 0.22);
+  border-radius: 6px;
+  background: #071019;
+  padding: 10px;
+}
+
+.flow-grid-ladder-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 9px;
+  min-height: 0;
+}
+
+.flow-grid-leg-ladder {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  gap: 8px;
+  border: 1px solid rgba(117, 139, 163, 0.22);
+  border-radius: 6px;
+  background: #071019;
+  padding: 10px;
+  min-width: 0;
+}
+
+.flow-grid-leg-head,
+.flow-grid-book-strip {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.flow-grid-leg-head span {
+  color: #f1f6fb;
+  font-weight: 900;
+}
+
+.flow-grid-leg-head strong,
+.flow-grid-book-strip span {
+  color: #9fb1c6;
+  font-size: 12px;
+}
+
+.flow-grid-levels {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 4px;
+}
+
+.flow-grid-levels span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  border: 1px solid rgba(114, 230, 162, 0.25);
+  border-radius: 4px;
+  background: rgba(9, 38, 29, 0.45);
+  color: #d9f9e8;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.flow-grid-book-depth {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  min-height: 0;
+}
+
+.flow-grid-book-depth div {
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  border-top: 1px solid rgba(117, 139, 163, 0.18);
+  padding-top: 7px;
+}
+
+.flow-grid-book-depth strong {
+  color: #8fa0b4;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.flow-grid-book-depth span {
+  display: flex;
+  justify-content: space-between;
+  color: #c8d6e7;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.flow-grid-orders-panel {
+  overflow: hidden;
+}
+
+@media (max-width: 980px) {
+  .flow-grid-summary,
+  .flow-grid-detail-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .flow-grid-control-group.numeric {
+    grid-template-columns: repeat(3, minmax(76px, 1fr));
+  }
+
+  .flow-grid-detail {
+    top: 52px;
+  }
+}
+
 .manual-trading-shell {
   background: #03080d;
   color: #dce7f3;
