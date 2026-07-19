@@ -242,6 +242,10 @@ function matchesDateFilter(event: FlowGridEvent, filter: DateFilter, now = new D
   return date.getTime() >= now.getTime() && date.getTime() <= sevenDays.getTime();
 }
 
+function matchesSportFilter(event: FlowGridEvent, filter: string) {
+  return filter === "all" || sportKey(event.sport) === sportKey(filter);
+}
+
 function eventRangeQuery(filter: DateFilter) {
   if (filter === "all") return "";
   const now = new Date();
@@ -593,7 +597,7 @@ async function jsonFetch<T>(url: string, options?: RequestInit): Promise<T> {
 async function loadEvents(sport: string, dateFilter: DateFilter, signal?: AbortSignal) {
   const limit = sport === "all" ? 150 : 100;
   const payload = await jsonFetch<{ events: FlowGridEvent[] }>(
-    `/api/flow-grid/events?sport=${encodeURIComponent(sport)}&limit=${limit}&books=1&date=${encodeURIComponent(dateFilter)}${eventRangeQuery(dateFilter)}`,
+    `/api/flow-grid/events?sport=${encodeURIComponent(sport)}&limit=${limit}&books=0&date=${encodeURIComponent(dateFilter)}${eventRangeQuery(dateFilter)}`,
     { signal }
   );
   return payload.events || [];
@@ -839,6 +843,28 @@ export default function FlowGrid() {
     }
   }
 
+  async function openDetail(event: FlowGridEvent) {
+    const key = event.slug || event.id;
+    setSelectedSlug(key);
+    setDetailSlug(key);
+    if (!event.slug || event.legs.some((leg) => leg.book)) return;
+    try {
+      const enriched = await resolveEvent(event.slug, event.sport);
+      setEvents((current) => current.map((item) => (
+        item.slug === enriched.slug || item.id === enriched.id ? enriched : item
+      )));
+      const cacheKey = `${sport}:${dateFilter}`;
+      const cached = eventsCacheRef.current.get(cacheKey);
+      if (cached) {
+        eventsCacheRef.current.set(cacheKey, cached.map((item) => (
+          item.slug === enriched.slug || item.id === enriched.id ? enriched : item
+        )));
+      }
+    } catch {
+      // The detail can still render the live top-of-book rows if depth fails.
+    }
+  }
+
   async function startEvent(event: FlowGridEvent) {
     setBusy(`start:${event.slug || event.id}`);
     try {
@@ -981,8 +1007,11 @@ export default function FlowGrid() {
   }, [sport]);
 
   const visibleEvents = useMemo(
-    () => sortEventsForGrid(events.filter((event) => matchesDateFilter(event, dateFilter)), sessions),
-    [events, dateFilter, sessions]
+    () => sortEventsForGrid(
+      events.filter((event) => matchesDateFilter(event, dateFilter) && matchesSportFilter(event, sport)),
+      sessions
+    ),
+    [events, dateFilter, sport, sessions]
   );
 
   const totals = visibleEvents.reduce((acc, event) => {
@@ -1127,7 +1156,7 @@ export default function FlowGrid() {
                     key={key}
                     className={selectedSlug === key ? "selected" : ""}
                     onClick={() => setSelectedSlug(key)}
-                    onDoubleClick={() => { setSelectedSlug(key); setDetailSlug(key); }}
+                    onDoubleClick={() => { void openDetail(event); }}
                   >
                     <td>
                       <button
