@@ -1,7 +1,8 @@
 import { Activity, Pause, Play, RefreshCw, Square, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TerminalTopbar } from "../../app/TerminalTopbar";
-import { formatExchangeMoney, localEventTime } from "../../core/format";
+import { formatExchangeMoney, localEventTime, normalizeFixtureText } from "../../core/format";
+import { sportsEdgeWsUrl } from "../../core/news";
 
 type FlowGridLevel = {
   price: number;
@@ -94,6 +95,23 @@ type FlowGridWallet = {
   error?: string;
 };
 
+type FlowGridSocketStatus = "waiting" | "connecting" | "live" | "offline";
+
+type FlowGridPricePatch = {
+  sport?: string;
+  eventSlug?: string;
+  marketSlug?: string;
+  tokenId?: string;
+  eventTitle?: string;
+  outcome?: string;
+  bidCents?: number;
+  askCents?: number;
+  topBidSize?: number;
+  topAskSize?: number;
+  liquidityUsd?: number;
+  volumeUsd?: number;
+};
+
 const DEFAULT_SETTINGS: FlowGridSettings = {
   stakeUsdPerLevel: 5,
   levelSpacingCents: 1,
@@ -113,8 +131,11 @@ const SPORTS = [
   { label: "Basketball", value: "basketball" },
   { label: "Baseball", value: "baseball" },
   { label: "Hockey", value: "hockey" },
-  { label: "Cricket", value: "cricket" }
+  { label: "Cricket", value: "cricket" },
+  { label: "Golf", value: "golf" }
 ];
+
+const FLOW_GRID_WSS_SPORTS = SPORTS.filter((item) => item.value !== "all").map((item) => item.value);
 
 const DATE_FILTERS = [
   { label: "All", value: "all" },
@@ -165,8 +186,14 @@ function sportLabel(value: string | null | undefined) {
   return String(value || "unknown").replace(/-/g, " ").toUpperCase();
 }
 
+function sportKey(value: string | null | undefined) {
+  const normalized = normalizeFixtureText(value || "").replace(/\s+/g, "-");
+  if (normalized === "soccer") return "football";
+  return normalized;
+}
+
 function eventDate(event: FlowGridEvent) {
-  const raw = event.endAt || event.startAt;
+  const raw = event.startAt || event.endAt;
   if (!raw) return null;
   const date = new Date(raw);
   return Number.isNaN(date.getTime()) ? null : date;
@@ -261,6 +288,194 @@ function gridLevels(leg: FlowGridLeg, settings: FlowGridSettings) {
   ));
 }
 
+function selectedSocketSports(value: string) {
+  return value === "all" ? FLOW_GRID_WSS_SPORTS : [value];
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function textValue(record: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  }
+  return "";
+}
+
+function numberValue(record: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    const parsed = typeof value === "number" ? value : Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return null;
+}
+
+function firstPresentKey(record: Record<string, unknown>, keys: string[]) {
+  return keys.find((key) => record[key] != null) || "";
+}
+
+function marketPriceToCents(value: number | null, key = "") {
+  if (!value || !Number.isFinite(value)) return undefined;
+  const normalizedKey = key.toLowerCase();
+  if (normalizedKey.includes("cent")) return Math.round(value * 10) / 10;
+  if (normalizedKey.includes("odds") && value > 1) return Math.round((100 / value) * 10) / 10;
+  if (value <= 1.05) return Math.round(value * 1000) / 10;
+  if (value <= 10) return Math.round((100 / value) * 10) / 10;
+  if (value <= 100) return Math.round(value * 10) / 10;
+  return undefined;
+}
+
+function directPatchFromRecord(record: Record<string, unknown>, inherited: Partial<FlowGridPricePatch> = {}) {
+  const tokenId = textValue(record, ["tokenId", "token_id", "assetId", "asset_id", "token"]);
+  const marketSlug = textValue(record, ["marketSlug", "market_slug", "market"]);
+  const eventSlug = textValue(record, ["eventSlug", "event_slug", "slug"]);
+  const eventTitle = textValue(record, ["eventName", "event_name", "fixture", "fixture_name", "name", "title", "event"]);
+  const outcome = textValue(record, ["runnerName", "runner_name", "selection", "outcome", "outcomeName", "outcome_name"]);
+  const bidKeys = ["bidCents", "bid_cents", "bestBidCents", "best_bid_cents", "bestBid", "best_bid", "bid"];
+  const askKeys = ["askCents", "ask_cents", "bestAskCents", "best_ask_cents", "bestAsk", "best_ask", "ask"];
+  const bidRaw = numberValue(record, bidKeys);
+  const askRaw = numberValue(record, askKeys);
+  const priceRaw = numberValue(record, ["price", "lastPrice", "last_price"]);
+  const bidCents = marketPriceToCents(bidRaw, firstPresentKey(record, bidKeys));
+  const askCents = marketPriceToCents(askRaw, firstPresentKey(record, askKeys));
+  const priceCents = marketPriceToCents(priceRaw, "price");
+  if (!tokenId && !marketSlug && !(eventTitle && outcome)) return null;
+  if (bidCents == null && askCents == null && priceCents == null) return null;
+  return {
+    ...inherited,
+    tokenId: tokenId || inherited.tokenId,
+    marketSlug: marketSlug || inherited.marketSlug,
+    eventSlug: eventSlug || inherited.eventSlug,
+    eventTitle: eventTitle || inherited.eventTitle,
+    outcome: outcome || inherited.outcome,
+    bidCents: bidCents ?? priceCents,
+    askCents: askCents ?? priceCents,
+    topBidSize: numberValue(record, ["topBidSize", "top_bid_size", "bidSize", "bid_size", "availableAmount", "available_amount", "amount", "size"]) ?? inherited.topBidSize,
+    topAskSize: numberValue(record, ["topAskSize", "top_ask_size", "askSize", "ask_size"]) ?? inherited.topAskSize,
+    liquidityUsd: numberValue(record, ["liquidityUsd", "liquidity_usd", "liquidity", "liquidityNum"]) ?? inherited.liquidityUsd,
+    volumeUsd: numberValue(record, ["volumeUsd", "volume_usd", "volume", "volumeNum"]) ?? inherited.volumeUsd
+  };
+}
+
+function patchesFromMatch(match: Record<string, unknown>, inherited: Partial<FlowGridPricePatch>) {
+  const eventTitle = textValue(match, ["eventName", "event_name", "fixture", "fixture_name", "name", "title"]) || inherited.eventTitle;
+  const eventSlug = textValue(match, ["eventSlug", "event_slug", "slug"]) || inherited.eventSlug;
+  const marketSlug = textValue(match, ["marketSlug", "market_slug"]) || inherited.marketSlug;
+  const sport = textValue(match, ["sportName", "sport_name", "sport"]) || inherited.sport;
+  const runners = Array.isArray(match.runners) ? match.runners : [];
+  return runners.flatMap((runner) => {
+    const record = asRecord(runner);
+    if (!record) return [];
+    const back = asRecord(record.back);
+    const lay = asRecord(record.lay);
+    const bidCents = marketPriceToCents(
+      numberValue(record, ["bidCents", "bid_cents"]) ?? (back ? numberValue(back, ["price", "odds", "decimalOdds", "decimal_odds"]) : null),
+      back ? "odds" : "bidCents"
+    );
+    const askCents = marketPriceToCents(
+      numberValue(record, ["askCents", "ask_cents"]) ?? (lay ? numberValue(lay, ["price", "odds", "decimalOdds", "decimal_odds"]) : null),
+      lay ? "odds" : "askCents"
+    );
+    const patch = directPatchFromRecord(record, {
+      eventTitle,
+      eventSlug,
+      marketSlug,
+      sport,
+      outcome: textValue(record, ["name", "runnerName", "runner_name", "selection", "outcome"]),
+      bidCents,
+      askCents,
+      topBidSize: back ? numberValue(back, ["amount", "size", "availableAmount", "available_amount"]) ?? undefined : undefined,
+      topAskSize: lay ? numberValue(lay, ["amount", "size", "availableAmount", "available_amount"]) ?? undefined : undefined
+    });
+    return patch ? [patch] : [];
+  });
+}
+
+function socketPricePatches(payload: unknown, channel: string): FlowGridPricePatch[] {
+  if (Array.isArray(payload)) return payload.flatMap((item) => socketPricePatches(item, channel));
+  const record = asRecord(payload);
+  if (!record) return [];
+  if (Array.isArray(record.rows)) return record.rows.flatMap((row) => socketPricePatches(row, channel));
+  if (record.row) return socketPricePatches(record.row, channel);
+  const sport = textValue(record, ["sportName", "sport_name", "sport"]) || channel.replace(/^markets\./, "");
+  const inherited = {
+    sport,
+    eventSlug: textValue(record, ["eventSlug", "event_slug", "slug"]),
+    eventTitle: textValue(record, ["eventName", "event_name", "fixture", "fixture_name", "name", "title", "event"]),
+    marketSlug: textValue(record, ["marketSlug", "market_slug"])
+  };
+  const matches = asRecord(record.matches);
+  if (matches) {
+    return Object.values(matches).flatMap((match) => {
+      const matchRecord = asRecord(match);
+      if (!matchRecord) return [];
+      const exchange = textValue(matchRecord, ["exchange", "source", "venue"]).toLowerCase();
+      if (exchange && exchange !== "polymarket") return [];
+      return patchesFromMatch(matchRecord, inherited);
+    });
+  }
+  if (record.match) {
+    const matchRecord = asRecord(record.match);
+    if (matchRecord) return patchesFromMatch(matchRecord, inherited);
+  }
+  const patch = directPatchFromRecord(record, inherited);
+  return patch ? [patch] : [];
+}
+
+function patchMatchesLeg(event: FlowGridEvent, leg: FlowGridLeg, patch: FlowGridPricePatch) {
+  if (patch.sport && patch.sport !== "all" && event.sport && sportKey(patch.sport) !== sportKey(event.sport)) return false;
+  if (patch.tokenId && patch.tokenId === leg.tokenId) return true;
+  if (patch.marketSlug && patch.marketSlug === leg.marketSlug) return true;
+  if (patch.eventSlug && patch.eventSlug !== event.slug) return false;
+  if (!patch.eventTitle || !patch.outcome) return false;
+  return normalizeFixtureText(patch.eventTitle) === normalizeFixtureText(event.title)
+    && normalizeFixtureText(patch.outcome) === normalizeFixtureText(leg.label);
+}
+
+function applyFlowGridPricePatches(events: FlowGridEvent[], patches: FlowGridPricePatch[]) {
+  if (!patches.length) return events;
+  let changed = false;
+  const next = events.map((event) => {
+    let eventChanged = false;
+    const legs = event.legs.map((leg) => {
+      const patch = patches.find((item) => patchMatchesLeg(event, leg, item));
+      if (!patch) return leg;
+      eventChanged = true;
+      return {
+        ...leg,
+        bidCents: patch.bidCents ?? leg.bidCents,
+        askCents: patch.askCents ?? leg.askCents,
+        bestBid: patch.bidCents != null ? patch.bidCents / 100 : leg.bestBid,
+        bestAsk: patch.askCents != null ? patch.askCents / 100 : leg.bestAsk,
+        topBidSize: patch.topBidSize ?? leg.topBidSize,
+        topAskSize: patch.topAskSize ?? leg.topAskSize,
+        liquidityUsd: patch.liquidityUsd ?? leg.liquidityUsd,
+        volumeUsd: patch.volumeUsd ?? leg.volumeUsd
+      };
+    });
+    if (!eventChanged) return event;
+    changed = true;
+    const bidSumCents = legs.reduce((sum, leg) => sum + Number(leg.bidCents || 0), 0);
+    const askSumCents = legs.reduce((sum, leg) => sum + Number(leg.askCents || 0), 0);
+    const patchLiquidity = Math.max(0, ...patches
+      .filter((patch) => legs.some((leg) => patchMatchesLeg(event, leg, patch)))
+      .map((patch) => Number(patch.liquidityUsd || 0)));
+    return {
+      ...event,
+      legs,
+      bidSumCents,
+      askSumCents,
+      basketSpreadCents: askSumCents > 0 && bidSumCents > 0 ? Math.max(0, askSumCents - bidSumCents) : event.basketSpreadCents,
+      liquidityUsd: patchLiquidity > 0 ? Math.max(event.liquidityUsd, patchLiquidity) : event.liquidityUsd
+    };
+  });
+  return changed ? next : events;
+}
+
 async function jsonFetch<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, { cache: "no-store", ...options });
   const payload = await response.json().catch(() => ({}));
@@ -341,7 +556,7 @@ function EventDetail({
         <div>
           <span>{event.exchange.toUpperCase()} / {event.sport.toUpperCase()}</span>
           <strong>{event.title}</strong>
-          <small>{timeLabel(event.endAt || event.startAt)} / {marketFamilyLabel(event) || `${event.outcomeCount} legs`} / spread {centsLabel(event.basketSpreadCents)}</small>
+          <small>{timeLabel(event.startAt || event.endAt)} / {marketFamilyLabel(event) || `${event.outcomeCount} legs`} / spread {centsLabel(event.basketSpreadCents)}</small>
         </div>
         <div className="flow-grid-detail-actions">
           {session && <StatusPill status={session.status} />}
@@ -437,9 +652,14 @@ export default function FlowGrid() {
   const [manualEvent, setManualEvent] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [socketStatus, setSocketStatus] = useState<FlowGridSocketStatus>("waiting");
   const eventsRequestRef = useRef(0);
   const eventsAbortRef = useRef<AbortController | null>(null);
   const eventsCacheRef = useRef<Map<string, FlowGridEvent[]>>(new Map());
+  const socketRef = useRef<WebSocket | null>(null);
+  const socketReconnectRef = useRef<number | null>(null);
+  const socketFlushRef = useRef<number | null>(null);
+  const socketPatchesRef = useRef<FlowGridPricePatch[]>([]);
   const detailEvent = useMemo(() => (
     events.find((event) => event.slug === detailSlug || event.id === detailSlug)
     || sessions.find((session) => session.event?.slug === detailSlug || session.event?.id === detailSlug)?.event
@@ -561,6 +781,96 @@ export default function FlowGrid() {
     };
   }, []);
 
+  useEffect(() => {
+    const token = window.localStorage.getItem("sportsedge.auth.token");
+    const channels = selectedSocketSports(sport).map((item) => `markets.${item}`);
+    let closedByEffect = false;
+
+    function clearReconnect() {
+      if (!socketReconnectRef.current) return;
+      window.clearTimeout(socketReconnectRef.current);
+      socketReconnectRef.current = null;
+    }
+
+    function flushPatches() {
+      socketFlushRef.current = null;
+      const patches = socketPatchesRef.current.splice(0);
+      if (!patches.length) return;
+      setEvents((current) => applyFlowGridPricePatches(current, patches));
+      const nextCache = new Map<string, FlowGridEvent[]>();
+      eventsCacheRef.current.forEach((cachedEvents, key) => {
+        nextCache.set(key, applyFlowGridPricePatches(cachedEvents, patches));
+      });
+      eventsCacheRef.current = nextCache;
+    }
+
+    function queuePatches(patches: FlowGridPricePatch[]) {
+      if (!patches.length) return;
+      socketPatchesRef.current.push(...patches);
+      if (socketFlushRef.current) return;
+      socketFlushRef.current = window.setTimeout(flushPatches, 50);
+    }
+
+    function subscribe(socket: WebSocket) {
+      channels.forEach((channel) => {
+        socket.send(JSON.stringify({
+          type: "subscribe",
+          channel,
+          filters: { sport: channel.replace(/^markets\./, "") }
+        }));
+      });
+    }
+
+    function connect() {
+      clearReconnect();
+      if (!token) {
+        setSocketStatus("waiting");
+        return;
+      }
+      setSocketStatus("connecting");
+      const socket = new WebSocket(sportsEdgeWsUrl(token));
+      socketRef.current = socket;
+      socket.addEventListener("open", () => {
+        setSocketStatus("live");
+        subscribe(socket);
+      });
+      socket.addEventListener("message", (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          const channel = String(message?.channel || "");
+          if (message?.type !== "event" || !message.payload || !channels.includes(channel)) return;
+          queuePatches(socketPricePatches(message.payload, channel));
+        } catch {
+          // Snapshot refresh still keeps the grid usable if a socket frame is malformed.
+        }
+      });
+      socket.addEventListener("close", () => {
+        if (closedByEffect) return;
+        setSocketStatus("offline");
+        socketReconnectRef.current = window.setTimeout(connect, 2500);
+      });
+      socket.addEventListener("error", () => {
+        if (closedByEffect) return;
+        setSocketStatus("offline");
+        socket.close();
+      });
+    }
+
+    connect();
+
+    return () => {
+      closedByEffect = true;
+      clearReconnect();
+      if (socketFlushRef.current) {
+        window.clearTimeout(socketFlushRef.current);
+        socketFlushRef.current = null;
+      }
+      socketPatchesRef.current = [];
+      socketRef.current?.close();
+      socketRef.current = null;
+    };
+  }, [sport]);
+
   const visibleEvents = useMemo(
     () => events.filter((event) => matchesDateFilter(event, dateFilter)),
     [events, dateFilter]
@@ -575,6 +885,7 @@ export default function FlowGrid() {
     }
     return acc;
   }, { liquidity: 0, enabledExposure: 0, enabledCount: 0 });
+  const socketSportsLabel = selectedSocketSports(sport).map(sportLabel).join(", ");
 
   return (
     <div className="terminal-shell">
@@ -584,6 +895,7 @@ export default function FlowGrid() {
           <article><span>Executor</span><strong className={executorConfigured ? "positive" : "warning"}>{executorConfigured ? "Ireland linked" : "Control only"}</strong></article>
           <article><span>Wallet</span><strong className={wallet?.balance != null ? "positive" : "warning"}>{wallet?.balance != null ? money(wallet.balance) : "Unavailable"}</strong><small>{wallet?.openOrders != null ? `${wallet.openOrders} open orders` : walletError || "No wallet feed"}</small></article>
           <article><span>Events</span><strong>{visibleEvents.length}</strong><small>{events.length} loaded</small></article>
+          <article><span>Price WSS</span><strong className={socketStatus === "live" ? "positive" : "warning"}>{socketStatus}</strong><small>{socketSportsLabel}</small></article>
           <article><span>Enabled exposure</span><strong>{money(totals.enabledExposure)}</strong><small>{totals.enabledCount} enabled</small></article>
           <article><span>Visible liquidity</span><strong>{money(totals.liquidity)}</strong></article>
           <article><span>Open grids</span><strong>{sessions.length}</strong></article>
@@ -719,7 +1031,7 @@ export default function FlowGrid() {
                     </td>
                     <td><span className="flow-grid-sport-cell">{sportLabel(event.sport)}</span></td>
                     <td><strong title={event.title}>{event.title}</strong>{marketFamilyLabel(event) && <span className="flow-grid-market-kind">{marketFamilyLabel(event)}</span>}</td>
-                    <td>{timeLabel(event.endAt || event.startAt)}</td>
+                    <td>{timeLabel(event.startAt || event.endAt)}</td>
                     <td>
                       <div className="flow-grid-leg-strip" title={event.legs.map(compactLegLabel).join(" / ")}>
                         {event.legs.map((leg) => <span className="flow-grid-leg-chip" key={leg.key}>{compactLegLabel(leg)}</span>)}
