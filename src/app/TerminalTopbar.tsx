@@ -325,7 +325,7 @@ export function TerminalTopbar({
   }, []);
 
   return (
-    <header className="testboard-topbar global-terminal-topbar">
+    <header className={["testboard-topbar global-terminal-topbar", active === "flow-grid" ? "flow-grid-topbar" : ""].filter(Boolean).join(" ")}>
       <a className="testboard-brand" href="#dashboard" aria-label="SportsEdge dashboard">
         <img className="testboard-brand-logo" src={sportsEdgeMarketsLogo} alt="SportsEdge" />
       </a>

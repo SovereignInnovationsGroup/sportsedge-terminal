@@ -1535,6 +1535,7 @@ export default function FlowGrid() {
   const executorLabel = executionLabel(executorState, executorConfigured);
   const executorDetail = executionDetail(executorState);
   const executorReady = Boolean(executorState?.executionReady);
+  const controlSettings = withDerivedTakeProfit(settings);
 
   return (
     <div className="terminal-shell">
@@ -1543,6 +1544,7 @@ export default function FlowGrid() {
         <section className="flow-grid-summary">
           <article><span>Executor</span><strong className={executorReady ? "positive" : "warning"}>{executorLabel}</strong><small>{executorDetail || (executorConfigured ? "Awaiting Ireland state" : "FLOW_GRID_EXECUTOR_URL missing")}</small></article>
           <article><span>Wallet</span><strong className={wallet?.balance != null ? "positive" : "warning"}>{wallet?.balance != null ? money(wallet.balance) : "Unavailable"}</strong><small>{wallet?.openOrders != null ? `${wallet.openOrders} exchange orders` : walletError || "No wallet feed"}</small></article>
+          <article><span>TP</span><strong>{percentLabel(controlSettings.takeProfitPct)}</strong><small>{money(controlSettings.takeProfitUsd)} per {money(controlSettings.stakeUsdPerLevel)}</small></article>
           <article><span>Events</span><strong>{visibleEvents.length}</strong><small>{events.length} loaded</small></article>
           <article><span>In Play</span><strong className={liveEventByGridKey.size ? "positive" : ""}>{liveEventByGridKey.size}</strong><small>{liveEvents.length} live results / {liveEventsUpdatedAt ? timeLabel(liveEventsUpdatedAt) : "waiting"}</small></article>
           <article><span>Price WSS</span><strong className={socketStatus === "live" ? "positive" : "warning"}>{socketStatus}</strong><small>{socketSportsLabel}</small></article>
@@ -1587,18 +1589,18 @@ export default function FlowGrid() {
             <button type="button" onClick={() => refreshEvents(sport, dateFilter, { force: true })} disabled={busy === "refresh"}><RefreshCw size={14} /> Refresh</button>
           </div>
           <div className="flow-grid-control-group numeric">
-            <label>Stake <input type="number" min="1" value={settings.stakeUsdPerLevel} onChange={(event) => {
+            <label>Stake <input type="number" min="1" value={controlSettings.stakeUsdPerLevel} onChange={(event) => {
               const stakeUsdPerLevel = Number(event.target.value);
               setSettings((current) => withDerivedTakeProfit({ ...current, stakeUsdPerLevel }));
             }} /></label>
-            <label>Levels <input type="number" min="1" max="99" value={settings.virtualLevelsPerOutcome} onChange={(event) => setSettings({ ...settings, virtualLevelsPerOutcome: Number(event.target.value) })} /></label>
-            <label>Spacing <input type="number" min="0.5" step="0.5" value={settings.levelSpacingCents} onChange={(event) => setSettings({ ...settings, levelSpacingCents: Number(event.target.value) })} /></label>
-            <label>Epoch <input type="number" min="1" value={settings.maxEpochCostUsd} onChange={(event) => setSettings({ ...settings, maxEpochCostUsd: Number(event.target.value) })} /></label>
-            <label>Event <input type="number" min="1" value={settings.maxEventCostUsd} onChange={(event) => setSettings({ ...settings, maxEventCostUsd: Number(event.target.value) })} /></label>
-            <label>TP % <input type="number" min="0.1" step="0.1" value={settings.takeProfitPct} onChange={(event) => {
+            <label>TP % <input type="number" min="0.1" step="0.1" value={controlSettings.takeProfitPct} onChange={(event) => {
               const takeProfitPct = Number(event.target.value);
               setSettings((current) => withDerivedTakeProfit({ ...current, takeProfitPct }));
             }} /></label>
+            <label>Levels <input type="number" min="1" max="99" value={controlSettings.virtualLevelsPerOutcome} onChange={(event) => setSettings({ ...settings, virtualLevelsPerOutcome: Number(event.target.value) })} /></label>
+            <label>Spacing <input type="number" min="0.5" step="0.5" value={controlSettings.levelSpacingCents} onChange={(event) => setSettings({ ...settings, levelSpacingCents: Number(event.target.value) })} /></label>
+            <label>Event Cap <input type="number" min="1" value={controlSettings.maxEventCostUsd} onChange={(event) => setSettings({ ...settings, maxEventCostUsd: Number(event.target.value) })} /></label>
+            <label>Epoch Cap <input type="number" min="1" value={controlSettings.maxEpochCostUsd} onChange={(event) => setSettings({ ...settings, maxEpochCostUsd: Number(event.target.value) })} /></label>
           </div>
         </section>
 
