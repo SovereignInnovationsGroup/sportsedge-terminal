@@ -208,10 +208,6 @@ function centsLabel(value: number | undefined | null) {
   return `${Number.isInteger(amount) ? amount : amount.toFixed(1)}c`;
 }
 
-function compactLegLabel(leg: FlowGridLeg) {
-  return `${leg.label} ${centsLabel(leg.bidCents)}/${centsLabel(leg.askCents)}`;
-}
-
 function legPriceCents(leg: FlowGridLeg) {
   const bid = Number(leg.bidCents || 0);
   const ask = Number(leg.askCents || 0);
@@ -1380,7 +1376,6 @@ export default function FlowGrid() {
               <col className="flow-grid-col-sport" />
               <col className="flow-grid-col-event" />
               <col className="flow-grid-col-time" />
-              <col className="flow-grid-col-legs" />
               <col className="flow-grid-col-money" />
               <col className="flow-grid-col-book" />
               <col className="flow-grid-col-money" />
@@ -1391,7 +1386,7 @@ export default function FlowGrid() {
             </colgroup>
             <thead>
               <tr>
-                <th>Enable</th><th>Sport</th><th>Event</th><th>Time</th><th>Legs</th><th>Liquidity</th><th>Prices</th><th>Full Grid</th><th>Event Cap</th><th>Epoch</th><th>Status</th><th>Actions</th>
+                <th>Enable</th><th>Sport</th><th>Event</th><th>Time</th><th>Liquidity</th><th>Outcomes</th><th>Full Grid</th><th>Event Cap</th><th>Epoch</th><th>Status</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -1424,11 +1419,6 @@ export default function FlowGrid() {
                       {marketFamilyLabel(event) && <span className="flow-grid-market-kind">{marketFamilyLabel(event)}</span>}
                     </td>
                     <td>{timeLabel(event.startAt || event.endAt)}</td>
-                    <td>
-                      <div className="flow-grid-leg-strip" title={event.legs.map(compactLegLabel).join(" / ")}>
-                        {event.legs.map((leg) => <span className="flow-grid-leg-chip" key={leg.key}>{compactLegLabel(leg)}</span>)}
-                      </div>
-                    </td>
                     <td>{money(event.liquidityUsd)}</td>
                     <td className="flow-grid-price-cell">
                       <div className="flow-grid-price-strip" title={event.legs.map(compactPriceLabel).join(" / ")}>
@@ -1452,7 +1442,7 @@ export default function FlowGrid() {
                   </tr>
                 );
               })}
-              {!visibleEvents.length && <tr><td colSpan={12}>No supported events match this filter.</td></tr>}
+              {!visibleEvents.length && <tr><td colSpan={11}>No supported events match this filter.</td></tr>}
             </tbody>
           </table>
         </section>

@@ -260,16 +260,12 @@
   width: 150px;
 }
 
-.flow-grid-col-legs {
-  width: 360px;
-}
-
 .flow-grid-col-money {
   width: 96px;
 }
 
 .flow-grid-col-book {
-  width: 350px;
+  width: 520px;
 }
 
 .flow-grid-col-status {
@@ -367,15 +363,6 @@
   white-space: nowrap;
 }
 
-.flow-grid-leg-strip {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
 .flow-grid-market-kind {
   display: inline-flex;
   align-items: center;
@@ -414,7 +401,7 @@
 
 .flow-grid-price-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   align-items: center;
   gap: 3px;
   min-width: 0;
@@ -455,24 +442,6 @@
   color: #eef7ff;
   font-variant-numeric: tabular-nums;
   justify-self: end;
-}
-
-.flow-grid-leg-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 18px;
-  margin: 0;
-  border: 1px solid rgba(114, 230, 162, 0.25);
-  border-radius: 2px;
-  background: rgba(9, 38, 29, 0.55);
-  color: #c7f7dd;
-  padding: 0 4px;
-  font-size: 10px;
-  font-weight: 750;
-  max-width: 118px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .flow-grid-sport-cell {
