@@ -152,6 +152,11 @@ type FlowGridSocketSubscription = {
   filters: Record<string, string>;
 };
 
+type RefreshEventsOptions = {
+  background?: boolean;
+  force?: boolean;
+};
+
 const DATE_FILTERS = [
   { label: "All", value: "all" },
   { label: "Today", value: "today" },
@@ -778,7 +783,7 @@ export default function FlowGrid() {
     || null
   ), [events, sessions, detailSlug]);
 
-  async function refreshEvents(nextSport = sport, nextDateFilter = dateFilter) {
+  async function refreshEvents(nextSport = sport, nextDateFilter = dateFilter, options: RefreshEventsOptions = {}) {
     const requestId = eventsRequestRef.current + 1;
     eventsRequestRef.current = requestId;
     eventsAbortRef.current?.abort();
@@ -787,7 +792,8 @@ export default function FlowGrid() {
     const cacheKey = `${nextSport}:${nextDateFilter}`;
     const cached = eventsCacheRef.current.get(cacheKey);
     if (cached) setEvents(cached);
-    setBusy("refresh");
+    if (cached && !options.force) return;
+    if (!options.background) setBusy("refresh");
     try {
       const next = await loadEvents(nextSport, nextDateFilter, controller.signal);
       if (eventsRequestRef.current !== requestId) return;
@@ -800,7 +806,7 @@ export default function FlowGrid() {
       setError(err instanceof Error ? err.message : "Flow Grid events failed");
     } finally {
       if (eventsRequestRef.current === requestId) {
-        setBusy("");
+        if (!options.background) setBusy("");
         if (eventsAbortRef.current === controller) eventsAbortRef.current = null;
       }
     }
@@ -1047,7 +1053,7 @@ export default function FlowGrid() {
                   type="button"
                   key={item.value}
                   className={dateFilter === item.value ? "active" : ""}
-                  onClick={() => { setDateFilter(item.value); refreshEvents(sport, item.value); }}
+                  onClick={() => { setDateFilter(item.value); void refreshEvents(sport, item.value, { background: true }); }}
                 >
                   {item.label}
                 </button>
@@ -1060,7 +1066,7 @@ export default function FlowGrid() {
                   type="button"
                   key={item.value}
                   className={sport === item.value ? "active" : ""}
-                  onClick={() => { setSport(item.value); refreshEvents(item.value, dateFilter); }}
+                  onClick={() => { setSport(item.value); void refreshEvents(item.value, dateFilter, { background: true }); }}
                 >
                   {item.label}
                 </button>
@@ -1072,7 +1078,7 @@ export default function FlowGrid() {
               <input value={manualEvent} onChange={(event) => setManualEvent(event.target.value)} placeholder="event slug or market URL" />
             </label>
             <button type="button" onClick={addManualEvent} disabled={busy === "manual"}><Activity size={14} /> Add</button>
-            <button type="button" onClick={() => refreshEvents(sport, dateFilter)} disabled={busy === "refresh"}><RefreshCw size={14} /> Refresh</button>
+            <button type="button" onClick={() => refreshEvents(sport, dateFilter, { force: true })} disabled={busy === "refresh"}><RefreshCw size={14} /> Refresh</button>
           </div>
           <div className="flow-grid-control-group numeric">
             <label>Stake <input type="number" min="1" value={settings.stakeUsdPerLevel} onChange={(event) => setSettings({ ...settings, stakeUsdPerLevel: Number(event.target.value) })} /></label>
