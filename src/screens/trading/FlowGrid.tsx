@@ -733,7 +733,7 @@ async function loadEvents(sport: string, dateFilter: DateFilter, signal?: AbortS
 async function loadLiveSports(signal?: AbortSignal) {
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/London";
   const payload = await jsonFetch<{ items?: FlowGridLiveEvent[] }>(
-    `/api/sports/events?limit=5000&timezone=${encodeURIComponent(timezone)}`,
+    `/api/sports/events?state=live&limit=600&timezone=${encodeURIComponent(timezone)}`,
     { signal }
   );
   return (payload.items || []).filter(isInPlayLiveEvent);
