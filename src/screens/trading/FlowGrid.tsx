@@ -673,88 +673,124 @@ function EventDetail({
   onClose: () => void;
 }) {
   const exposure = previewExposure(event, settings);
+  const sessionExposure = session?.exposure || exposure;
+  const executorText = session?.executor?.ok ? "Ireland accepted" : session?.executor?.detail || "pending";
+  const sessionStatus = session?.status || "IDLE";
   return (
     <div className="flow-grid-detail" role="dialog" aria-label={`${event.title} flow grid detail`}>
       <header>
-        <div>
+        <div className="flow-grid-detail-title">
           <span>{event.exchange.toUpperCase()} / {event.sport.toUpperCase()}</span>
           <strong>{event.title}</strong>
-          <small>{timeLabel(event.startAt || event.endAt)} / {marketFamilyLabel(event) || `${event.outcomeCount} legs`} / spread {centsLabel(event.basketSpreadCents)}</small>
+          <div className="flow-grid-detail-meta">
+            <span>{timeLabel(event.startAt || event.endAt)}</span>
+            <span>{marketFamilyLabel(event) || `${event.outcomeCount} legs`}</span>
+            <span>Spread {centsLabel(event.basketSpreadCents)}</span>
+            <span>{event.slug}</span>
+          </div>
         </div>
         <div className="flow-grid-detail-actions">
-          {session && <StatusPill status={session.status} />}
+          <StatusPill status={sessionStatus} />
           <a href={event.eventUrl} target="_blank" rel="noreferrer">Open market</a>
           <button type="button" className="flow-grid-icon-button" aria-label="Close grid detail" onClick={onClose}><X size={16} /></button>
         </div>
       </header>
 
-      <section className="flow-grid-detail-kpis">
-        <article><span>Full virtual</span><strong>{money(exposure.theoreticalFullGridUsd)}</strong></article>
-        <article><span>Event cap</span><strong>{money(exposure.maxEventExposureUsd)}</strong></article>
-        <article><span>Epoch cap</span><strong>{money(exposure.maxEpochExposureUsd)}</strong></article>
-        <article><span>Per tick</span><strong>{money(exposure.maxNewFillUsdPerTick)}</strong></article>
-        <article><span>Basket bid</span><strong>{centsLabel(event.bidSumCents)}</strong></article>
-        <article><span>Basket ask</span><strong>{centsLabel(event.askSumCents)}</strong></article>
+      <section className="flow-grid-detail-strip">
+        <article><span>Full Grid</span><strong>{money(exposure.theoreticalFullGridUsd)}</strong></article>
+        <article><span>Event Cap</span><strong>{money(exposure.maxEventExposureUsd)}</strong></article>
+        <article><span>Epoch Cap</span><strong>{money(exposure.maxEpochExposureUsd)}</strong></article>
+        <article><span>Per Tick</span><strong>{money(exposure.maxNewFillUsdPerTick)}</strong></article>
+        <article><span>TP</span><strong>{money(settings.takeProfitUsd)}</strong></article>
+        <article><span>Basket</span><strong>{centsLabel(event.bidSumCents)} / {centsLabel(event.askSumCents)}</strong></article>
       </section>
 
-      <section className="flow-grid-ladder-grid">
-        {event.legs.map((leg) => {
-          const levels = gridLevels(leg, settings);
-          return (
-            <article className="flow-grid-leg-ladder" key={leg.key}>
-              <div className="flow-grid-leg-head">
-                <span>{leg.label}</span>
-                <strong>{centsLabel(leg.bidCents)} / {centsLabel(leg.askCents)}</strong>
-              </div>
-              <div className="flow-grid-book-strip">
-                <span>Bid {Number(leg.topBidSize || 0).toLocaleString()}</span>
-                <span>Ask {Number(leg.topAskSize || 0).toLocaleString()}</span>
-                <span>{money(leg.liquidityUsd)}</span>
-              </div>
-              <div className="flow-grid-levels">
-                {levels.slice(0, 40).map((level, index) => (
-                  <span key={`${leg.key}:${level}:${index}`}>{centsLabel(level)}</span>
-                ))}
-              </div>
-              <div className="flow-grid-book-depth">
-                <div>
-                  <strong>Bids</strong>
-                  {(leg.book?.bids || []).slice(0, 10).map((level) => <span key={`b:${level.cents}:${level.size}`}>{centsLabel(level.cents)} / {Math.round(level.size).toLocaleString()}</span>)}
-                </div>
-                <div>
-                  <strong>Asks</strong>
-                  {(leg.book?.asks || []).slice(0, 10).map((level) => <span key={`a:${level.cents}:${level.size}`}>{centsLabel(level.cents)} / {Math.round(level.size).toLocaleString()}</span>)}
-                </div>
-              </div>
-            </article>
-          );
-        })}
-      </section>
-
-      <section className="flow-grid-orders-panel">
-        <div className="flow-grid-section-head">
-          <span>Local levels / epochs</span>
-          <strong>{session?.id || "No active session"}</strong>
-        </div>
-        <table>
-          <thead>
-            <tr><th>State</th><th>Created</th><th>Updated</th><th>Executor</th><th>Event Cap</th><th>Epoch Cap</th></tr>
-          </thead>
-          <tbody>
-            {session ? (
+      <section className="flow-grid-detail-body">
+        <div className="flow-grid-detail-levels-panel">
+          <div className="flow-grid-section-head">
+            <span>Outcome Grid</span>
+            <strong>{settings.virtualLevelsPerOutcome} levels / {centsLabel(settings.levelSpacingCents)} spacing / {money(settings.stakeUsdPerLevel)} stake</strong>
+          </div>
+          <table className="flow-grid-level-table">
+            <thead>
               <tr>
-                <td><StatusPill status={session.status} /></td>
-                <td>{timeLabel(session.createdAt)}</td>
-                <td>{timeLabel(session.updatedAt)}</td>
-                <td>{session.executor?.ok ? "Ireland accepted" : session.executor?.detail || "pending"}</td>
-                <td>{money(session.exposure?.maxEventExposureUsd)}</td>
-                <td>{money(session.exposure?.maxEpochExposureUsd)}</td>
+                <th>Outcome</th>
+                <th>Market</th>
+                <th>Liquidity</th>
+                <th>Local Range</th>
+                <th>Preview Levels</th>
               </tr>
-            ) : (
-              <tr><td colSpan={6}>No session has been started for this event.</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {event.legs.map((leg) => {
+                const levels = gridLevels(leg, settings);
+                const preview = levels.slice(0, 14);
+                const firstLevel = levels[0];
+                const lastLevel = levels[levels.length - 1];
+                return (
+                  <tr key={leg.key}>
+                    <td>
+                      <strong>{leg.label}</strong>
+                      <small>{leg.marketSlug || leg.tokenId}</small>
+                    </td>
+                    <td>
+                      <div className="flow-grid-detail-market">
+                        <span><em>Bid</em>{centsLabel(leg.bidCents)}</span>
+                        <span><em>Ask</em>{centsLabel(leg.askCents)}</span>
+                      </div>
+                    </td>
+                    <td>{money(leg.liquidityUsd)}</td>
+                    <td>
+                      <strong>{centsLabel(firstLevel)} to {centsLabel(lastLevel)}</strong>
+                      <small>{levels.length} local levels</small>
+                    </td>
+                    <td>
+                      <div className="flow-grid-detail-levels">
+                        {preview.map((level, index) => (
+                          <span key={`${leg.key}:${level}:${index}`}>{centsLabel(level)}</span>
+                        ))}
+                        {levels.length > preview.length && <span className="more">+{levels.length - preview.length}</span>}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <aside className="flow-grid-detail-session">
+          <div className="flow-grid-section-head">
+            <span>Session</span>
+            <strong>{session?.id || "No active session"}</strong>
+          </div>
+          <div className="flow-grid-session-stack">
+            <article>
+              <span>State</span>
+              <strong><StatusPill status={sessionStatus} /></strong>
+            </article>
+            <article>
+              <span>Executor</span>
+              <strong>{executorText}</strong>
+            </article>
+            <article>
+              <span>Created</span>
+              <strong>{session ? timeLabel(session.createdAt) : "-"}</strong>
+            </article>
+            <article>
+              <span>Updated</span>
+              <strong>{session ? timeLabel(session.updatedAt) : "-"}</strong>
+            </article>
+            <article>
+              <span>Event Cap</span>
+              <strong>{money(sessionExposure.maxEventExposureUsd)}</strong>
+            </article>
+            <article>
+              <span>Epoch Cap</span>
+              <strong>{money(sessionExposure.maxEpochExposureUsd)}</strong>
+            </article>
+          </div>
+        </aside>
       </section>
     </div>
   );
