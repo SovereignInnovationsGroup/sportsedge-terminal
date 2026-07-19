@@ -1331,6 +1331,17 @@ export default function FlowGrid() {
             <strong>{sessions.length} tracked / virtual levels trigger execution locally</strong>
           </div>
           <table>
+            <colgroup>
+              <col className="flow-grid-session-col-state" />
+              <col className="flow-grid-session-col-sport" />
+              <col className="flow-grid-session-col-event" />
+              <col className="flow-grid-session-col-created" />
+              <col className="flow-grid-session-col-money" />
+              <col className="flow-grid-session-col-money" />
+              <col className="flow-grid-session-col-pnl" />
+              <col className="flow-grid-session-col-executor" />
+              <col className="flow-grid-session-col-actions" />
+            </colgroup>
             <thead>
               <tr><th>State</th><th>Sport</th><th>Event</th><th>Created</th><th>Event Cap</th><th>Epoch Cap</th><th>P&L</th><th>Executor</th><th>Actions</th></tr>
             </thead>

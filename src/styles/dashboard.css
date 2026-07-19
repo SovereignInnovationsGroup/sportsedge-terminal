@@ -276,6 +276,39 @@
   width: 230px;
 }
 
+.flow-grid-table-panel.sessions table {
+  min-width: 1320px;
+}
+
+.flow-grid-session-col-state {
+  width: 122px;
+}
+
+.flow-grid-session-col-sport {
+  width: 96px;
+}
+
+.flow-grid-session-col-event {
+  width: 420px;
+}
+
+.flow-grid-session-col-created {
+  width: 156px;
+}
+
+.flow-grid-session-col-money,
+.flow-grid-session-col-pnl {
+  width: 92px;
+}
+
+.flow-grid-session-col-executor {
+  width: 190px;
+}
+
+.flow-grid-session-col-actions {
+  width: 152px;
+}
+
 .flow-grid-table-panel th,
 .flow-grid-table-panel td,
 .flow-grid-orders-panel th,
@@ -495,8 +528,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 66px;
+  min-width: 92px;
   min-height: 22px;
+  padding: 0 7px;
   border: 1px solid rgba(117, 139, 163, 0.34);
   border-radius: 3px;
   background: #101827;
