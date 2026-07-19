@@ -481,11 +481,12 @@
 }
 
 .flow-grid-price-strip {
-  display: grid;
+  display: flex;
   align-items: center;
   gap: 2px;
   min-width: 0;
   width: 100%;
+  overflow: hidden;
 }
 
 .flow-grid-price-chip {
@@ -503,7 +504,7 @@
   padding: 0 5px;
   font-size: 10px;
   font-weight: 850;
-  min-width: 0;
+  min-width: 30px;
   max-width: 100%;
   overflow: hidden;
   white-space: nowrap;

@@ -272,13 +272,6 @@ function outcomeSharePercent(event: FlowGridEvent, leg: FlowGridLeg) {
   return Math.max(4, Math.min(96, (price / total) * 100));
 }
 
-function outcomeGridTemplate(event: FlowGridEvent) {
-  if (!event.legs.length) return undefined;
-  return event.legs
-    .map((leg) => `minmax(58px, ${outcomeSharePercent(event, leg).toFixed(1)}fr)`)
-    .join(" ");
-}
-
 function marketFamilyLabel(event: FlowGridEvent) {
   return String(event.marketFamily || "").trim().toUpperCase();
 }
@@ -1693,17 +1686,24 @@ export default function FlowGrid() {
 	                    <td className="flow-grid-price-cell">
 	                      <div
 	                        className="flow-grid-price-strip"
-	                        style={{ gridTemplateColumns: outcomeGridTemplate(event) }}
 	                        title={event.legs.map(compactPriceLabel).join(" / ")}
 	                      >
-	                        {event.legs.map((leg) => (
-	                          <span className="flow-grid-price-chip" key={`${leg.key}:${leg.tokenId}`} title={compactPriceLabel(leg)}>
-                            <span className="flow-grid-price-name">{leg.label}</span>
-                            <span className="flow-grid-price-value">{centsLabel(legPriceCents(leg))}</span>
-                          </span>
-                        ))}
-                      </div>
-                    </td>
+	                        {event.legs.map((leg) => {
+	                          const share = outcomeSharePercent(event, leg);
+	                          return (
+	                            <span
+	                              className="flow-grid-price-chip"
+	                              key={`${leg.key}:${leg.tokenId}`}
+	                              style={{ flexBasis: `${share}%`, flexGrow: share, flexShrink: 1 }}
+	                              title={`${compactPriceLabel(leg)} / ${share.toFixed(1)}% of line`}
+	                            >
+	                              <span className="flow-grid-price-name">{leg.label}</span>
+	                              <span className="flow-grid-price-value">{centsLabel(legPriceCents(leg))}</span>
+	                            </span>
+	                          );
+	                        })}
+	                      </div>
+	                    </td>
                     <td>{money(exposure.theoreticalFullGridUsd)}</td>
                     <td>{money(exposure.maxEventExposureUsd)}</td>
                     <td>{money(exposure.maxEpochExposureUsd)}</td>
