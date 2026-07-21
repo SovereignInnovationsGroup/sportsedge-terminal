@@ -62,6 +62,8 @@ type FlowGridSettings = {
   levelSpacingCents: number;
   virtualLevelsPerOutcome: number;
   maxNewLevelsPerTick: number;
+  maxEntriesPerEvent: number;
+  stopAfterFirstProfit: boolean;
   maxEpochCostUsd: number;
   maxEventCostUsd: number;
   takeProfitPct: number;
@@ -173,6 +175,8 @@ const DEFAULT_SETTINGS: FlowGridSettings = {
   levelSpacingCents: 1,
   virtualLevelsPerOutcome: 40,
   maxNewLevelsPerTick: 1,
+  maxEntriesPerEvent: 1,
+  stopAfterFirstProfit: true,
   maxEpochCostUsd: 25,
   maxEventCostUsd: 75,
   takeProfitPct: 2.5,
@@ -616,7 +620,10 @@ function mergeFlowGridEvents(current: FlowGridEvent[], incoming: FlowGridEvent[]
 
 function previewExposure(event: FlowGridEvent, settings: FlowGridSettings) {
   const theoreticalFullGridUsd = event.outcomeCount * settings.virtualLevelsPerOutcome * settings.stakeUsdPerLevel;
-  const maxEventExposureUsd = Math.min(settings.maxEventCostUsd, theoreticalFullGridUsd);
+  const entryLimitedGridUsd = settings.maxEntriesPerEvent > 0
+    ? Math.min(theoreticalFullGridUsd, settings.maxEntriesPerEvent * settings.stakeUsdPerLevel)
+    : theoreticalFullGridUsd;
+  const maxEventExposureUsd = Math.min(settings.maxEventCostUsd, entryLimitedGridUsd);
   const maxEpochExposureUsd = Math.min(settings.maxEpochCostUsd, maxEventExposureUsd);
   return {
     theoreticalFullGridUsd,
@@ -1625,6 +1632,7 @@ export default function FlowGrid() {
               setSettings((current) => withDerivedTakeProfit({ ...current, takeProfitPct }));
             }} /></label>
             <label>Levels <input type="number" min="1" max="99" value={controlSettings.virtualLevelsPerOutcome} onChange={(event) => setSettings({ ...settings, virtualLevelsPerOutcome: Number(event.target.value) })} /></label>
+            <label>Entries <input type="number" min="1" max="1000" value={controlSettings.maxEntriesPerEvent} onChange={(event) => setSettings({ ...settings, maxEntriesPerEvent: Number(event.target.value) })} /></label>
             <label>Spacing <input type="number" min="0.5" step="0.5" value={controlSettings.levelSpacingCents} onChange={(event) => setSettings({ ...settings, levelSpacingCents: Number(event.target.value) })} /></label>
             <label>Event Cap <input type="number" min="1" value={controlSettings.maxEventCostUsd} onChange={(event) => setSettings({ ...settings, maxEventCostUsd: Number(event.target.value) })} /></label>
             <label>Epoch Cap <input type="number" min="1" value={controlSettings.maxEpochCostUsd} onChange={(event) => setSettings({ ...settings, maxEpochCostUsd: Number(event.target.value) })} /></label>
