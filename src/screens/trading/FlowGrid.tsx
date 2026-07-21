@@ -203,6 +203,13 @@ const SPORTS = [
 const FLOW_GRID_WSS_SPORTS = SPORTS.filter((item) => item.value !== "all").map((item) => item.value);
 const FLOW_GRID_DIRECT_PRICE_CHANNELS = ["polymarket.price", "kalshi.price"];
 const IN_PLAY_MARKET_WINDOW_MS = 12 * 60 * 60 * 1000;
+const DEFAULT_MIN_LIQUIDITY_USD = 100_000;
+const LIQUIDITY_FILTERS = [
+  { label: "All Liquidity", value: 0 },
+  { label: "$50k+", value: 50_000 },
+  { label: "$100k+", value: 100_000 },
+  { label: "$250k+", value: 250_000 }
+];
 const ENTRY_WINDOW_BY_SPORT: Record<string, Pick<FlowGridSettings, "entryStartOffsetMinutes" | "entryCutoffMinutesAfterStart">> = {
   football: { entryStartOffsetMinutes: 0, entryCutoffMinutesAfterStart: 75 },
   tennis: { entryStartOffsetMinutes: 0, entryCutoffMinutesAfterStart: 180 },
@@ -891,7 +898,7 @@ async function jsonFetch<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 async function loadEvents(sport: string, dateFilter: DateFilter, signal?: AbortSignal) {
-  const limit = sport === "all" ? 150 : 100;
+  const limit = 200;
   const payload = await jsonFetch<{ events: FlowGridEvent[] }>(
     `/api/flow-grid/events?sport=${encodeURIComponent(sport)}&limit=${limit}&books=0&date=${encodeURIComponent(dateFilter)}${eventRangeQuery(dateFilter)}`,
     { signal }
@@ -1181,6 +1188,7 @@ function EventDetail({
 export default function FlowGrid() {
   const [sport, setSport] = useState("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [minLiquidityUsd, setMinLiquidityUsd] = useState(DEFAULT_MIN_LIQUIDITY_USD);
   const [events, setEvents] = useState<FlowGridEvent[]>([]);
   const [liveEvents, setLiveEvents] = useState<FlowGridLiveEvent[]>([]);
   const [liveEventsUpdatedAt, setLiveEventsUpdatedAt] = useState("");
@@ -1508,10 +1516,16 @@ export default function FlowGrid() {
 
   const visibleEvents = useMemo(
     () => sortEventsForGrid(
-      events.filter((event) => isWinOnlyGridEvent(event) && isGridStartCandidate(event) && matchesDateFilter(event, dateFilter) && matchesSportFilter(event, sport)),
+      events.filter((event) => (
+        isWinOnlyGridEvent(event)
+        && isGridStartCandidate(event)
+        && matchesDateFilter(event, dateFilter)
+        && matchesSportFilter(event, sport)
+        && Number(event.liquidityUsd || 0) >= minLiquidityUsd
+      )),
       sessions
     ),
-    [events, dateFilter, sport, sessions]
+    [events, dateFilter, minLiquidityUsd, sport, sessions]
   );
   const liveEventByGridKey = useMemo(() => {
     const matches = new Map<string, FlowGridLiveEvent>();
@@ -1575,6 +1589,19 @@ export default function FlowGrid() {
                   key={item.value}
                   className={sport === item.value ? "active" : ""}
                   onClick={() => { setSport(item.value); void refreshEvents(item.value, dateFilter, { background: true }); }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+            <span>/</span>
+            <nav aria-label="Flow grid liquidity filter">
+              {LIQUIDITY_FILTERS.map((item) => (
+                <button
+                  type="button"
+                  key={item.value}
+                  className={minLiquidityUsd === item.value ? "active" : ""}
+                  onClick={() => setMinLiquidityUsd(item.value)}
                 >
                   {item.label}
                 </button>
@@ -1676,7 +1703,7 @@ export default function FlowGrid() {
         <section className="flow-grid-table-panel">
           <div className="flow-grid-section-head">
             <span>Supported events</span>
-            <strong>{sport.toUpperCase()} / PREDICTIVE VENUES</strong>
+            <strong>{sport.toUpperCase()} / {minLiquidityUsd ? `${money(minLiquidityUsd)}+` : "ALL LIQUIDITY"} / PREDICTIVE VENUES</strong>
           </div>
           <table>
             <colgroup>
